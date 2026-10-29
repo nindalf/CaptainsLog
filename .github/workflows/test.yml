@@ -1,0 +1,28 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Match the local toolchain: Xcode 26 times out type-checking the search predicates
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Brew skips any the image already ships
+      - name: Install just and xcbeautify
+        run: brew install just xcbeautify
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Run tests
+        run: just test
