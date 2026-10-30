@@ -117,7 +117,7 @@ struct QuickEntryView: View {
         draft.sortOrder = TodoOrdering.topSortOrder(among: openTodos)
         modelContext.insert(draft)
         draft.project = project
-        try? draft.linkMentionedPeople(in: modelContext)
+        _ = try? draft.linkMentionedPeople(in: modelContext)
         try? modelContext.save()
         onClose()
     }

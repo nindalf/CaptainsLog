@@ -106,7 +106,7 @@ final class QuickEntryPanel: NSPanel {
 
     private static func firstEditableTextField(in view: NSView) -> NSTextField? {
         if let field = view as? NSTextField, field.isEditable { return field }
-        return view.subviews.lazy.compactMap(firstEditableTextField).first
+        return view.subviews.lazy.compactMap { firstEditableTextField(in: $0) }.first
     }
 
     /// Resizes to `height`. The first time after opening it centres the panel and puts the caret
@@ -117,7 +117,7 @@ final class QuickEntryPanel: NSPanel {
             setFrame(Self.centred(NSSize(width: QuickEntryView.width, height: height), on: screen), display: true)
             // SwiftUI's own focus request doesn't land when the panel opens over another app.
             // The view has rendered by its first height report, so its field exists.
-            if let field = contentView.flatMap(Self.firstEditableTextField) { makeFirstResponder(field) }
+            if let field = contentView.flatMap({ Self.firstEditableTextField(in: $0) }) { makeFirstResponder(field) }
         } else {
             guard abs(frame.height - height) > 0.5 else { return }
             var rect = frame
