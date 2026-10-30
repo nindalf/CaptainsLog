@@ -11,12 +11,6 @@ release_team := env("CAPTAINSLOG_TEAM_ID", "78T545JWUD")
 default:
     @just --list
 
-# Build the CLI in release mode and link it into /opt/homebrew/bin. Rerun after CLI changes
-install-cli:
-    swift build -c release
-    ln -sf "$(pwd)/{{cli_binary}}" /opt/homebrew/bin/captains-log
-    @echo "Installed captains-log to /opt/homebrew/bin/captains-log"
-
 # Link the Claude Code skills in skills/ into ~/.claude/skills, so they work in every project
 install-skills:
     mkdir -p ~/.claude/skills
@@ -26,13 +20,33 @@ install-skills:
 gui:
     open {{xcode_project}}
 
-# Build a Release copy and install it to /Applications
+# Build the working tree as a release does (app, CLI in Contents/Helpers, skills), sign it with Developer ID if this Mac has one, and install it to /Applications, and link the CLI and skills as Homebrew does. No notarization: a local build isn't quarantined
 install-app:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "Building Release..."
+    echo "Building the app..."
     xcodebuild -quiet -project {{xcode_project}} -scheme {{app_name}} -configuration Release \
-        -destination '{{test_destination}}' -derivedDataPath .build/xcode build
+        -destination '{{test_destination}}' -derivedDataPath .build/xcode \
+        -onlyUsePackageVersionsFromResolvedFile build
+    echo "Building the CLI..."
+    swift build -c release --only-use-versions-from-resolved-file
+    local=.build/local
+    built="$local/Captain's Log.app"
+    rm -rf "$local" && mkdir -p "$local"
+    ditto ".build/xcode/Build/Products/Release/Captain's Log.app" "$built"
+    mkdir -p "$built/Contents/Helpers"
+    cp {{cli_binary}} "$built/Contents/Helpers/captains-log"
+    ditto skills "$built/Contents/Resources/skills"
+    # A stable identity keeps Keychain and privacy grants across rebuilds; ad hoc changes with every build
+    identity=$(security find-identity -v -p codesigning | sed -n -E 's/.*"(Developer ID Application: .*\({{release_team}}\))"$/\1/p' | head -1)
+    if [ -z "$identity" ]; then
+        echo "No Developer ID for team {{release_team}}: signing ad hoc"
+        identity=-
+    fi
+    sign() { codesign --force --options runtime --timestamp=none --sign "$identity" "$@"; }
+    sign --identifier captains-log "$built/Contents/Helpers/captains-log"
+    sign "$built"
+    codesign --verify --strict --deep "$built"
     # Only the copy needs admin rights; the build stays user-owned
     app="/Applications/Captain's Log.app"
     sudo=""
@@ -40,10 +54,15 @@ install-app:
         echo "Writing to /Applications needs admin rights (grant them with the Privileges app)"
         sudo="sudo"
     fi
-    pkill -x "Captain's Log" || true
+    running=false
+    pkill -x "Captain's Log" && running=true || true
     $sudo rm -rf "$app"
-    $sudo ditto ".build/xcode/Build/Products/Release/Captain's Log.app" "$app"
-    echo "Installed Captain's Log to /Applications"
+    $sudo ditto "$built" "$app"
+    # The same links Homebrew makes, so a source install needs nothing else
+    ln -sf "$app/Contents/Helpers/captains-log" /opt/homebrew/bin/captains-log
+    "$app/Contents/Helpers/captains-log" skills install >/dev/null
+    echo "Installed Captain's Log $(git describe --tags --always --dirty) to /Applications, with the CLI and skills"
+    if $running; then open "$app"; fi
 
 # Build <treeish> unsigned into <dir>/Captain's Log.app, with the CLI in Contents/Helpers and the skills in Contents/Resources/skills. It always builds at the same path, which the linker hashes into each binary's UUID, so a release can be rebuilt byte for byte from its tag
 _release-assemble treeish dir:
