@@ -45,7 +45,30 @@ install-app:
     $sudo ditto ".build/xcode/Build/Products/Release/Captain's Log.app" "$app"
     echo "Installed Captain's Log to /Applications"
 
-# Build the app and CLI at the version in Sources/captains-log/Version.swift, sign with Developer ID and notarize, and copy the committed skills and getting-started guide, into .build/dist. Needs the notarytool profile `captainslog`
+# Build <treeish> unsigned into <dir>/Captain's Log.app, with the CLI in Contents/Helpers and the skills in Contents/Resources/skills. It always builds at the same path, which the linker hashes into each binary's UUID, so a release can be rebuilt byte for byte from its tag
+_release-assemble treeish dir:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    build=/tmp/captainslog-release
+    src="$build/CaptainsLog"
+    mkdir -p "{{dir}}" && out=$(cd "{{dir}}" && pwd)
+    app="$out/Captain's Log.app"
+    rm -rf "$build" "$app" && mkdir -p "$src"
+    git archive "{{treeish}}" | tar -x -C "$src"
+    cd "$src"
+    echo "Building the app..."
+    xcodebuild -quiet -project {{xcode_project}} -scheme {{app_name}} -configuration Release \
+        -destination '{{test_destination}}' -derivedDataPath .build/xcode-dist \
+        -onlyUsePackageVersionsFromResolvedFile build CODE_SIGNING_ALLOWED=NO
+    echo "Building the CLI..."
+    swift build -c release --scratch-path .build/cli-dist --only-use-versions-from-resolved-file
+    ditto ".build/xcode-dist/Build/Products/Release/Captain's Log.app" "$app"
+    mkdir -p "$app/Contents/Helpers"
+    cp .build/cli-dist/release/captains-log "$app/Contents/Helpers/captains-log"
+    ditto skills "$app/Contents/Resources/skills"
+    cd / && rm -rf "$build"
+
+# Assemble the app at the version in Sources/captains-log/Version.swift from the tracked files, uncommitted changes included, sign it with Developer ID and notarize it, into .build/dist with the getting-started guide. Needs the notarytool profile `captainslog`
 release-build:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -53,29 +76,60 @@ release-build:
     version=$(sed -n -E 's/^let cliVersion = "(.*)"$/\1/p' Sources/captains-log/Version.swift)
     identity="Developer ID Application"
     dist=.build/dist
-    rm -rf "$dist" && mkdir -p "$dist/stage"
-    echo "Building the app..."
-    xcodebuild -quiet -project {{xcode_project}} -scheme {{app_name}} -configuration Release \
-        -destination '{{test_destination}}' -derivedDataPath .build/xcode-dist build \
-        DEVELOPMENT_TEAM={{release_team}} CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$identity" \
-        ENABLE_HARDENED_RUNTIME=YES CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO OTHER_CODE_SIGN_FLAGS=--timestamp
-    ditto ".build/xcode-dist/Build/Products/Release/Captain's Log.app" "$dist/stage/Captain's Log.app"
-    app_version=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$dist/stage/Captain's Log.app/Contents/Info.plist")
+    app="$dist/Captain's Log.app"
+    rm -rf "$dist"
+    # A commit of the working tree that touches nothing, so `release` builds the version bump it's about to commit
+    tree=$(git stash create)
+    {{just_executable()}} _release-assemble "${tree:-HEAD}" "$dist"
+    app_version=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$app/Contents/Info.plist")
     [ "$app_version" = "$version" ] || { echo "The app is $app_version (MARKETING_VERSION) but the CLI is $version (Version.swift)"; exit 1; }
-    echo "Building the CLI..."
-    swift build -c release
-    cp {{cli_binary}} "$dist/stage/captains-log"
-    codesign --force --options runtime --timestamp --sign "$identity" --identifier captains-log "$dist/stage/captains-log"
+    # Inside out: nested code first, the app last
+    sign() { codesign --force --options runtime --timestamp --sign "$identity" "$@"; }
+    sign "$app/Contents/Resources/CaptainsLog_CaptainsLogKit.bundle"
+    sign --identifier captains-log "$app/Contents/Helpers/captains-log"
+    sign "$app"
+    codesign --verify --strict --deep "$app"
     echo "Notarizing (takes a few minutes)..."
-    ditto -c -k "$dist/stage" "$dist/notarize.zip"
+    ditto -c -k --keepParent "$app" "$dist/notarize.zip"
     xcrun notarytool submit "$dist/notarize.zip" --keychain-profile captainslog --wait
-    xcrun stapler staple "$dist/stage/Captain's Log.app"
-    ditto -c -k --keepParent "$dist/stage/Captain's Log.app" "$dist/CaptainsLog-$version.zip"
-    ditto -c -k "$dist/stage/captains-log" "$dist/captains-log-$version.zip"
-    git archive --format=zip -o "$dist/captains-log-skills-$version.zip" HEAD:skills
-    git show HEAD:docs/getting-started.md > "$dist/getting-started.md"
     rm "$dist/notarize.zip"
-    ls -1 "$dist"/*.zip "$dist/getting-started.md"
+    xcrun stapler staple "$app"
+    spctl --assess --type execute "$app"
+    ditto -c -k --keepParent "$app" "$dist/CaptainsLog-$version.zip"
+    git show "${tree:-HEAD}:docs/getting-started.md" > "$dist/getting-started.md"
+    ls -1 "$dist/CaptainsLog-$version.zip" "$dist/getting-started.md"
+
+# Rebuild release v<version> from its tag, with the tag's own build step, and compare it with the published zip. Signatures are normalised, and BuildMachineOSBuild ignored. Needs the tag locally and the Xcode the release was built with
+verify-release version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tag="v{{version}}"
+    git rev-parse -q --verify "refs/tags/$tag" >/dev/null || { echo "No tag $tag here: run git fetch --tags"; exit 1; }
+    git show "$tag:justfile" | grep -q '^_release-assemble' || { echo "$tag predates reproducible releases"; exit 1; }
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    gh release download "$tag" --pattern "CaptainsLog-{{version}}.zip" --dir "$work"
+    mkdir "$work/published" && ditto -x -k "$work/CaptainsLog-{{version}}.zip" "$work/published"
+    built_with=$(/usr/libexec/PlistBuddy -c "Print DTXcodeBuild" "$work/published/Captain's Log.app/Contents/Info.plist")
+    have=$(xcodebuild -version | sed -n 's/^Build version //p')
+    [ "$built_with" = "$have" ] || { echo "$tag was built with Xcode build $built_with, but this Mac has $have"; exit 1; }
+    git show "$tag:justfile" > "$work/justfile"
+    {{just_executable()}} --justfile "$work/justfile" --working-directory "$PWD" _release-assemble "$tag" "$work/rebuilt"
+    for app in "$work/published/Captain's Log.app" "$work/rebuilt/Captain's Log.app"; do
+        # Removing a signature leaves sizes that depend on it, so give every binary the same ad hoc one
+        find "$app" -type f -print0 | while IFS= read -r -d '' f; do
+            file -b "$f" | grep -q Mach-O || continue
+            cp "$f" "$work/macho"
+            codesign --remove-signature "$work/macho"
+            codesign --sign - --identifier normalised "$work/macho"
+            mv "$work/macho" "$f"
+        done
+        find "$app" -name _CodeSignature -type d -prune -exec rm -rf {} +
+        rm -f "$app/Contents/CodeResources"
+        find "$app" -name Info.plist -exec plutil -remove BuildMachineOSBuild {} \; 2>/dev/null || true
+    done
+    diff -r "$work/published" "$work/rebuilt"
+    echo "$tag matches its tag's source"
 
 # Set the app and CLI to <version>, release-build, then commit, tag and push it and publish GitHub release v<version>. Needs a clean main level with origin
 release version:
@@ -101,8 +155,7 @@ release version:
     git tag "$tag"
     git push --quiet origin main "$tag"
     gh release create "$tag" --verify-tag --title "$tag" --generate-notes \
-        .build/dist/CaptainsLog-$version.zip .build/dist/captains-log-$version.zip \
-        .build/dist/captains-log-skills-$version.zip .build/dist/getting-started.md
+        .build/dist/CaptainsLog-$version.zip .build/dist/getting-started.md
 
 # Run the fast unit tests (Swift Testing, in the app host)
 test:
