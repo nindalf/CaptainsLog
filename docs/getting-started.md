@@ -7,13 +7,11 @@ From a fresh Mac to your first weekly review, in order.
 - An Apple Silicon Mac on macOS 26.2 or later. To build from source, also **Xcode** from the App Store: the Command Line Tools alone can't build the app. Open Xcode once so it installs its components.
 - **[Homebrew](https://brew.sh)**, then:
   ```sh
-  brew install just gh googleworkspace-cli age
+  brew install gh googleworkspace-cli age
   ```
-  Use `googleworkspace-cli`, not `brew install gws`: that's an unrelated tool with the same name.
+  Use `googleworkspace-cli`, not `brew install gws`: that's an unrelated tool with the same name. Add `just` if you'll build from source or restore a backup.
 - **Google Drive for desktop**, signed in with your work account (SSO), so `~/Google Drive` exists. Backups go there.
 - **Claude Code**, logged in.
-
-Building from source? Clone the repo and run the `just` commands below from its root.
 
 ## 1. Google Calendar: `gws`
 
@@ -54,7 +52,7 @@ gh pr list -R your-org/your-repo --limit 3
 
 ## 3. Install
 
-With Homebrew:
+Install with Homebrew. This is the recommended way:
 
 ```sh
 brew install --cask nindalf/tap/captains-log
@@ -62,7 +60,9 @@ brew install --cask nindalf/tap/captains-log
 
 That installs the app to `/Applications`, puts `captains-log` on your PATH, and links the skills into `~/.claude/skills`, and into `~/.agents/skills` for Codex if `~/.agents` exists. `brew upgrade` updates all three. If you set up Claude Code or Codex later, run `captains-log skills install`. Switching from a source install: delete `/opt/homebrew/bin/captains-log` and the app first, since Homebrew won't replace files it didn't install.
 
-Or from source, in a clone of the repo:
+### From source
+
+Build from source instead if you want to run exactly the code you reviewed, or to change it. You need Xcode and `just` (see Prerequisites). In a clone of the repo:
 
 ```sh
 just check-tools        # gh, gws, age, claude, swift, xcodebuild; xcbeautify is only for tests
@@ -74,6 +74,8 @@ just install-skills     # links the Claude Code skills into ~/.claude/skills
 `just install-app` uses `sudo` only to copy the app into `/Applications`, if your account can't write there. Grant yourself admin with the Privileges app first. Don't run the whole recipe with `sudo`: the build folder would end up owned by root.
 
 Rerun the last three after pulling changes.
+
+### Then
 
 Open **Captain's Log** from `/Applications`, then in **Settings**:
 - **GitHub Repos**: the repos to sync, as `owner/name` (e.g. `your-org/your-repo`).
@@ -89,7 +91,7 @@ Your data is one SQLite file on this Mac, so set up backups before you write any
 
 Then click **Back Up Now** and check **Last backup** updates. From then on the app backs up once a day (change it under **Back up every**) into `~/Google Drive/My Drive/CaptainsLog backups/`.
 
-The terminal equivalents are `just backup-setup`, then `just backup`. `just restore` brings a backup back; the README's "Your data" explains how.
+In a clone of the repo, the terminal equivalents are `just backup-setup`, then `just backup`. `just restore` brings a backup back, and for now needs a clone even if you installed with Homebrew; the README's "Your data" explains how.
 
 ## 5. Your team
 

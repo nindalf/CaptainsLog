@@ -2,6 +2,14 @@
 
 A Mac app that keeps your work in one place. It pulls in your pull requests, review requests and calendar, and keeps your todos, meeting notes, interviews and feedback beside them. One look at the dashboard tells you what to do next, and at the end of the week Claude helps you write it up from what's there.
 
+## Install
+
+```sh
+brew install --cask nindalf/tap/captains-log
+```
+
+That installs the app, the `captains-log` CLI and the skills, and `brew upgrade` keeps all three current. [`docs/getting-started.md`](docs/getting-started.md) walks through the rest step by step, from a fresh Mac to your first weekly review, and covers building from source if you'd rather run exactly the code you reviewed.
+
 ## What you get
 
 - **One screen to start the day.** Today's meetings, your open PRs, the reviews waiting on you and today's todos. Click through to GitHub or the meeting; it doesn't try to replace them.
@@ -38,10 +46,6 @@ The `captains-log` skill answers from your store and nothing else. Read commands
 
 The CLI works on its own too. Try `captains-log feed --pretty` for the past week, or `captains-log --help` for everything. [`docs/cli.md`](docs/cli.md) has the full reference.
 
-## Install
-
-[`docs/getting-started.md`](docs/getting-started.md) walks through all of this step by step, from a fresh Mac to your first weekly review.
-
 ## Reviewing the code
 
 It reads your calendar and your GitHub activity, and you'll keep sensitive notes in it. So it promises little, and the promises are easy to check:
@@ -54,10 +58,10 @@ Learn more in [`docs/security.md`](docs/security.md).
 
 ## Your data
 
-- **Where it is:** `~/Library/Application Support/CaptainsLog/`, one SQLite file shared by the app and the CLI. `just data-info` shows it. macOS doesn't sync this folder to iCloud.
-- **Backups:** once a day by default (Settings → Backups goes down to hourly) the app takes a consistent snapshot of the store (safe while it's running), compresses it and encrypts it with [age](https://age-encryption.org) into `~/Google Drive/My Drive/CaptainsLog backups/`, named by date and time. It keeps the newest 30 (change it in Settings). Back Up Now in Settings, or `just backup`, takes one now. A failing backup shows in the menu bar, and Claude mentions it when the last one is more than a week old.
+- **Where it is:** `~/Library/Application Support/CaptainsLog/`, one SQLite file shared by the app and the CLI. `captains-log status` shows it. macOS doesn't sync this folder to iCloud.
+- **Backups:** once a day by default (Settings → Backups goes down to hourly) the app takes a consistent snapshot of the store (safe while it's running), compresses it and encrypts it with [age](https://age-encryption.org) into `~/Google Drive/My Drive/CaptainsLog backups/`, named by date and time. It keeps the newest 30 (change it in Settings). Back Up Now in Settings takes one now. A failing backup shows in the menu bar, and Claude mentions it when the last one is more than a week old.
 - **Your passphrase is the only way back in.** Setting up backups encrypts the backup key with it. The key sits beside the backups, but it's useless without the passphrase. Forget the passphrase and every backup is unreadable.
-- **Restoring:** run `just restore` in a terminal. It asks you to quit the app, lists your backups newest first, and asks for the passphrase. It checks the backup is sound before changing anything, then moves your current data aside to `CaptainsLog-before-restore-<time>` (next to the data folder) rather than deleting it.
+- **Restoring:** run `just restore` in a terminal, from a clone of the repo (a Homebrew install doesn't include it yet). It asks you to quit the app, lists your backups newest first, and asks for the passphrase. It checks the backup is sound before changing anything, then moves your current data aside to `CaptainsLog-before-restore-<time>` (next to the data folder) rather than deleting it.
 
 ## Make it yours
 

@@ -10,7 +10,7 @@ While the store has one user, a model change is an in-place edit of `CaptainsLog
 1. `just backup`.
 2. Snapshot the real store into `.build/migration-test/` with `sqlite3 .backup` (read-only on the source).
 3. Open the copy with the new build (`CAPTAINSLOG_STORE_DIR`, CLI first, then the app). Compare row counts and every relationship before and after: the join tables get renumbered, so compare joined values, not table names.
-4. The user switches over: quit the app, `just install-cli`, run the new build, so the app and CLI change schema together.
+4. The user switches over by releasing it and running `brew upgrade --cask captains-log`, which replaces the app and the CLI together, so they change schema at the same time.
 
 Once a colleague has a store, this stops working: every change then needs a V2 and a migration stage (see `docs/sharing.md`).
 

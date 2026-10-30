@@ -4,7 +4,7 @@ What Captain's Log touches, for a security review before colleagues install it. 
 
 ## What it is
 
-A personal work log for macOS: a SwiftUI app, a `captains-log` CLI and skills for Claude Code and Codex, all over one local SQLite store. Most people install the signed release through Homebrew; anyone can build it from source instead (see [Distribution and supply chain](#distribution-and-supply-chain)). There's no server and no shared backend. One user per install.
+A personal work log for macOS: a SwiftUI app, a `captains-log` CLI and skills for Claude Code and Codex, all over one local SQLite store. The recommended install is the signed release, through Homebrew; anyone can build it from source instead (see [Distribution and supply chain](#distribution-and-supply-chain)). There's no server and no shared backend. One user per install.
 
 ## Data it holds
 

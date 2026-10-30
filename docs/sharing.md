@@ -17,13 +17,13 @@ Written up in the README: the day-to-day value in "What you get", the promises i
 - [ ] **Install experience.**
   - The README's prerequisites and `gws` steps are written but untested on a fresh Mac. Check `gws auth setup` and `gws auth login --readonly -s calendar` end to end.
   - Find `gh` and `gws` on `PATH` instead of hardcoding them (`GitHubSync.swift:7`, `CalendarSync.swift:7`).
-  - `just install-cli` and `just install-skills` in the setup steps.
 - [ ] **Try a restore for real.** `just restore` is built and tested against temp folders. Run it once against the real Drive folder (the newest backup), check the app, then delete the `-before-restore-` folder or move it back.
 - [ ] **Settle the schema before anyone else has data.** Once colleagues have data, every model change needs a `VersionedSchema` migration. `Incident` and `Document` are gone; decide about the fields no UI sets (listed in `docs/overview.md`). Put a `SchemaMigrationPlan` in place so the first real change isn't improvised. Run `just backup` first.
 - [ ] **Security review guide.** Done in the README's "Reviewing the code" and `docs/security.md`, except optional `gh` hardening: a read-only fine-grained token via `GH_TOKEN`. Check that `gh pr list` still works with one, then document it.
 
 ## Should do before sharing: the first hour shouldn't hurt
 
+- [ ] **Restore without a clone.** Homebrew, the recommended install, doesn't include `scripts/restore.sh`, so restoring a backup needs a clone and `just`. Bundle it like `backup.sh`, behind `captains-log restore` or a Settings button.
 - [ ] **Setup checklist on the empty dashboard:** install `gh`, authorise `gws`, add repos, import a roster (People > Roster). Each step ticks off as its source starts working.
 - [ ] **Freshness on the dashboard.** Show last sync time and errors where you look, not only in the menu bar.
 - [ ] **Fix the bugs a newcomer hits early** (from `docs/overview.md`):
