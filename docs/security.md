@@ -37,7 +37,9 @@ The app and CLI have no network code of their own: no `URLSession`, no sockets, 
 | `/opt/homebrew/bin/gh` | `pr view N --repo R --json F` | `GitHubSync.fetchPR` |
 | `/opt/homebrew/bin/gws` | `calendar +agenda --days D --format json` | `CalendarSync.syncAllDayEvents` |
 | `/opt/homebrew/bin/gws` | `calendar events list --params {timeMin, timeMax, singleEvents, ...}` | `CalendarSync` |
-| `/bin/bash` | `backup.sh` or `backup-setup.sh`, bundled in the app | `Backup` in `Sources/CaptainsLogKit/Backup/Backup.swift` |
+| `/opt/homebrew/bin/age-keygen` | none, then `-y`: a new key and its public key | `Backup.createKey` |
+| `/usr/bin/script` | `-q /dev/null age -p -o identity.age <fifo>`, then `sh -c 'age -d identity.age \| age-keygen -y'` to check it | `Backup.createKey` |
+| `/usr/bin/tar`, `/opt/homebrew/bin/age` | `-cJf` and `-R recipient.txt -o`, to back up; `-d -i identity.age -o` and `-xJf`, to restore | `Backup.create`, `Backup.restore` |
 
 Every `gh` and `gws` call reads. Nothing in the code writes to GitHub or Calendar.
 
@@ -53,15 +55,15 @@ The app never reads, stores or handles a credential. `gh` and `gws` keep their o
 
 ## Backups
 
-The app runs `Sources/CaptainsLogKit/Backup/backup.sh` once a day by default (hourly at most), and `just backup` runs it by hand:
+The app runs `Backup.create` (`Sources/CaptainsLogKit/Backup/Backup.swift`) once a day by default (hourly at most), and `captains-log backup` runs it by hand:
 
-1. `sqlite3 .backup` takes a consistent snapshot into a `mktemp -d` folder, deleted on exit, and checks it with `PRAGMA integrity_check`.
+1. SQLite's backup API, reading the store read-only, takes a consistent snapshot into a temporary folder, deleted afterwards, and checks it with `PRAGMA integrity_check`.
 2. `tar -cJ` compresses it and `age -R recipient.txt` encrypts it to the user's X25519 public key. Plaintext never reaches Drive.
 3. It writes the backup under a `.partial` name and renames it when complete, then prunes to the newest 30 (configurable).
 
-`backup-setup.sh` creates the key pair once with `age-keygen`. The private key is encrypted with a passphrase the user chooses (`age -p`, scrypt) and saved beside the backups as `identity.age`. The unencrypted private key exists only in memory, and in a `mkfifo -m 600` pipe when the app drives the setup. Neither Google, Drive admins nor anyone else holding the folder can decrypt a backup without the passphrase. There's no recovery: a lost passphrase means lost backups.
+`Backup.createKey` (Settings → Backups, or `captains-log backup-setup`) creates the key pair once with `age-keygen`. The private key is encrypted with a passphrase the user chooses (`age -p`, scrypt) and saved beside the backups as `identity.age`. The unencrypted private key exists only in memory, and in a `mkfifo -m 600` pipe inside a `0700` temporary folder on its way to `age`. The CLI reads the passphrase with `readpassphrase(3)`, so it isn't echoed or kept in shell history. Neither Google, Drive admins nor anyone else holding the folder can decrypt a backup without the passphrase. There's no recovery: a lost passphrase means lost backups.
 
-`scripts/restore.sh` (`just restore`) is interactive only. It moves the current store aside instead of deleting it.
+`captains-log restore` is interactive only: it refuses without a terminal, so an agent can't run it. It moves the current store aside instead of deleting it.
 
 ## Claude Code and Codex
 

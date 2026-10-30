@@ -5,7 +5,7 @@ import Foundation
 struct Status: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "When each source last synced, so you know how fresh the store is",
-        discussion: "Sources are GitHub, the calendar and backup (the app's daily encrypted backup; `just backup` by hand doesn't count). Syncs by the app and by captains-log sync both count."
+        discussion: "Sources are GitHub, the calendar and backup (the app's daily encrypted backup, or captains-log backup). Syncs by the app and by captains-log sync both count."
     )
 
     @Flag(name: .long, help: "Pretty-print JSON output")

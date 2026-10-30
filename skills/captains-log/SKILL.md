@@ -90,7 +90,7 @@ Before answering a question about recent work, run `captains-log status`. For ea
 - If the sources the answer relies on all have `syncedToday` true and `isFailing` false, say nothing about freshness.
 - Otherwise add one short line naming the stale or failing source and when it last synced ("GitHub last synced Tuesday; the latest attempt failed: bad credentials"), so I know what the answer might be missing.
 - `captains-log sync` refreshes GitHub and the calendar. Offer to run it when a source is stale; ask first.
-- `backup` is the app's daily encrypted backup to Google Drive. Whenever you run `status`, check it: if it has no `lastSuccess`, or the last success is more than 7 days old, open your answer with one line saying so, with its `lastError`. If the error says there's no backup key, suggest Settings → Backups. Don't run backups yourself. To restore lost or broken data, I run `just restore` in a terminal (it needs my passphrase); suggest it, never run it.
+- `backup` is the app's daily encrypted backup to Google Drive. Whenever you run `status`, check it: if it has no `lastSuccess`, or the last success is more than 7 days old, open your answer with one line saying so, with its `lastError`. If the error says there's no backup key, suggest Settings → Backups. Don't run backups yourself. To restore lost or broken data, I run `captains-log restore` in a terminal (it needs my passphrase); suggest it, never run it.
 
 ## Reporting gaps
 

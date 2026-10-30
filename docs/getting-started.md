@@ -9,7 +9,7 @@ From a fresh Mac to your first weekly review, in order.
   ```sh
   brew install gh googleworkspace-cli age
   ```
-  Use `googleworkspace-cli`, not `brew install gws`: that's an unrelated tool with the same name. Add `just` if you'll build from source or restore a backup.
+  Use `googleworkspace-cli`, not `brew install gws`: that's an unrelated tool with the same name. Add `just` if you'll build from source.
 - **Google Drive for desktop**, signed in with your work account (SSO), so `~/Google Drive` exists. Backups go there.
 - **Claude Code**, logged in.
 
@@ -91,7 +91,7 @@ Your data is one SQLite file on this Mac, so set up backups before you write any
 
 Then click **Back Up Now** and check **Last backup** updates. From then on the app backs up once a day (change it under **Back up every**) into `~/Google Drive/My Drive/CaptainsLog backups/`.
 
-In a clone of the repo, the terminal equivalents are `just backup-setup`, then `just backup`. `just restore` brings a backup back, and for now needs a clone even if you installed with Homebrew; the README's "Your data" explains how.
+`captains-log backup` takes one from the terminal, and `captains-log restore` brings one back; the README's "Your data" explains how. `captains-log backup-setup` does the setup from the terminal instead of Settings.
 
 ## 5. Your team
 

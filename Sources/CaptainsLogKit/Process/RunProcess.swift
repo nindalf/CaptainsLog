@@ -119,6 +119,30 @@ public func runProcess(
     }
 }
 
+/// Runs `executable` on this process's terminal, for a child that prompts the user (age asking for a passphrase).
+/// `Process` starts its child in a new process group, and a background group that reads the terminal is stopped.
+/// The child's output goes straight to the terminal, so there are no pipes to drain.
+public func runInteractiveProcess(_ executable: String, arguments: [String]) async throws {
+    let argv = ([executable] + arguments).map { strdup($0) } + [nil]
+    let envp = defaultEnvironment.map { strdup("\($0.key)=\($0.value)") } + [nil]
+    defer { (argv + envp).forEach { free($0) } }
+    var pid: pid_t = 0
+    let rc = posix_spawn(&pid, executable, nil, nil, argv, envp)
+    guard rc == 0 else {
+        throw ProcessError.nonZeroExit(code: rc, stderr: "Couldn't start \(executable): \(String(cString: strerror(rc)))")
+    }
+    let status = await Task.detached(priority: .utility) {
+        var status: Int32 = 0
+        while waitpid(pid, &status, 0) == -1 && errno == EINTR {}
+        return status
+    }.value
+    // WIFEXITED and WEXITSTATUS, which Swift doesn't import.
+    let code = status & 0x7f == 0 ? (status >> 8) & 0xff : 128 + (status & 0x7f)
+    guard code == 0 else {
+        throw ProcessError.nonZeroExit(code: code, stderr: "\(URL(filePath: executable).lastPathComponent) exited with code \(code)")
+    }
+}
+
 private func readToEnd(_ handle: FileHandle) async throws -> Data {
     try await Task.detached(priority: .utility) {
         try handle.readToEnd() ?? Data()

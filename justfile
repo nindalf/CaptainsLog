@@ -85,7 +85,6 @@ release-build:
     [ "$app_version" = "$version" ] || { echo "The app is $app_version (MARKETING_VERSION) but the CLI is $version (Version.swift)"; exit 1; }
     # Inside out: nested code first, the app last
     sign() { codesign --force --options runtime --timestamp --sign "$identity" "$@"; }
-    sign "$app/Contents/Resources/CaptainsLog_CaptainsLogKit.bundle"
     sign --identifier captains-log "$app/Contents/Helpers/captains-log"
     sign "$app"
     codesign --verify --strict --deep "$app"
@@ -231,15 +230,18 @@ clear-local-state:
 
 # Encrypt a snapshot of the real store (safe while the app is running) into Google Drive. Run backup-setup once first
 backup:
-    bash Sources/CaptainsLogKit/Backup/backup.sh
+    swift build -q --product captains-log
+    .build/debug/captains-log backup --pretty
 
 # Create the backup key in Google Drive, protected by a passphrase. Once per person; refuses if the key exists
 backup-setup:
-    bash Sources/CaptainsLogKit/Backup/backup-setup.sh
+    swift build -q --product captains-log
+    .build/debug/captains-log backup-setup
 
-# Replace the real store with a backup from Google Drive. Asks for the passphrase; moves the current data aside
+# Replace the real store with a backup from Google Drive (captains-log restore). Asks for the passphrase; moves the current data aside
 restore:
-    bash scripts/restore.sh
+    swift build -q --product captains-log
+    .build/debug/captains-log restore
 
 # Show local data store info
 data-info:

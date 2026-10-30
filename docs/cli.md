@@ -9,7 +9,7 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 | Command | Does |
 |---|---|
 | `show <id>` | Any record in full, whatever its type, with refs to linked records. `type` says which |
-| `status` | When GitHub and calendar last synced, and the app's last backup (`SyncHistory`) |
+| `status` | When GitHub and calendar last synced, and the last backup (`SyncHistory`) |
 | `feed` | The Log tab's merged feed for a date range (`--type`), with snippets (`Feed`) |
 | `search <query>` | Every word, across people, projects, todos, log, meetings, interviews, PRs and feedback, with `matchedField` and a snippet (`Searcher`); people and open projects have no `date` |
 | `log` | `list`, `add`, `edit`, `delete --permanently`. `add` and an `edit` of the title or content link the people the text tags, as in todos; `people` lists their names, and `show <person>` lists the entries |
@@ -22,6 +22,9 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 | `people` | `list` (meaningful contacts; `--all`, `--search`), `edit` (`--sync-prs` / `--no-sync-prs`), `merge --yes`, `import <file>` (a preview; `--yes` applies), `export` (`--all`, `--teammates`, `--person`), `feedback list/add/edit/delete` (`Roster`) |
 | `skills` | `status`, `install` (`--agent`, `--force`), `uninstall`: links the app's bundled skills into `~/.claude/skills` and Codex's `~/.agents/skills` (`Skills`). Only works for the CLI inside the app |
 | `sync` | GitHub and calendar, with the app's settings from its `com.nindalf.captainslog` defaults domain |
+| `backup` | One encrypted backup into Google Drive, as the app takes, keeping the app's "Keep the newest"; recorded in `status` (`Backup.run`) |
+| `backup-setup` | Interactive, in a terminal only: creates the backup key, as Settings → Backups does (`Backup.createKey`) |
+| `restore` | Interactive, in a terminal only: picks a backup, asks for the passphrase (age reads it), confirms (`Backup.restore`). With `backup-setup`, the only commands that ask; both prompt on stderr and refuse without a terminal |
 | `seed-demo` | Hidden. Demo data into an empty scratch store, for `scripts/seed-data.sh` |
 
 `captains-log <command> --help` has every option.

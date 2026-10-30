@@ -148,7 +148,7 @@ public final class SyncCoordinator {
         isBackingUp = true
         defer { isBackingUp = false }
         do {
-            try await Backup.run(keep: settings.backupKeep)
+            _ = try await Backup.run(keep: settings.backupKeep)
             SyncHistory.update { $0.recordSuccess(.backup) }
             backupError = nil
             logger.info("Backup succeeded")

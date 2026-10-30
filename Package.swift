@@ -18,8 +18,7 @@ let package = Package(
             name: "CaptainsLogKit",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
-            ],
-            resources: [.copy("Backup/backup.sh"), .copy("Backup/backup-setup.sh")]
+            ]
         ),
         .executableTarget(
             name: "captains-log",

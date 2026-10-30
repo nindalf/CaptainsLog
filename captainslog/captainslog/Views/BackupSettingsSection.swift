@@ -16,7 +16,6 @@ struct BackupSettingsSection: View {
     @State private var keyError: String?
 
     private static let driveDownload = URL(string: "https://www.google.com/drive/download/")!
-    private static let minimumPassphrase = 8
 
     var body: some View {
         Section {
@@ -128,7 +127,7 @@ struct BackupSettingsSection: View {
     }
 
     private var passphraseProblem: String? {
-        if passphrase.count < Self.minimumPassphrase { return "At least \(Self.minimumPassphrase) characters" }
+        if passphrase.count < Backup.minimumPassphraseLength { return "At least \(Backup.minimumPassphraseLength) characters" }
         if passphrase != confirmation { return "The passphrases don't match" }
         return nil
     }
