@@ -1,6 +1,6 @@
 # Getting started
 
-From a fresh Mac to your first weekly review, in order. Review the code first (the README's "Review it first"), then come back here.
+From a fresh Mac to your first weekly review, in order.
 
 ## 0. Prerequisites
 

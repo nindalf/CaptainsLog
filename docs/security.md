@@ -86,7 +86,21 @@ The `captains-log` and `weekly-review` skills (`skills/`) let Claude Code read a
 
 ## Checking it yourself
 
-Point your own Claude Code at the repo. The prompt in the README's "Review it first" asks it to verify each claim above: every subprocess, network call, file write and credential access across `captainslog/`, `Sources/`, the `justfile` and `scripts/`. To spot-check by hand:
+A prompt to paste into Claude Code from the repo root:
+
+```
+Security-review this repo before I build and run it. It claims to only read
+from GitHub (via gh) and Google Calendar (via gws), never write to any external
+system, make no network calls of its own, call no LLMs, and write only to
+~/Library/Application Support/CaptainsLog, its own UserDefaults, and age-encrypted
+backups in ~/Google Drive/My Drive/CaptainsLog backups.
+Verify each claim: find every subprocess, network call, file write and
+credential access, in the app (captainslog/), the shared package
+(Sources/CaptainsLogKit/), the CLI (Sources/captains-log/), the justfile and
+scripts/. Report anything that contradicts the claims or surprises you.
+```
+
+To spot-check by hand:
 
 ```sh
 grep -rn 'runProcess(\|Process()' Sources captainslog

@@ -14,49 +14,17 @@ GitHub and your calendar sync on their own. Everything else you write here, so i
 
 Software shapes behaviour. Most of the software we use shapes it to suit its makers: we scroll more, click more, spend more. The flip side is that software you write for yourself can shape your behaviour to suit you.
 
-I wanted one place that showed me everything I needed, so I'd stop checking three or four apps all day. And I wanted writing performance reviews, for myself and others, to be easier.
+I wanted one place that showed me everything I needed, so I'd stop checking three or four apps all day.
 
 ## How it's built
 
-It comes in three parts over one local store: the Mac app, a `captains-log` CLI that reads and writes everything the app shows as JSON, and Claude Code skills over the CLI.
+It comes in two parts over one local store: the Mac app and the CLI that Claude can interact with.
 
-1. **A database underneath, Claude on top.** People, meetings, todos and PRs are linked records in SQLite, not notes in text files. "My overdue todos" or "everything linked to one person" is a query: it returns in milliseconds, gives the same answer every time, costs nothing, and stays that way as the store grows. The dashboard tells you what to do next instantly without an LLM. Claude searching a folder of notes needs to read everything to find the ones that matter, and as the folder grows it can miss context. Here Claude does what it's good at, summarising and drafting your week, over data it didn't have to dig for.
-2. **Native, not Electron.** An app that runs all day should cost next to no CPU or memory.
-3. **Make it yours.** This is your tool, and you can customise it to suit your workflow. Fork it and change whatever you like (see [Make it yours](#make-it-yours)).
+1. **A database underneath, Claude on top.** LLMs work quickly and cheaply if you give them the context they need and no more: that's exactly what the CLI does. "My overdue todos" or "everything linked to one person" is a query: it returns in milliseconds, gives the same answer every time, costs nothing, and stays that way as the store grows.
+2. **A slick GUI with keyboard shortcuts.** All the information you need, instantly available. Adding or completing a todo and other common interactions are only a shortcut away.
+3. **Native, not Electron.** An app that runs all day should cost next to no CPU or memory.
 
-## Review it first
-
-It reads your calendar and your GitHub activity, and you'll keep sensitive notes in it. So it promises little, and the promises are easy to check:
-
-1. **It only reads.** It fetches from GitHub (through `gh`), Google Calendar (through `gws`). It never writes to any of them or acts on your behalf.
-2. **The app calls no AI.** No LLM calls and no API spend. Claude sees your data only when you ask it something in Claude Code, which reads the store through the CLI.
-3. **Your data stays on company hardware.** Everything lives in one SQLite file on your laptop. That's why this is a Mac app and not an iOS app syncing through iCloud: notes about the business don't go to Apple. Backups go to your work Google Drive, encrypted so nobody else can read them.
-4. **You build it from source, after reviewing it.** There's no binary to download. Have your own Claude review the code, then build what you reviewed.
-
-Don't take my word for any of it: point your Claude at the repo before you build it. [`docs/security.md`](docs/security.md) has the detail for a security review. The trust boundary is small:
-
-- **Everything external goes through `runProcess`**, which runs `gh` and `gws` as subprocesses. Its call sites are in `Sources/CaptainsLogKit/Sync/` (`GitHubSync`, `CalendarSync`), and they only read: `gh pr list`, `gh pr view`, `gws calendar +agenda`, `gws calendar events list`.
-- **There's no network code of its own** (no `URLSession`) and no LLM calls.
-- **It writes to its own data directory**, `~/Library/Application Support/CaptainsLog/`. Settings go to UserDefaults, the app's `com.nindalf.captainslog` domain.
-- **Once a day (or as often as hourly, in Settings) it writes an encrypted backup to your Google Drive folder**, `~/Google Drive/My Drive/CaptainsLog backups/`, and prunes old ones there. It does this by running `Sources/CaptainsLogKit/Backup/backup.sh` (`sqlite3`, `tar`, `age`) through `runProcess`. Backups are encrypted to a public key; the private key is in the same folder, encrypted with your passphrase.
-
-A prompt to paste into Claude Code from the repo root:
-
-```
-Security-review this repo before I build and run it. It claims to only read
-from GitHub (via gh) and Google Calendar (via gws), never write to any external
-system, make no network calls of its own, call no LLMs, and write only to
-~/Library/Application Support/CaptainsLog, its own UserDefaults, and age-encrypted
-backups in ~/Google Drive/My Drive/CaptainsLog backups.
-Verify each claim: find every subprocess, network call, file write and
-credential access, in the app (captainslog/), the shared package
-(Sources/CaptainsLogKit/), the CLI (Sources/captains-log/), the justfile and
-scripts/. Report anything that contradicts the claims or surprises you.
-```
-
-## Install
-
-[`docs/getting-started.md`](docs/getting-started.md) walks through all of this step by step, from a fresh Mac to your first weekly review.
+This is your tool, and you can customise it to suit your workflow. Fork it and change whatever you like (see [Make it yours](#make-it-yours)).
 
 ## Using it with Claude Code
 
@@ -69,6 +37,20 @@ Once the skills are installed, ask Claude things like:
 The `captains-log` skill answers from your store and nothing else. Read commands are pre-approved; anything that writes asks first. The `weekly-review` skill (`/weekly-review`) reads your week, interviews you about what mattered, and saves brag-doc entries back to the log.
 
 The CLI works on its own too. Try `captains-log feed --pretty` for the past week, or `captains-log --help` for everything. [`docs/cli.md`](docs/cli.md) has the full reference.
+
+## Install
+
+[`docs/getting-started.md`](docs/getting-started.md) walks through all of this step by step, from a fresh Mac to your first weekly review.
+
+## Reviewing the code
+
+It reads your calendar and your GitHub activity, and you'll keep sensitive notes in it. So it promises little, and the promises are easy to check:
+
+1. **It only reads.** It fetches from GitHub (through `gh`), Google Calendar (through `gws`). It never writes to any of them or acts on your behalf.
+2. **The app calls no AI.** No LLM calls and no API spend. Claude sees your data only when you ask it something in Claude Code, which reads the store through the CLI.
+3. **Your data stays on company hardware.** Everything lives in one SQLite file on your laptop. Backups go to your work Google Drive, encrypted so nobody else can read them. Nothing goes to iCloud.
+
+Learn more in [`docs/security.md`](docs/security.md).
 
 ## Your data
 
@@ -89,15 +71,3 @@ If you want to keep pulling in improvements and sending yours back, stay close t
 If you build something others would want, open a PR. If you'd rather go your own way, that's fine too.
 
 Before working on the code, read [`docs/overview.md`](docs/overview.md) (what works, what doesn't yet, known bugs). Run the tests with `just test` (needs `brew install xcbeautify`).
-
-## Uninstall
-
-```sh
-pkill -x "Captain's Log"; sudo rm -rf "/Applications/Captain's Log.app"
-rm /opt/homebrew/bin/captains-log
-rm ~/.claude/skills/captains-log ~/.claude/skills/weekly-review
-defaults delete com.nindalf.captainslog
-rm -rf ~/Library/Application\ Support/CaptainsLog    # your data: back it up first
-```
-
-Your backups stay in `~/Google Drive/My Drive/CaptainsLog backups/`. Delete that folder too if you want them gone.
