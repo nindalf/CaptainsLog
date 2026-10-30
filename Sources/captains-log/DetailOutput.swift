@@ -130,6 +130,7 @@ struct PullRequestDetail: Encodable {
     let reviewDecision: String?
     let isAuthoredByMe: Bool
     let isReviewRequest: Bool
+    let myReviewedAt: Date?
     let author: PersonRef?
     let reviewers: [PersonRef]
     let createdAt: Date
@@ -147,7 +148,8 @@ struct PullRequestDetail: Encodable {
             id: pr.id, number: pr.number, title: pr.title, url: pr.url, repo: pr.repo,
             state: pr.state.rawValue, status: pr.displayStatus.rawValue, isDraft: pr.isDraft,
             deploymentStatus: pr.deploymentStatus.rawValue, reviewDecision: pr.reviewDecision?.rawValue,
-            isAuthoredByMe: pr.isAuthoredByMe, isReviewRequest: pr.isReviewRequest, author: pr.author.map(PersonRef.from),
+            isAuthoredByMe: pr.isAuthoredByMe, isReviewRequest: pr.isReviewRequest,
+            myReviewedAt: pr.myReviewedAt, author: pr.author.map(PersonRef.from),
             reviewers: pr.reviewers.sorted { $0.name < $1.name }.map(PersonRef.from),
             createdAt: pr.createdAt, mergedAt: pr.mergedAt, additions: pr.additions, deletions: pr.deletions,
             tags: pr.tags, project: pr.project.map(RecordRef.from),

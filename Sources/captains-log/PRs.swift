@@ -28,12 +28,21 @@ struct PRs: AsyncParsableCommand {
         @Flag(name: .long, help: "Show only PRs synced because their author's PRs are (people edit --sync-prs), never asking for my review")
         var teammates: Bool = false
 
+        @Flag(name: .long, help: "Show only PRs I've reviewed, on any request, mine or a team's. --from and --to then go by my latest review")
+        var reviewed: Bool = false
+
+        @Option(name: .long, help: "Only PRs created or merged on or after this date (ISO 8601, e.g. 2026-04-28)")
+        var from: String?
+
+        @Option(name: .long, help: "Only PRs created or merged on or before this date, inclusive")
+        var to: String?
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
 
         func validate() throws {
-            if [mine, reviews, teammates].filter({ $0 }).count > 1 {
-                throw ValidationError("Only one of --mine, --reviews and --teammates")
+            if [mine, reviews, teammates, reviewed].filter({ $0 }).count > 1 {
+                throw ValidationError("Only one of --mine, --reviews, --teammates and --reviewed")
             }
         }
 
@@ -41,6 +50,10 @@ struct PRs: AsyncParsableCommand {
             if let state, PRState(rawValue: state) == nil {
                 throw ValidationError("Invalid state '\(state)'. Use: open, merged, closed")
             }
+
+            // Unlike other lists, no default range: `--state open` means every open PR.
+            let range = from == nil && to == nil ? nil
+                : try CLIDate.range(from: from, to: to, defaultFrom: .distantPast, defaultTo: .distantFuture)
 
             let container = try Store.makeContainer()
             let context = ModelContext(container)
@@ -55,6 +68,12 @@ struct PRs: AsyncParsableCommand {
                 if reviews && (!pr.isReviewRequest || pr.state != .open) { return false }
                 if teammates && !pr.isTeammateOnly { return false }
                 if let wanted, pr.state != wanted { return false }
+                if reviewed {
+                    guard let reviewedAt = pr.myReviewedAt else { return false }
+                    if let range, !range.contains(reviewedAt) { return false }
+                } else if let range, !range.contains(pr.createdAt), !(pr.mergedAt.map(range.contains) ?? false) {
+                    return false
+                }
                 return true
             }
 

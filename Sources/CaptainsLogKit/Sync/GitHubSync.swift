@@ -34,6 +34,16 @@ private let reviewFields = [
     "author", "reviewDecision", "isDraft",
 ].joined(separator: ",")
 
+/// No `reviewDecision`, which times out on merged PRs, and most PRs I've reviewed are merged.
+private let myReviewFields = [
+    "number", "title", "state", "url", "createdAt", "mergedAt",
+    "additions", "deletions", "author", "isDraft", "reviews",
+].joined(separator: ",")
+
+/// How far back to look for PRs I've reviewed, by the PR's last update. A month catches up after
+/// a gap; on a large monorepo it is around 35 PRs and takes under 3 seconds.
+private let myReviewWindowDays = 30
+
 /// How many `gh pr view` lookups to run at once when re-checking stale PRs.
 private let reconcileConcurrency = 6
 
@@ -53,6 +63,12 @@ private struct GHPullRequest: Decodable, Sendable {
     let reviewRequests: [GHReviewRequest]?
     let body: String?
     let isDraft: Bool?
+    let reviews: [GHReview]?
+}
+
+private struct GHReview: Decodable, Sendable {
+    let author: GHUser?
+    let submittedAt: String?
 }
 
 private struct GHUser: Decodable, Sendable {
@@ -77,6 +93,8 @@ public actor GitHubSync {
 
         // One repo failing doesn't stop the rest; what synced is saved, then the failures are thrown.
         var failures: [String] = []
+        let myLogin = await fetchMyLogin()
+        if myLogin == nil { failures.append("my reviews: couldn't read my GitHub login") }
         for repo in repos {
             try Task.checkCancellation()
             do {
@@ -104,6 +122,15 @@ public actor GitHubSync {
                     fetchesSucceeded = false
                     logger.error("Failed to sync \(handle)'s PRs from \(repo): \(error)")
                     failures.append("\(repo) (\(handle)'s PRs): \(error.localizedDescription)")
+                }
+            }
+            if let myLogin {
+                do {
+                    stillOpen.formUnion(try await syncMyReviews(repo: repo, myLogin: myLogin))
+                } catch {
+                    fetchesSucceeded = false
+                    logger.error("Failed to sync my reviews from \(repo): \(error)")
+                    failures.append("\(repo) (my reviews): \(error.localizedDescription)")
                 }
             }
             guard fetchesSucceeded else { continue }
@@ -146,6 +173,47 @@ public actor GitHubSync {
             try upsertPR(ghPR, repo: repo, source: .teammate)
         }
         return Set(open.map(\.number))
+    }
+
+    /// PRs I've reviewed, including on team requests, which `syncReviewRequests` leaves out and
+    /// which stop matching it once reviewed anyway. Returns the numbers GitHub confirmed open.
+    private func syncMyReviews(repo: String, myLogin: String) async throws -> Set<Int> {
+        let since = Calendar.current.date(byAdding: .day, value: -myReviewWindowDays, to: .now)!
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        let result = try await runProcess(
+            ghPath,
+            arguments: [
+                "pr", "list",
+                "--repo", repo,
+                "--search", "reviewed-by:@me -author:@me updated:>=\(formatter.string(from: since))",
+                "--state", "all",
+                "--limit", "50",
+                "--json", myReviewFields,
+            ],
+            timeout: .seconds(60)
+        )
+
+        let prs = try JSONDecoder().decode([GHPullRequest].self, from: result.stdout)
+        logger.debug("Fetched \(prs.count) PRs I reviewed from \(repo)")
+
+        for ghPR in prs {
+            try Task.checkCancellation()
+            try upsertPR(ghPR, repo: repo, source: .reviewedByMe, myLogin: myLogin)
+        }
+        return Set(prs.filter { $0.state == "OPEN" }.map(\.number))
+    }
+
+    /// Picks my reviews out of a PR's. Nil on failure, which skips only the reviews fetch.
+    private func fetchMyLogin() async -> String? {
+        do {
+            let result = try await runProcess(ghPath, arguments: ["api", "user", "--jq", ".login"], timeout: .seconds(30))
+            let login = String(decoding: result.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            return login.isEmpty ? nil : login
+        } catch {
+            logger.error("Failed to read my GitHub login: \(error)")
+            return nil
+        }
     }
 
     private func fetchPRs(repo: String, author: String, state: String, fields: String) async throws -> [GHPullRequest] {
@@ -267,7 +335,7 @@ public actor GitHubSync {
         }
     }
 
-    private func upsertPR(_ ghPR: GHPullRequest, repo: String, source: PRSyncSource) throws {
+    private func upsertPR(_ ghPR: GHPullRequest, repo: String, source: PRSyncSource, myLogin: String? = nil) throws {
         let number = ghPR.number
         let existing = try modelContext.fetch(
             FetchDescriptor<PullRequest>(
@@ -309,6 +377,12 @@ public actor GitHubSync {
         if let deletions = ghPR.deletions { pr.deletions = deletions }
         if let body = ghPR.body { pr.body = body }
         pr.isDraft = ghPR.isDraft ?? false
+        if let myLogin, let reviews = ghPR.reviews {
+            let mine = reviews.filter { $0.author?.login.caseInsensitiveCompare(myLogin) == .orderedSame }
+            if let latest = mine.compactMap({ $0.submittedAt.flatMap(parseISO8601) }).max() {
+                pr.myReviewedAt = latest
+            }
+        }
 
         if let authorLogin = ghPR.author?.login {
             pr.author = try findOrCreatePerson(githubHandle: authorLogin)

@@ -74,12 +74,15 @@ struct PullRequestDTO: Encodable {
     let title: String
     let url: URL
     let repo: String
+    /// The author's name, or their GitHub login when that's all sync knows.
+    let author: String?
     let state: String
     let status: String
     let isDraft: Bool
     let deploymentStatus: String
     let isAuthoredByMe: Bool
     let isReviewRequest: Bool
+    let myReviewedAt: Date?
     let reviewDecision: String?
     let createdAt: Date
     let mergedAt: Date?
@@ -94,12 +97,14 @@ struct PullRequestDTO: Encodable {
             title: pr.title,
             url: pr.url,
             repo: pr.repo,
+            author: pr.author?.name,
             state: pr.state.rawValue,
             status: pr.displayStatus.rawValue,
             isDraft: pr.isDraft,
             deploymentStatus: pr.deploymentStatus.rawValue,
             isAuthoredByMe: pr.isAuthoredByMe,
             isReviewRequest: pr.isReviewRequest,
+            myReviewedAt: pr.myReviewedAt,
             reviewDecision: pr.reviewDecision?.rawValue,
             createdAt: pr.createdAt,
             mergedAt: pr.mergedAt,

@@ -37,6 +37,8 @@ Every command prints JSON to stdout; pipe it through `jq`. Errors go to stderr w
 | Everything about a person | `show <person id>`: their feedback, meetings, interviews, PRs |
 | Feedback given or received | `people feedback list --from D --to D` (`--person <id>`). Each item is feedback its person received: what I gave is on their page, what I got is on mine and says who it's from |
 | What's on my plate | `todos list --list today` (or `inbox`, `upcoming`, `anytime`, `someday`), `prs list --mine --state open`, `prs list --reviews` |
+| PRs I reviewed | `prs list --reviewed --from D --to D` (by the date of my latest review; team requests included) |
+| What teammates shipped or opened | `prs list --teammates --from D --to D` (created or merged in the range; each has its `author`) |
 | A project | `projects list`, then `show <project id>` |
 | My calendar | `events list --from D --to D` (`--hidden` includes hidden events) |
 | Interviews | `interviews list --from D`, `--candidate`, `--recommendation` |
@@ -77,7 +79,7 @@ Log entries, meetings, interviews and todos have `isPrivate`. Interviews and the
 
 The store holds only what sync brings in and what I write:
 
-- GitHub: PRs I authored (the latest 50 per state in the configured repos), PRs whose review is requested from me personally (not my teams), and the open and merged PRs of teammates I sync (`people edit <id> --sync-prs`; `prs list --teammates`). Not reviews I've finished on other PRs, comments, or other repos.
+- GitHub: PRs I authored (the latest 50 per state in the configured repos), PRs whose review is requested from me personally (not my teams), the open and merged PRs of teammates I sync (`people edit <id> --sync-prs`; `prs list --teammates`), and PRs I reviewed on any request whose last update was in the past 30 days (`prs list --reviewed`; only my latest review's date is kept). Not comments, reviews of PRs that went 30 days without an update before sync saw them, or other repos.
 - Calendar: allowlisted calendars, from when syncing started.
 - Meetings and interviews: only what I wrote. One without notes is just a title, a time and attendees.
 - Slack, Notion, Linear, documents and incidents: not ingested.

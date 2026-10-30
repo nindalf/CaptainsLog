@@ -16,7 +16,7 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 | `meetings` | `list`, `add --event <id>` (`CalendarEvent.createMeeting`), `edit` |
 | `events` | `list` (overlapping the range; `--hidden`), `hide`, `unhide`, `delete --permanently` (`deleteWithEmptyStubs`) |
 | `interviews` | `list`, `add`, `edit` (every section) |
-| `prs` | `list` (one of `--mine`, `--reviews`, `--teammates`, with `--state`), `edit` (notes) |
+| `prs` | `list` (one of `--mine`, `--reviews`, `--teammates`, `--reviewed`, with `--state`; `--from`/`--to` keep PRs created or merged in the range, or with `--reviewed` the ones I last reviewed in it, and with neither every PR is listed; each has its `author` and `myReviewedAt`), `edit` (notes) |
 | `todos` | `list` (`--list`, `--project`, `--overdue`), `add`, `edit`, `complete`, `reopen`, `trash`, `restore`, `delete --permanently`, `empty-trash --permanently` |
 | `projects` | `list`, `add`, `edit`, `complete`, `reopen`, `delete --permanently`; by name or UUID |
 | `people` | `list` (meaningful contacts; `--all`, `--search`), `edit` (`--sync-prs` / `--no-sync-prs`), `merge --yes`, `import <file>` (a preview; `--yes` applies), `export` (`--all`, `--teammates`, `--person`), `feedback list/add/edit/delete` (`Roster`) |

@@ -33,6 +33,8 @@ The week runs Monday to Sunday around the day given, or this week. Read all of i
 - **Goals:** `log list --tag goals --from 2000-01-01`, then `show` the newest. It holds my goals and the progression framework signals I'm working towards. If there's none, ask me for them and save them with `log add "Goals" --tags goals --private --content -` before going on.
 - **Last review:** `log list --tag weekly-review --from <five weeks back>`, then `show` the newest. Note its open threads: things in flight, blocked or promised.
 - **The work:** `feed --from MON --to SUN`, then `show` every meeting, interview and PR in it, and any log entry whose snippet isn't the whole story.
+- **Teammates' PRs:** `prs list --teammates --from MON --to SUN`, grouped by `author`.
+- **Reviews:** `prs list --reviewed --from MON --to SUN`, a count, grouped by `author`. A PR counts once, in the week of my latest review of it.
 - **People:** `people feedback list --from MON --to SUN`.
 - **Unwritten meetings:** `events list --from MON --to SUN`. Events with no `meetingID` or `interviewID`, and meetings without notes, happened but left no record. That's normal: plenty of meetings don't need notes. Ask once whether anything came of them, and don't treat them as a gap.
 - **Still open:** `prs list --mine --state open`, `todos list --overdue`, `todos list --list today`.
@@ -47,7 +49,7 @@ Ask one thing at a time and wait for the answer. Start with the thread that look
 
 - Be pointed: name the meeting, PR or person. "The handover with Tom on Thursday: what does he own now that he didn't before?" rather than "How did the handover go?"
 - Push past the first answer to impact and evidence. If I can't say why something mattered, ask once more, then move on.
-- Always ask about the blind spots: reviews of other people's PRs, Slack threads, docs written, incidents, help given or received, decisions made outside meetings.
+- Always ask about the blind spots: reviews outside the configured repos, Slack threads, docs written, incidents, help given or received, decisions made outside meetings.
 - For interviews and PR reviews, only the numbers matter: how many, and the hire/no-hire split. Take both from the store and don't debrief: no questions about content, scorecards, missing recommendations or mismatches. I'll ask explicitly if I want feedback on a scorecard.
 - Keep asking "anything else?" until I say I'm done. The second and third things I mention are often the best.
 - Don't summarise back after every answer; keep it moving.

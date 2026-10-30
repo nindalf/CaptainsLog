@@ -22,9 +22,12 @@ public final class PullRequest {
     public var additions: Int?
     public var deletions: Int?
     public var isAuthoredByMe: Bool
-    /// Synced only because its author's PRs are synced: my review was never requested.
-    /// Stored this way round so the PRs synced before it existed, all review requests, default right.
+    /// Synced without my review ever being requested from me personally: its author's PRs are
+    /// synced, or I reviewed it on a team request. Stored this way round so the PRs synced before
+    /// it existed, all review requests, default right.
     public var isTeammateOnly: Bool = false
+    /// When I last submitted a review of it, whoever the review was requested from.
+    public var myReviewedAt: Date?
     public var project: Project?
     public var tags: [String] = []
     public var isDraft: Bool = false

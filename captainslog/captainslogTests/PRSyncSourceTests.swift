@@ -32,6 +32,27 @@ struct PRSyncSourceTests {
         #expect(!requested.isTeammateOnly)
     }
 
+    @Test func aPRIReviewedOnATeamRequestIsATeammates() {
+        let reviewed = pr(.reviewedByMe)
+        #expect(reviewed.isTeammateOnly)
+        #expect(!reviewed.isReviewRequest)
+    }
+
+    @Test func theReviewedFetchKeepsAReviewRequestAndMyOwnPR() {
+        let requested = pr(.reviewRequest)
+        requested.applySyncSource(.reviewedByMe, isNew: false)
+        #expect(requested.isReviewRequest)
+
+        let found = pr(.reviewedByMe)
+        found.applySyncSource(.reviewRequest, isNew: false)
+        #expect(found.isReviewRequest)
+
+        let mine = pr(.mine)
+        mine.applySyncSource(.reviewedByMe, isNew: false)
+        #expect(mine.isAuthoredByMe)
+        #expect(!mine.isTeammateOnly)
+    }
+
     @Test func aRecheckKeepsTheFlags() {
         let teammate = pr(.teammate)
         teammate.applySyncSource(.recheck, isNew: false)

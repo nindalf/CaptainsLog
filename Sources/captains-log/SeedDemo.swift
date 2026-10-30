@@ -288,6 +288,10 @@ final class DemoSeeder {
             case .closed:
                 pr.state = .closed
             }
+            // I approved every review request that got approved, an hour before it merged.
+            if seed.author != nil, !seed.teammateOnly, pr.reviewDecision == .approved {
+                pr.myReviewedAt = min(max(created, merged.addingTimeInterval(-3600)), clock.now)
+            }
             context.insert(pr)
             pr.author = seed.author.map(person)
             pr.reviewers = seed.reviewers.map(person)
