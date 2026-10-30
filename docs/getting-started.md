@@ -4,7 +4,7 @@ From a fresh Mac to your first weekly review, in order.
 
 ## 0. Prerequisites
 
-- An Apple Silicon Mac on macOS 26.2 or later, with **Xcode** from the App Store. The Command Line Tools alone can't build the app. Open Xcode once so it installs its components.
+- An Apple Silicon Mac on macOS 26.2 or later. To build from source, also **Xcode** from the App Store: the Command Line Tools alone can't build the app. Open Xcode once so it installs its components.
 - **[Homebrew](https://brew.sh)**, then:
   ```sh
   brew install just gh googleworkspace-cli age
@@ -13,7 +13,7 @@ From a fresh Mac to your first weekly review, in order.
 - **Google Drive for desktop**, signed in with your work account (SSO), so `~/Google Drive` exists. Backups go there.
 - **Claude Code**, logged in.
 
-Clone the repo and run everything below from its root.
+Building from source? Clone the repo and run the `just` commands below from its root.
 
 ## 1. Google Calendar: `gws`
 
@@ -52,7 +52,17 @@ Pick GitHub.com, HTTPS, and log in with a browser. If your company's org asks yo
 gh pr list -R your-org/your-repo --limit 3
 ```
 
-## 3. Build and install
+## 3. Install
+
+With Homebrew:
+
+```sh
+brew install --cask nindalf/tap/captains-log
+```
+
+That installs the app to `/Applications`, puts `captains-log` on your PATH, and links the skills into `~/.claude/skills`, and into `~/.agents/skills` for Codex if `~/.agents` exists. `brew upgrade` updates all three. If you set up Claude Code or Codex later, run `captains-log skills install`. Switching from a source install: delete `/opt/homebrew/bin/captains-log` and the app first, since Homebrew won't replace files it didn't install.
+
+Or from source, in a clone of the repo:
 
 ```sh
 just check-tools        # gh, gws, age, claude, swift, xcodebuild; xcbeautify is only for tests

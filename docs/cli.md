@@ -20,6 +20,7 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 | `todos` | `list` (`--list`, `--project`, `--overdue`), `add`, `edit`, `complete`, `reopen`, `trash`, `restore`, `delete --permanently`, `empty-trash --permanently` |
 | `projects` | `list`, `add`, `edit`, `complete`, `reopen`, `delete --permanently`; by name or UUID |
 | `people` | `list` (meaningful contacts; `--all`, `--search`), `edit` (`--sync-prs` / `--no-sync-prs`), `merge --yes`, `import <file>` (a preview; `--yes` applies), `export` (`--all`, `--teammates`, `--person`), `feedback list/add/edit/delete` (`Roster`) |
+| `skills` | `status`, `install` (`--agent`, `--force`), `uninstall`: links the app's bundled skills into `~/.claude/skills` and Codex's `~/.agents/skills` (`Skills`). Only works for the CLI inside the app |
 | `sync` | GitHub and calendar, with the app's settings from its `com.nindalf.captainslog` defaults domain |
 | `seed-demo` | Hidden. Demo data into an empty scratch store, for `scripts/seed-data.sh` |
 

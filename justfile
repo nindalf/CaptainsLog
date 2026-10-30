@@ -131,13 +131,13 @@ verify-release version:
     diff -r "$work/published" "$work/rebuilt"
     echo "$tag matches its tag's source"
 
-# Set the app and CLI to <version>, release-build, then commit, tag and push it and publish GitHub release v<version>. Needs a clean main level with origin
+# Set the app and CLI to <version>, release-build, point the cask at it, then commit, tag and push it, publish GitHub release v<version> and the cask. Needs a clean main level with origin
 release version:
     #!/usr/bin/env bash
     set -euo pipefail
     version="{{version}}"
     tag="v$version"
-    files=(captainslog/captainslog.xcodeproj/project.pbxproj Sources/captains-log/Version.swift)
+    files=(captainslog/captainslog.xcodeproj/project.pbxproj Sources/captains-log/Version.swift homebrew/captains-log.rb)
     [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "The version should look like 1.2.3"; exit 1; }
     [ "$(git branch --show-current)" = main ] || { echo "Release from main"; exit 1; }
     # Untracked files count: the app target picks up anything in its folder
@@ -150,12 +150,33 @@ release version:
     sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $version;/" "${files[0]}"
     sed -i '' -E "s/^let cliVersion = \".*\"$/let cliVersion = \"$version\"/" "${files[1]}"
     {{just_executable()}} release-build
+    sha=$(shasum -a 256 ".build/dist/CaptainsLog-$version.zip" | cut -d' ' -f1)
+    sed -i '' -E -e "s/^  version \".*\"$/  version \"$version\"/" -e "s/^  sha256 \".*\"$/  sha256 \"$sha\"/" "${files[2]}"
     git commit --quiet -m "Release $tag" -- "${files[@]}"
     trap - EXIT
     git tag "$tag"
     git push --quiet origin main "$tag"
     gh release create "$tag" --verify-tag --title "$tag" --generate-notes \
         .build/dist/CaptainsLog-$version.zip .build/dist/getting-started.md
+    {{just_executable()}} publish-cask
+
+# Copy homebrew/captains-log.rb into github.com/nindalf/homebrew-tap and push it. `release` runs it; rerun it if that step failed
+publish-cask:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version=$(sed -n -E 's/^  version "(.*)"$/\1/p' homebrew/captains-log.rb)
+    gh release view "v$version" >/dev/null || { echo "There's no GitHub release v$version for the cask to point at"; exit 1; }
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    gh repo clone nindalf/homebrew-tap "$work/tap" -- --quiet
+    mkdir -p "$work/tap/Casks"
+    cp homebrew/captains-log.rb "$work/tap/Casks/captains-log.rb"
+    cd "$work/tap"
+    [ -n "$(git status --porcelain)" ] || { echo "The tap already has captains-log $version"; exit 0; }
+    git add Casks/captains-log.rb
+    git commit --quiet -m "captains-log $version"
+    git push --quiet
+    echo "Published captains-log $version to nindalf/homebrew-tap"
 
 # Run the fast unit tests (Swift Testing, in the app host)
 test:

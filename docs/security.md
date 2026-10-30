@@ -4,7 +4,7 @@ What Captain's Log touches, for a security review before colleagues install it. 
 
 ## What it is
 
-A personal work log for macOS: a SwiftUI app, a `captains-log` CLI and Claude Code skills, all over one local SQLite store. Most people install the signed release through Homebrew; anyone can build it from source instead (see [Distribution and supply chain](#distribution-and-supply-chain)). There's no server and no shared backend. One user per install.
+A personal work log for macOS: a SwiftUI app, a `captains-log` CLI and skills for Claude Code and Codex, all over one local SQLite store. Most people install the signed release through Homebrew; anyone can build it from source instead (see [Distribution and supply chain](#distribution-and-supply-chain)). There's no server and no shared backend. One user per install.
 
 ## Data it holds
 
@@ -23,6 +23,7 @@ The last two rows are the sensitive ones. They're the same notes people already 
 - **The store:** `~/Library/Application Support/CaptainsLog/CaptainsLog.store` (SQLite, through SwiftData), plus `sync-history.json` beside it (sync timestamps and error messages). `Store.directory` in `Sources/CaptainsLogKit/Store.swift`. The app doesn't encrypt the store itself; it relies on FileVault. macOS doesn't sync this folder to iCloud.
 - **Settings:** UserDefaults, the app's `com.nindalf.captainslog` domain (`Sources/CaptainsLogKit/Settings.swift`; the CLI opens it as a suite). Repo names, calendar names, intervals. No credentials.
 - **Backups:** `~/Google Drive/My Drive/CaptainsLog backups/`, in the user's work Google Drive. See [Backups](#backups).
+- **Skill links:** `captains-log skills install` symlinks the bundled skills into `~/.claude/skills` (or `$CLAUDE_CONFIG_DIR/skills`) and, for Codex, `~/.agents/skills`, for whichever agents are set up (`Sources/CaptainsLogKit/Skills.swift`). It only ever replaces or removes links that point into a Captain's Log app; a checkout's links and real folders are left alone. The Homebrew cask runs it on install and `skills uninstall` on uninstall, inside Homebrew's sandbox with only `~/.claude/skills` and `~/.agents/skills` writable, so it can't create a missing `~/.claude` or `~/.agents`.
 - **Logs:** `os.Logger`, subsystem `com.nindalf.captainslog`. No interpolation is marked `privacy: .public`, so dynamic values (titles, names, errors) are redacted in the persisted unified log.
 
 ## External access
@@ -62,18 +63,18 @@ The app runs `Sources/CaptainsLogKit/Backup/backup.sh` once a day by default (ho
 
 `scripts/restore.sh` (`just restore`) is interactive only. It moves the current store aside instead of deleting it.
 
-## Claude Code
+## Claude Code and Codex
 
-The `captains-log` and `weekly-review` skills (`skills/`) let Claude Code read and write the store through the CLI. This is the one path by which store contents leave the laptop. **When Claude reads a record, that record is sent to Anthropic as part of the conversation**, under whatever terms the company's Claude Code use already has. The app does nothing with Claude on its own; this only happens when the user asks Claude something.
+The `captains-log` and `weekly-review` skills (`skills/`) let Claude Code or Codex read and write the store through the CLI. This is the one path by which store contents leave the laptop. **When the agent reads a record, that record is sent to its provider (Anthropic or OpenAI) as part of the conversation**, under whatever terms the company's use already has. The app does nothing with an agent on its own; this only happens when the user asks one something.
 
-- Read commands are pre-approved in the skills' `allowed-tools` (`list`, `show`, `search`, `feed`, `status`, plus `jq`). Every write prompts the user first.
+- Read commands are pre-approved in the skills' `allowed-tools` (`list`, `show`, `search`, `feed`, `status`, plus `jq`). Every write prompts the user first. `allowed-tools` is experimental in the Agent Skills spec, so Codex may prompt for reads too.
 - The skills tell Claude not to look outside the store (no git, GitHub, Slack or web), and not to run destructive commands (`delete --permanently`, `empty-trash`, `people merge --yes`) unless the user asks for that one action.
 - Records can be marked private (`isPrivate`), meaning the user wants them kept out of anything shared. It isn't access control: the store is single-user, and the CLI returns every record.
 
 ## Distribution and supply chain
 
 - **The release.** `just release` (`justfile`) builds one zip from a tagged commit on the maintainer's Mac and publishes it as a GitHub release. The zip holds the app, with the CLI at `Contents/Helpers/captains-log` and the committed skills in `Contents/Resources/skills/`. The app and the CLI are signed with the maintainer's Developer ID (team `78T545JWUD`) with hardened runtime and no entitlements, then notarised by Apple, with the ticket stapled to the app. Check an installed copy with `spctl --assess -vv "/Applications/Captain's Log.app"`, and `codesign -dv --verbose=2` on the app and on `Contents/Helpers/captains-log`.
-- **Homebrew.** The cask downloads that zip, checks its SHA-256, installs the app to `/Applications`, and links the CLI into Homebrew's `bin` and the skills into `~/.claude/skills`. No install scripts are fetched from the network.
+- **Homebrew.** `brew install --cask nindalf/tap/captains-log`. The cask's source is `homebrew/captains-log.rb` in this repo; `just release` sets its version and SHA-256 in the release commit and copies it to `github.com/nindalf/homebrew-tap`. It downloads the release zip, checks the SHA-256, installs the app to `/Applications`, links the CLI into Homebrew's `bin`, and runs `captains-log skills install` (see [Where it lives](#where-it-lives)). It has no `zap`, so uninstalling never removes the store. No install scripts are fetched from the network.
 - **Checking a release against its source.** Notarisation is Apple's automated malware scan, not a review of what the code does. What ties a release to the code is that it's reproducible: `just verify-release 1.2.3` downloads the release, rebuilds the tag with the tag's own build step (`_release-assemble`, which `release-build` uses too) and diffs the two. Both builds run at the same path, `/tmp/captainslog-release`, because the linker hashes build paths into each binary's UUID. The diff sets aside only what can't match: every binary's signature is replaced with the same ad hoc one, the stapled ticket is dropped, and `BuildMachineOSBuild` is removed from the `Info.plist` files. It needs the Xcode build the release names (`DTXcodeBuild` in its `Info.plist`). An empty diff means the release is exactly the tagged code, so review at the tag (`git checkout v1.2.3`). Releases before reproducible builds (v0.4.0 and earlier) can't be verified. Building from source (`docs/getting-started.md`) also runs exactly what you reviewed; that build is signed with your own development certificate, without hardened runtime, and isn't notarised.
 - All the code it runs is the repo's own, Apple's system frameworks and three Apple-maintained open-source packages. The frameworks: Foundation, SwiftUI, AppKit, SwiftData, `os` for logging, and Carbon for the global quick-entry hotkey (`GlobalHotKey.swift`).
 - The packages, all on tagged releases (`Package.swift`): `apple/swift-argument-parser` from 1.5.0, for the CLI's arguments only; `apple/swift-markdown` from 0.9.0, to parse notes; and `swiftlang/swift-cmark` 0.9.0, the C parser swift-markdown is built on. Both lockfiles are committed (`Package.resolved`, and Xcode's in `captainslog/captainslog.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/`), so a build uses the reviewed versions; release builds refuse to resolve anything else. Updating a dependency is a commit.
@@ -83,7 +84,6 @@ The `captains-log` and `weekly-review` skills (`skills/`) let Claude Code read a
 
 ## Open items
 
-- The Homebrew cask doesn't exist yet. The repo is private, so it needs a download strategy that authenticates to GitHub, or a public repo.
 
 - A company-owned or allowlisted OAuth client in place of per-person personal-account projects.
 - Find `gh` and `gws` on `PATH` instead of hardcoding `/opt/homebrew/bin` (`GitHubSync.swift:7`, `CalendarSync.swift:7`).
@@ -96,12 +96,13 @@ A prompt to paste into Claude Code from the repo root:
 Security-review this repo before I install and run it. It claims to only read
 from GitHub (via gh) and Google Calendar (via gws), never write to any external
 system, make no network calls of its own, call no LLMs, and write only to
-~/Library/Application Support/CaptainsLog, its own UserDefaults, and age-encrypted
-backups in ~/Google Drive/My Drive/CaptainsLog backups.
+~/Library/Application Support/CaptainsLog, its own UserDefaults, age-encrypted
+backups in ~/Google Drive/My Drive/CaptainsLog backups, and skill symlinks in
+~/.claude/skills and ~/.agents/skills.
 Verify each claim: find every subprocess, network call, file write and
 credential access, in the app (captainslog/), the shared package
-(Sources/CaptainsLogKit/), the CLI (Sources/captains-log/), the justfile and
-scripts/. Report anything that contradicts the claims or surprises you.
+(Sources/CaptainsLogKit/), the CLI (Sources/captains-log/), the Homebrew cask
+(homebrew/), the justfile and scripts/. Report anything that contradicts the claims or surprises you.
 ```
 
 To spot-check by hand:
