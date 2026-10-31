@@ -8,7 +8,7 @@ A Mac app that keeps your work in one place. It pulls in your pull requests, rev
 brew install --cask nindalf/tap/captains-log
 ```
 
-That installs the app, the `captains-log` CLI and the skills, and `brew upgrade` keeps all three current. [`docs/getting-started.md`](docs/getting-started.md) walks through the rest step by step, from a fresh Mac to your first weekly review, and covers building from source if you'd rather run exactly the code you reviewed.
+That installs the app, the `captains-log` CLI and the skills, and `brew upgrade` keeps all three current. [`docs/getting-started.md`](docs/getting-started.md) walks through the rest step by step, from a fresh Mac to your first weekly review.
 
 ## What you get
 
@@ -17,12 +17,6 @@ That installs the app, the `captains-log` CLI and the skills, and `brew upgrade`
 - **Your week, written up.** `/weekly-review` in Claude Code reads your week, asks you what mattered, and saves the answers as brag-doc entries. Ask "what did we decide about the migration?" and Claude answers from your own notes.
 
 GitHub and your calendar sync on their own. Everything else you write here, so it pays off once it's where you keep your todos and take meeting notes. If those live in Things or Notion today, moving them is what it asks of you.
-
-## Why I created this
-
-Software shapes behaviour. Most of the software we use shapes it to suit its makers: we scroll more, click more, spend more. The flip side is that software you write for yourself can shape your behaviour to suit you.
-
-I wanted one place that showed me everything I needed, so I'd stop checking three or four apps all day.
 
 ## How it's built
 

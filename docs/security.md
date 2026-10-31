@@ -51,7 +51,7 @@ The app never reads, stores or handles a credential. `gh` and `gws` keep their o
 
 - **GitHub.** `gh auth login` grants `repo`, `read:org` and `gist` by default, which can write. The app only runs the read commands above. A fine-grained, read-only token through `GH_TOKEN` would cap this at the token level; it isn't tested or documented yet.
 - **Google Calendar.** The setup guide (`docs/getting-started.md`) logs in with `gws auth login --readonly -s calendar`, which should grant only `calendar.readonly`. `gws` encrypts the token at rest, with the key in the macOS keychain. Check what a token actually holds with `gws auth status`: someone who logged in to `gws` for other reasons may already have broader scopes (full `calendar`, `gmail.modify`, `cloud-platform`), and the app would run with those.
-- **The OAuth client is temporary.** For now each user creates a Desktop OAuth client in a Google Cloud project on their **personal** Google account, in Testing mode, and signs in to it with their work account. The client only identifies the app to Google: tokens and calendar data stay on the laptop, and the personal project's owner can't see them. But to the company's Google Workspace this is an unverified third-party app per person. A company-owned OAuth client, or an allowlisted one, would replace it.
+- **The OAuth client is the company's.** Everyone logs in through one Desktop OAuth client in a company-owned Google Cloud project, internal to the company's Workspace (so only company accounts can sign in) and granted only `calendar.readonly`. The client only identifies the app to Google: tokens and calendar data stay on each laptop, and the project's owners can't see them. Google treats a Desktop client's secret as not confidential, so publishing the client ID and secret internally exposes nothing. Users pass them to `gws auth login` once, as `GOOGLE_WORKSPACE_CLI_CLIENT_ID` / `GOOGLE_WORKSPACE_CLI_CLIENT_SECRET`, and `gws` saves them with the token.
 
 ## Backups
 
@@ -86,8 +86,6 @@ The `captains-log` and `weekly-review` skills (`skills/`) let Claude Code or Cod
 
 ## Open items
 
-
-- A company-owned or allowlisted OAuth client in place of per-person personal-account projects.
 - Find `gh` and `gws` on `PATH` instead of hardcoding `/opt/homebrew/bin` (`GitHubSync.swift:7`, `CalendarSync.swift:7`).
 
 ## Checking it yourself

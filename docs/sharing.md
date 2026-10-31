@@ -15,7 +15,8 @@ Written up in the README: the day-to-day value in "What you get", the promises i
 ## Blockers: the pitch isn't true without these
 
 - [ ] **Install experience.**
-  - The README's prerequisites and `gws` steps are written but untested on a fresh Mac. Check `gws auth setup` and `gws auth login --readonly -s calendar` end to end.
+  - The company OAuth client for `gws` (internal, `calendar.readonly`) is assumed in `docs/getting-started.md` but not set up yet. Once it is, put its client ID and secret in getting-started's login command, or say where colleagues find them.
+  - The prerequisites and `gws` steps are written but untested on a fresh Mac. Check the env-var `gws auth login --readonly -s calendar` end to end with the company client, and that the app's later `gws` calls work without the env vars.
   - Find `gh` and `gws` on `PATH` instead of hardcoding them (`GitHubSync.swift:7`, `CalendarSync.swift:7`).
 - [ ] **Try a restore for real.** `captains-log restore` is built and tested against temp folders. Run it once against the real Drive folder (the newest backup), check the app, then delete the `-before-restore-` folder or move it back.
 - [ ] **Settle the schema before anyone else has data.** Once colleagues have data, every model change needs a `VersionedSchema` migration. `Incident` and `Document` are gone; decide about the fields no UI sets (listed in `docs/overview.md`). Put a `SchemaMigrationPlan` in place so the first real change isn't improvised. Run `just backup` first.
