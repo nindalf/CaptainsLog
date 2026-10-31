@@ -86,7 +86,7 @@ The `captains-log` and `weekly-review` skills (`skills/`) let Claude Code or Cod
 
 ## Open items
 
-- Find `gh` and `gws` on `PATH` instead of hardcoding `/opt/homebrew/bin` (`GitHubSync.swift:7`, `CalendarSync.swift:7`).
+[Issue #3](https://github.com/nindalf/CaptainsLog/issues/3) (find `gh` and `gws` on `PATH`) and [#6](https://github.com/nindalf/CaptainsLog/issues/6) (a read-only `gh` token).
 
 ## Checking it yourself
 

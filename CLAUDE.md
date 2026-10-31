@@ -10,7 +10,7 @@ Uses `just` (see `justfile` for all recipes). Key commands:
 - `just ui-build` — build the Debug app (the copy `just ui` drives)
 - `swift build` — build the CLI into `.build/debug/captains-log`
 - `just test` — run the unit tests (see Testing)
-- Users install the release with Homebrew (`brew install --cask nindalf/tap/captains-log`), the recommended way. `just release <version>` builds, notarizes and publishes it, and the cask from `homebrew/captains-log.rb` to `nindalf/homebrew-tap`; `just verify-release <version>` checks a release against its tag. `just install-app` installs the working tree the same way, Developer ID-signed but not notarized, over a Homebrew install, CLI and skills links included.
+- Users install the release with Homebrew (`brew install --cask nindalf/tap/captains-log`), the recommended way. `just release <version>` builds, notarizes and publishes it, and the cask from `homebrew/captains-log.rb` to `nindalf/homebrew-tap`; `just verify-release <version>` checks a release against its tag. `just install-app` installs the working tree over a Homebrew install (`docs/building-from-source.md`).
 - `just backup` / `just restore` — `captains-log backup` / `restore`: an encrypted snapshot of the real store into Google Drive, and back (`Sources/CaptainsLogKit/Backup/Backup.swift`, which the app also runs daily). Run backup before anything that could touch the store (schema changes especially). Restore is interactive and for the user only. Try them with `CAPTAINSLOG_STORE_DIR` and `CAPTAINSLOG_DRIVE_DIR` (or `CAPTAINSLOG_BACKUP_DIR`) pointing at temp dirs, never the real Drive folder; `BackupTests` covers a round trip. Sandboxes get a stand-in Drive at `<store>/Google Drive`, missing until you create it.
 - Seed the sandbox with `just ui-seed` / `just ui-private-seed`: four weeks of demo data (two past, this, next) from `seed-demo` (`Sources/captains-log/SeedDemo*.swift`), placed relative to now. It refuses the real store and any non-empty store. `just demo` reseeds `just ui`'s sandbox, launches it and starts Claude Code on its store (for recording the weekly review); it's the user's, don't run it.
 
@@ -22,6 +22,9 @@ Drive a sandboxed copy of the app, never the real one. The user often clicks aro
 - If the store or screen changes in ways you didn't cause, the user is probably clicking in your window too. Ask; don't chase it as a bug.
 - Synthetic typing doesn't reach a new todo draft's title field (it does reach other fields).
 - The driver can segfault walking the accessibility tree right after launch; retry.
+- It can't scroll or hover. To scroll, post a throwaway `CGEvent(scrollWheelEvent2Source:...)` at window coordinates. Window shots miss tooltips (they're separate windows).
+- Sandboxes share the real app's settings. To try a setting, pass it as a launch argument, which is never saved: `open -n <app> --env CAPTAINSLOG_STORE_DIR=... --args -hiddenSidebarTabs '(todos, log)'`.
+- The menu bar, Quick Entry and the calendar event popover need the real screen: hand those to the user.
 
 ## Testing
 
@@ -44,16 +47,18 @@ Tests use **Swift Testing** (`import Testing`, `@Test`, `#expect`) and run throu
   ```
 - Test sync correctness, search, summary, and merge logic — not tests for their own sake.
 
+## Backlog
+
+Bugs and planned work are GitHub issues on this repo, which is public: `gh issue list`, `gh issue view <n>`. Labels: `before-sharing` (needed before colleagues use it), `bug`, `ui`, `simplify`, `enhancement`. Close an issue when its change lands (`Fixes #n` in the commit), and file a new one for a gap you find rather than writing it into a doc. Keep issues free of anything about colleagues, the employer, or the user's own data.
+
 ## Read on demand
 
 Don't read docs up front. Pull in what the task needs:
-- **`docs/overview.md`** — what the app does today and what it doesn't yet, area by area, with known bugs. Read before feature work, reviews or simplification.
-- **`docs/todos.md`** — before any Todos or Projects work: list rules, code map, gotchas, backlog.
-- **`docs/cli.md`** — before CLI work: commands, conventions, rules.
-- **`docs/sharing.md`** — before work on getting colleagues set up: the pitch, and the checklist of what's left.
-- **`docs/simplify.md`** — before removing or merging fields, features or settings: what's queued, what's decided, and how to change the schema safely.
+- **`docs/overview.md`** — how the app fits together, and the rules by area that aren't obvious from the code. Read before feature work or reviews.
+- **`docs/todos.md`** — before any Todos or Projects work: list rules and gotchas.
+- **`docs/cli.md`** — before CLI work: conventions and rules.
 
-When a change lands, update the doc that describes it: a "Not yet" item done is deleted, a new gap is added.
+Docs hold decisions and traps, not descriptions of the code or todos. When a change adds a rule or a trap, add it to the doc.
 
 ## Correctness footguns
 
@@ -72,6 +77,14 @@ The few rules where one mistake silently breaks things:
 **Don't display relationship arrays** (`project.todos`, `person.feedback`) in views. Inserting from the other side doesn't notify observers, so the view goes stale. Filter a `@Query` instead.
 
 **`onKeyPress` closures go stale.** SwiftUI keeps calling the closure from an earlier render, so a plain input property it reads can be out of date. Anything a key handler reads must be `@State`, `@Query` or a reference type. The Delete key arrives as U+007F, which `onKeyPress(.delete)` doesn't match; match `press.characters`.
+
+**Schema changes: test on a copy first.** While the store has one user, a model change is an in-place edit of `CaptainsLogSchemaV1`, which SwiftData migrates when it opens the store. For each change:
+1. `just backup`.
+2. Snapshot the real store into `.build/migration-test/` with `sqlite3 .backup` (read-only on the source).
+3. Open the copy with the new build (`CAPTAINSLOG_STORE_DIR`, CLI first, then the app). Compare row counts and every relationship before and after: the join tables get renumbered, so compare joined values, not table names.
+4. Release, then `brew upgrade --cask captains-log`, which replaces the app and the CLI together.
+
+Once a colleague has a store, every change needs a V2 and a migration stage (issue #5).
 
 ## Default patterns
 

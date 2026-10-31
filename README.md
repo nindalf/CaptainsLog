@@ -68,4 +68,4 @@ If you want to keep pulling in improvements and sending yours back, stay close t
 
 If you build something others would want, open a PR. If you'd rather go your own way, that's fine too.
 
-Before working on the code, read [`docs/overview.md`](docs/overview.md) (what works, what doesn't yet, known bugs). Run the tests with `just test` (needs `brew install xcbeautify`).
+To build it yourself, see [`docs/building-from-source.md`](docs/building-from-source.md). Before working on the code, read [`docs/overview.md`](docs/overview.md); bugs and planned work are in the [issues](https://github.com/nindalf/CaptainsLog/issues). Run the tests with `just test` (needs `brew install xcbeautify`).

@@ -1,8 +1,6 @@
+# Building from source
 
-
-### From source
-
-To build from source you'll need an Apple Silicon Mac on macOS 26.2 or later along with XCode.
+To build from source you'll need an Apple Silicon Mac on macOS 26.2 or later along with Xcode.
 
 ```sh
 brew install just

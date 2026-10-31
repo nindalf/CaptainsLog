@@ -1,33 +1,8 @@
 # CLI
 
-`captains-log` is how Claude Code reaches the store (through the skills in `skills/`), so every record and field the app shows should be readable from it, and the things an agent produces (summaries, notes, todos) writable. What it lacks against the app is in `docs/overview.md`.
+`captains-log` is how Claude Code reaches the store (through the skills in `skills/`), so every record and field the app shows should be readable from it, and the things an agent produces (summaries, notes, todos) writable.
 
-Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog.swift`. List DTOs are in `JSONOutput.swift`, `show`'s full records in `DetailOutput.swift`.
-
-## Commands
-
-| Command | Does |
-|---|---|
-| `show <id>` | Any record in full, whatever its type, with refs to linked records. `type` says which |
-| `status` | When GitHub and calendar last synced, and the last backup (`SyncHistory`) |
-| `feed` | The Log tab's merged feed for a date range (`--type`), with snippets (`Feed`) |
-| `search <query>` | Every word, across people, projects, todos, log, meetings, interviews, PRs and feedback, with `matchedField` and a snippet (`Searcher`); people and open projects have no `date` |
-| `log` | `list`, `add`, `edit`, `delete --permanently`. `add` and an `edit` of the title or content link the people the text tags, as in todos; `people` lists their names, and `show <person>` lists the entries |
-| `meetings` | `list`, `add --event <id>` (`CalendarEvent.createMeeting`), `edit` |
-| `events` | `list` (overlapping the range; `--hidden`), `hide`, `unhide`, `delete --permanently` (`deleteWithEmptyStubs`) |
-| `interviews` | `list`, `add`, `edit` (every section) |
-| `prs` | `list` (one of `--mine`, `--reviews`, `--teammates`, `--reviewed`, with `--state`; `--from`/`--to` keep PRs created or merged in the range, or with `--reviewed` the ones I last reviewed in it, and with neither every PR is listed; each has its `author` and `myReviewedAt`), `edit` (notes) |
-| `todos` | `list` (`--list`, `--project`, `--overdue`), `add`, `edit`, `complete`, `reopen`, `trash`, `restore`, `delete --permanently`, `empty-trash --permanently` |
-| `projects` | `list`, `add`, `edit`, `complete`, `reopen`, `delete --permanently`; by name or UUID |
-| `people` | `list` (meaningful contacts; `--all`, `--search`), `edit` (`--sync-prs` / `--no-sync-prs`), `merge --yes`, `import <file>` (a preview; `--yes` applies), `export` (`--all`, `--teammates`, `--person`), `feedback list/add/edit/delete` (`Roster`) |
-| `skills` | `status`, `install` (`--agent`, `--force`), `uninstall`: links the app's bundled skills into `~/.claude/skills` and Codex's `~/.agents/skills` (`Skills`). Only works for the CLI inside the app |
-| `sync` | GitHub and calendar, with the app's settings from its `com.nindalf.captainslog` defaults domain |
-| `backup` | One encrypted backup into Google Drive, as the app takes, keeping the app's "Keep the newest"; recorded in `status` (`Backup.run`) |
-| `backup-setup` | Interactive, in a terminal only: creates the backup key, as Settings → Backups does (`Backup.createKey`) |
-| `restore` | Interactive, in a terminal only: picks a backup, asks for the passphrase (age reads it), confirms (`Backup.restore`). With `backup-setup`, the only commands that ask; both prompt on stderr and refuse without a terminal |
-| `seed-demo` | Hidden. Demo data into an empty scratch store, for `scripts/seed-data.sh` |
-
-`captains-log <command> --help` has every option.
+Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog.swift`. List DTOs are in `JSONOutput.swift`, `show`'s full records in `DetailOutput.swift`. `captains-log <command> --help` has every option.
 
 ## Conventions
 
@@ -36,6 +11,7 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 - Dates go through `CLIDate` (`Dates.swift`): `YYYY-MM-DD` in local time, `--to` inclusive, impossible dates rejected. Lists default to the last week.
 - Long-text options take `-` to read stdin (`TextInput`). Where the app clears a field by emptying it, an empty value clears.
 - Permanent changes need a flag, since the CLI can't ask: `--permanently` for deletes, `--yes` for merging people and importing a roster, `--complete-todos` where the app confirms. Todos have a Trash; nothing else does.
+- Only `backup-setup` and `restore` are interactive: they prompt on stderr and refuse without a terminal.
 - Defaults match the app's creation paths: privacy (CLAUDE.md), a new todo's `TodoOrdering.topSortOrder`, a new project at the bottom of the column.
 
 ## Rules
@@ -45,4 +21,4 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 - **Shared rules go in CaptainsLogKit,** where the app can use them and tests can reach them (`SmartList`, `TodoWhen`, `ProjectCompletion`, `Person.absorb`, `Roster`, `Feed`, `Searcher`, `SyncHistory`). Keep command files thin.
 - **One store, WAL.** The app sees CLI writes through `@Query`; views reading relationship arrays don't update.
 - **Smoke-test by hand** against the scratch store, error paths included. `just ui-build` when CaptainsLogKit changed.
-- **When a command changes,** update the table above, `skills/captains-log/SKILL.md` (and `skills/weekly-review/` if it reads the command). The installed CLI comes from the latest release (`brew upgrade`), so until then try a new command with `.build/debug/captains-log`, or `just install-app` to install the checkout's app and CLI over Homebrew's. `just install-skills` links a checkout's skills into `~/.claude/skills`.
+- **When a command changes,** update `skills/captains-log/SKILL.md` (and `skills/weekly-review/` if it reads the command). The installed CLI comes from the latest release, so until then try a new command with `.build/debug/captains-log`, or `just install-app` to install the checkout over Homebrew's.
