@@ -33,6 +33,13 @@ struct MenuBarView: View {
         return activeTodos.filter { SmartList.today.contains($0, now: now) }
     }
 
+    /// The first source whose last attempt failed. Backup errors stay until a backup succeeds.
+    private var failure: (SyncSource, String)? {
+        SyncSource.allCases.lazy.compactMap { source in
+            sync.history.sources[source].flatMap { $0.isFailing ? $0.lastError.map { (source, $0) } : nil }
+        }.first
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let next = upcomingEvents.first {
@@ -66,15 +73,22 @@ struct MenuBarView: View {
                     Text("Syncing...")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                } else if let error = sync.lastError ?? sync.backupError {
+                } else if let (source, error) = failure {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.red)
-                    Text(error)
+                    Text("\(source.displayName): \(error)")
                         .font(.caption)
                         .foregroundStyle(.red)
                         .lineLimit(1)
-                } else if let gh = sync.lastGitHubSync {
-                    Text("Last sync: \(gh, format: .relative(presentation: .named))")
+                        .help(error)
+                } else if sync.backupStage.map({ $0 != .ready }) ?? false {
+                    Image(systemName: "externaldrive.badge.exclamationmark")
+                        .foregroundStyle(.orange)
+                    Text("Not backed up")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if let last = sync.history.sources[.github]?.lastSuccess {
+                    Text("Last sync: \(last, format: .relative(presentation: .named))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -41,10 +41,16 @@ struct DashboardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            stardateHeader
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 10)
+            HStack(alignment: .top) {
+                stardateHeader
+                Spacer()
+                syncStatus
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+
+            SetupChecklist(background: Self.paneColor)
 
             // Each column's last pane takes what the others leave and scrolls; the rest fit their
             // content. A pane goes with its tab when Settings hides that tab, and a column with it.
@@ -93,7 +99,7 @@ struct DashboardView: View {
 
     /// A slight grey on the page, as `.quinary` looks on it, but opaque, so a pinned header covers
     /// the rows scrolling under it.
-    private static let paneColor = Color(nsColor: NSColor(name: nil) { appearance in
+    static let paneColor = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             ? NSColor(white: 0.165, alpha: 1)
             : NSColor(white: 0.965, alpha: 1)
@@ -249,6 +255,15 @@ struct DashboardView: View {
     private func collapsePRCard() {
         prExpandedID = nil
         prFocusField = nil
+    }
+
+    /// When GitHub and the calendar last synced, or why they failed.
+    private var syncStatus: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            if settings.isShown(.pullRequests) { SyncStatusLabel(source: .github, alignment: .trailing) }
+            if settings.isShown(.meetings) { SyncStatusLabel(source: .calendar, alignment: .trailing) }
+        }
+        .frame(maxWidth: 360, alignment: .trailing)
     }
 
     private var stardateHeader: some View {

@@ -63,17 +63,24 @@ struct SetupInstruction {
         """
 }
 
-/// A setup step: centered in an empty tab, or as a banner over a tab that still has older data.
+/// A setup step: centered in an empty tab, as a banner over a tab that still has older data,
+/// or inline under a Dashboard checklist step, which shows the title itself.
 struct SetupInstructionView: View {
+    enum Style { case centered, banner, inline }
+
     let instruction: SetupInstruction
-    var centered = true
+    var style = Style.centered
 
     @Environment(\.openSettings) private var openSettings
 
+    private var centered: Bool { style == .centered }
+
     var body: some View {
         VStack(alignment: centered ? .center : .leading, spacing: 10) {
-            Text(instruction.title)
-                .font(centered ? .title3.weight(.semibold) : .headline)
+            if style != .inline {
+                Text(instruction.title)
+                    .font(centered ? .title3.weight(.semibold) : .headline)
+            }
             Text(instruction.message)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(centered ? .center : .leading)
@@ -88,9 +95,9 @@ struct SetupInstructionView: View {
             }
         }
         .frame(maxWidth: centered ? 460 : .infinity, alignment: centered ? .center : .leading)
-        .padding(centered ? 0 : 12)
+        .padding(style == .banner ? 12 : 0)
         .background {
-            if !centered {
+            if style == .banner {
                 RoundedRectangle(cornerRadius: 10).fill(.orange.opacity(0.08))
                 RoundedRectangle(cornerRadius: 10).strokeBorder(.orange.opacity(0.3))
             }
@@ -132,12 +139,13 @@ struct CommandBox: View {
 /// When a source last synced, or why its last sync failed.
 struct SyncStatusLabel: View {
     let source: SyncSource
+    var alignment = HorizontalAlignment.leading
     @Environment(SyncCoordinator.self) private var sync
 
     var body: some View {
         if let entry = sync.history.sources[source] {
             if entry.isFailing, let failure = entry.lastFailure {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: alignment, spacing: 2) {
                     Label {
                         Text("\(source.displayName) sync failed \(failure, format: .relative(presentation: .named))")
                     } icon: {
@@ -147,6 +155,7 @@ struct SyncStatusLabel: View {
                     if let error = entry.lastError {
                         Text(Self.explain(error, source: source))
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(alignment == .trailing ? .trailing : .leading)
                             .lineLimit(3)
                             .textSelection(.enabled)
                             .help(error)

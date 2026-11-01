@@ -96,7 +96,7 @@ struct PRListView: View {
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
                 if let setup, !allPRs.isEmpty {
-                    SetupInstructionView(instruction: setup, centered: false)
+                    SetupInstructionView(instruction: setup, style: .banner)
                         .padding(.top, 12)
                 } else if syncCoordinator.history.sources[.github]?.isFailing == true {
                     SyncStatusLabel(source: .github)

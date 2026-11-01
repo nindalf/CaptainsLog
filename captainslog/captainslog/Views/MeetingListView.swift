@@ -73,7 +73,7 @@ struct MeetingListView: View {
     @ViewBuilder
     private var banner: some View {
         if let setup, !anyEvent.isEmpty {
-            SetupInstructionView(instruction: setup, centered: false)
+            SetupInstructionView(instruction: setup, style: .banner)
                 .padding(12)
         } else if syncCoordinator.history.sources[.calendar]?.isFailing == true {
             SyncStatusLabel(source: .calendar)

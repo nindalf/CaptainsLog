@@ -10,9 +10,6 @@ public final class SyncCoordinator {
     public private(set) var lastGitHubSync: Date?
     public private(set) var lastCalendarSync: Date?
     public private(set) var isSyncing = false
-    public private(set) var lastError: String?
-    /// Kept apart from `lastError`, which the next successful sync clears; this stays until a backup succeeds.
-    public private(set) var backupError: String?
     public private(set) var isBackingUp = false
     /// Nil until the first check. Rechecked by `refreshSetup` and before each sync.
     public private(set) var githubSetup: SourceSetup?
@@ -127,13 +124,11 @@ public final class SyncCoordinator {
             try await actor.sync(repos: settings.repos)
             lastGitHubSync = .now
             SyncHistory.update { $0.recordSuccess(.github) }
-            lastError = nil
             logger.info("GitHub sync succeeded")
         } catch is CancellationError {
             logger.debug("GitHub sync cancelled")
         } catch {
             SyncHistory.update { $0.recordFailure(.github, error: error.localizedDescription) }
-            lastError = "GitHub: \(error.localizedDescription)"
             logger.error("GitHub sync failed: \(error)")
         }
     }
@@ -165,13 +160,11 @@ public final class SyncCoordinator {
                 logger.info("Full calendar sync completed")
             }
 
-            lastError = nil
             logger.info("Calendar sync succeeded")
         } catch is CancellationError {
             logger.debug("Calendar sync cancelled")
         } catch {
             SyncHistory.update { $0.recordFailure(.calendar, error: error.localizedDescription) }
-            lastError = "Calendar: \(error.localizedDescription)"
             logger.error("Calendar sync failed: \(error)")
         }
     }
@@ -188,13 +181,11 @@ public final class SyncCoordinator {
         do {
             _ = try await Backup.run(keep: settings.backupKeep)
             SyncHistory.update { $0.recordSuccess(.backup) }
-            backupError = nil
             logger.info("Backup succeeded")
         } catch is CancellationError {
             logger.debug("Backup cancelled")
         } catch {
             SyncHistory.update { $0.recordFailure(.backup, error: error.localizedDescription) }
-            backupError = "Backup: \(error.localizedDescription)"
             logger.error("Backup failed: \(error)")
         }
     }

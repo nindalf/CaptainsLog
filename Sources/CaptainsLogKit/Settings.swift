@@ -77,6 +77,20 @@ public final class AppSettings: @unchecked Sendable {
         }
     }
 
+    /// Dashboard setup steps, by id, the user chose to skip.
+    public var skippedSetupSteps: [String] {
+        get {
+            access(keyPath: \.skippedSetupSteps)
+            return defaults.stringArray(forKey: "skippedSetupSteps") ?? []
+        }
+        set {
+            withMutation(keyPath: \.skippedSetupSteps) {
+                defaults.set(newValue, forKey: "skippedSetupSteps")
+            }
+            logger.debug("Updated skipped setup steps: \(newValue)")
+        }
+    }
+
     public var calendarAllowlist: [String] {
         get {
             access(keyPath: \.calendarAllowlist)
