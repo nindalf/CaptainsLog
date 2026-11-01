@@ -9,7 +9,7 @@ public enum SourceSetup: Int, Comparable, Sendable {
     case notLoggedIn
     /// Logged in, but without the scope the source reads (gws logged in for other APIs).
     case missingScope
-    /// Nothing to sync yet: no repos in Settings › Sync.
+    /// Nothing to sync yet: no repos added on the Pull Requests tab.
     case notConfigured
     case ready
 

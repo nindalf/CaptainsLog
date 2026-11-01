@@ -93,12 +93,35 @@ struct PRListView: View {
     }
 
     var body: some View {
+        // Setup and the repo bar stay outside the list, so its key handlers don't take a field's Return and arrows.
+        VStack(spacing: 0) {
+            if let setup, allPRs.isEmpty {
+                SetupInstructionView(instruction: setup)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 40)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            } else {
+                if let setup {
+                    SetupInstructionView(instruction: setup, style: .banner)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                } else if !settings.repos.isEmpty {
+                    PRRepoBar()
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                        .padding(.bottom, 2)
+                }
+                prList
+            }
+        }
+        .navigationTitle("Pull Requests")
+        .toolbar { toolbarContent }
+    }
+
+    private var prList: some View {
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                if let setup, !allPRs.isEmpty {
-                    SetupInstructionView(instruction: setup, style: .banner)
-                        .padding(.top, 12)
-                } else if syncCoordinator.history.sources[.github]?.isFailing == true {
+                if syncCoordinator.history.sources[.github]?.isFailing == true {
                     SyncStatusLabel(source: .github)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 12)
@@ -168,8 +191,6 @@ struct PRListView: View {
         .onKeyPress(.escape) { handleEscape() }
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1); return .handled }
         .onKeyPress(.downArrow, phases: [.down, .repeat]) { _ in moveSelection(by: 1); return .handled }
-        .navigationTitle("Pull Requests")
-        .toolbar { toolbarContent }
         .animation(.snappy(duration: 0.18), value: expandedID)
     }
 
@@ -179,9 +200,7 @@ struct PRListView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if let setup, allPRs.isEmpty {
-            SetupInstructionView(instruction: setup)
-        } else if syncCoordinator.githubSetup == .ready, syncCoordinator.history.sources[.github]?.lastSuccess == nil {
+        if syncCoordinator.githubSetup == .ready, syncCoordinator.history.sources[.github]?.lastSuccess == nil {
             VStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text("Syncing pull requests from \(settings.repos.formatted(.list(type: .and)))")

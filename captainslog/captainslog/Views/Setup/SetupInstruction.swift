@@ -8,8 +8,8 @@ struct SetupInstruction {
     let title: String
     let message: String
     var command: String?
-    /// Opens this Settings tab instead of giving a command.
-    var settingsTab: SettingsTab?
+    /// Asks for a repo in place, instead of giving a command.
+    var addsRepo = false
 
     static func github(_ setup: SourceSetup?) -> SetupInstruction? {
         switch setup {
@@ -25,9 +25,9 @@ struct SetupInstruction {
                 command: "gh auth login")
         case .notConfigured:
             SetupInstruction(
-                title: "Choose repos to sync",
-                message: "Add the repos whose pull requests you want to follow, as org/repo.",
-                settingsTab: .sync)
+                title: "Choose a repo to sync",
+                message: "Add a repo whose pull requests you want to follow. You can add more later at the top of the Pull Requests tab.",
+                addsRepo: true)
         case .missingScope, .ready, nil:
             nil
         }
@@ -71,8 +71,6 @@ struct SetupInstructionView: View {
     let instruction: SetupInstruction
     var style = Style.centered
 
-    @Environment(\.openSettings) private var openSettings
-
     private var centered: Bool { style == .centered }
 
     var body: some View {
@@ -87,11 +85,8 @@ struct SetupInstructionView: View {
             if let command = instruction.command {
                 CommandBox(command: command)
             }
-            if let tab = instruction.settingsTab {
-                Button("Open Settings") {
-                    SettingsTab.selected = tab
-                    openSettings()
-                }
+            if instruction.addsRepo {
+                RepoField()
             }
         }
         .frame(maxWidth: centered ? 460 : .infinity, alignment: centered ? .center : .leading)

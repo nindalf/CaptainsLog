@@ -57,9 +57,7 @@ private struct GeneralSettingsPane: View {
 
 private struct SyncSettingsPane: View {
     @Environment(AppSettings.self) private var settings
-    @Environment(SyncCoordinator.self) private var sync
 
-    @State private var newRepo = ""
     @State private var newCalendar = ""
 
     var body: some View {
@@ -71,22 +69,6 @@ private struct SyncSettingsPane: View {
                     Text("5 min").tag(TimeInterval(300))
                     Text("15 min").tag(TimeInterval(900))
                     Text("30 min").tag(TimeInterval(1800))
-                }
-            }
-
-            Section("GitHub Repos") {
-                ForEach(settings.repos, id: \.self) { repo in
-                    RemovableRow(text: repo, monospaced: true) {
-                        settings.repos.removeAll { $0 == repo }
-                    }
-                }
-
-                HStack {
-                    TextField("org/repo", text: $newRepo)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit(addRepo)
-                    Button("Add", action: addRepo)
-                        .disabled(newRepo.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
 
@@ -127,15 +109,6 @@ private struct SyncSettingsPane: View {
                     .foregroundStyle(.secondary)
             }
         }
-        // The first repo finishes GitHub's setup, and syncs it.
-        .onChange(of: settings.repos) { Task { await sync.refreshSetup() } }
-    }
-
-    private func addRepo() {
-        let trimmed = newRepo.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty, !settings.repos.contains(trimmed) else { return }
-        settings.repos.append(trimmed)
-        newRepo = ""
     }
 
     private func addCalendar() {

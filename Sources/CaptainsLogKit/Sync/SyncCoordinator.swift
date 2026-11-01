@@ -107,6 +107,12 @@ public final class SyncCoordinator {
         if calendarSetup == .ready, let wasCalendar, wasCalendar != .ready { syncCalendarNow() }
     }
 
+    /// The repos to sync changed: recheck, and sync so a new repo's PRs show at once.
+    public func reposChanged() async {
+        githubSetup = await SetupCheck.github(repos: settings.repos)
+        if githubSetup == .ready, !Store.isScratch { syncGitHubNow() }
+    }
+
     // MARK: - Sync methods
 
     /// A source that isn't set up skips its sync rather than failing it: its tab says what to do instead.
