@@ -1,10 +1,12 @@
 # Security review
 
-What Captain's Log touches, for a security review before colleagues install it. Each claim names the code that backs it, so you can check it. File references are from the repo root.
-
-## What it is
-
 A personal work log for macOS: a SwiftUI app, a `captains-log` CLI and skills for Claude Code and Codex, all over one local SQLite store. The recommended install is the signed release, through Homebrew; anyone can build it from source instead (see [Distribution and supply chain](#distribution-and-supply-chain)). There's no server and no shared backend. One user per install.
+
+It reads your calendar and your GitHub activity, and you'll keep sensitive notes in it. So it promises little, and the promises are easy to check:
+
+1. **It only reads.** It fetches from GitHub (through `gh`), Google Calendar (through `gws`). It never writes to any of them or acts on your behalf.
+2. **The app calls no AI.** No LLM calls and no API spend. Claude sees your data only when you ask it something in Claude Code, which reads the store through the CLI.
+3. **Your data stays on company hardware.** Everything lives in one SQLite file on your laptop. Backups go to your work Google Drive, encrypted so nobody else can read them. Nothing goes to iCloud.
 
 ## Data it holds
 

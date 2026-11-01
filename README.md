@@ -8,7 +8,7 @@ A Mac app that keeps your work in one place. It pulls in your pull requests, rev
 brew install --cask nindalf/tap/captains-log
 ```
 
-That installs the app, the `captains-log` CLI and the skills, and `brew upgrade` keeps all three current. Then open the app. Each tab says what it still needs, such as `brew install gh` or a login, and the Dashboard walks you through the rest: backups, importing your team, and your first weekly review.
+That installs the app, the `captains-log` CLI and the skills, and `brew upgrade` keeps all three current.
 
 ## What you get
 
@@ -40,20 +40,10 @@ The `captains-log` skill answers from your store and nothing else. Read commands
 
 The CLI works on its own too. Try `captains-log feed --pretty` for the past week, or `captains-log --help` for everything. [`docs/cli.md`](docs/cli.md) has the full reference.
 
-## Reviewing the code
-
-It reads your calendar and your GitHub activity, and you'll keep sensitive notes in it. So it promises little, and the promises are easy to check:
-
-1. **It only reads.** It fetches from GitHub (through `gh`), Google Calendar (through `gws`). It never writes to any of them or acts on your behalf.
-2. **The app calls no AI.** No LLM calls and no API spend. Claude sees your data only when you ask it something in Claude Code, which reads the store through the CLI.
-3. **Your data stays on company hardware.** Everything lives in one SQLite file on your laptop. Backups go to your work Google Drive, encrypted so nobody else can read them. Nothing goes to iCloud.
-
-Learn more in [`docs/security.md`](docs/security.md).
-
 ## Your data
 
 - **Where it is:** `~/Library/Application Support/CaptainsLog/`, one SQLite file shared by the app and the CLI. `captains-log status` shows it. macOS doesn't sync this folder to iCloud.
-- **Backups:** once a day by default (Settings → Backups goes down to hourly) the app takes a consistent snapshot of the store (safe while it's running), compresses it and encrypts it with [age](https://age-encryption.org) into `~/Google Drive/My Drive/CaptainsLog backups/`, named by date and time. It keeps the newest 30 (change it in Settings). Back Up Now in Settings takes one now. A failing backup shows in the menu bar, and Claude mentions it when the last one is more than a week old.
+- **Backups:** once a day by default (Settings → Backups goes down to hourly) the app takes a consistent snapshot of the store, compresses it and encrypts it with [age](https://age-encryption.org) into `~/Google Drive/My Drive/CaptainsLog backups/`, named by date and time. It keeps the newest 30 (change it in Settings). 
 - **Your passphrase is the only way back in.** Setting up backups encrypts the backup key with it. The key sits beside the backups, but it's useless without the passphrase. Forget the passphrase and every backup is unreadable.
 - **Restoring:** run `captains-log restore` in a terminal. It asks you to quit the app, lists your backups newest first, and asks for the passphrase. It checks the backup is sound before changing anything, then moves your current data aside to `CaptainsLog-before-restore-<time>` (next to the data folder) rather than deleting it.
 
@@ -68,4 +58,4 @@ If you want to keep pulling in improvements and sending yours back, stay close t
 
 If you build something others would want, open a PR. If you'd rather go your own way, that's fine too.
 
-To build it yourself, see [`docs/building-from-source.md`](docs/building-from-source.md). Before working on the code, read [`docs/overview.md`](docs/overview.md); bugs and planned work are in the [issues](https://github.com/nindalf/CaptainsLog/issues). Run the tests with `just test` (needs `brew install xcbeautify`).
+To build it yourself, see [`docs/building-from-source.md`](docs/building-from-source.md). Before working on the code, read [`docs/overview.md`](docs/overview.md); bugs and planned work are in the [issues](https://github.com/nindalf/CaptainsLog/issues). 
