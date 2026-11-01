@@ -3,14 +3,28 @@ import CaptainsLogKit
 
 /// The Settings window (Cmd-,), one pane per tab.
 struct SettingsView: View {
+    @AppStorage(SettingsTab.storageKey) private var selection = SettingsTab.general
+
     var body: some View {
-        TabView {
-            Tab("General", systemImage: "gearshape") { GeneralSettingsPane() }
-            Tab("Sidebar", systemImage: "sidebar.left") { settingsPane { SidebarSettingsSection() } }
-            Tab("Sync", systemImage: "arrow.triangle.2.circlepath") { SyncSettingsPane() }
-            Tab("Backups", systemImage: "externaldrive") { settingsPane { BackupSettingsSection() } }
+        TabView(selection: $selection) {
+            Tab("General", systemImage: "gearshape", value: .general) { GeneralSettingsPane() }
+            Tab("Sidebar", systemImage: "sidebar.left", value: .sidebar) { settingsPane { SidebarSettingsSection() } }
+            Tab("Sync", systemImage: "arrow.triangle.2.circlepath", value: .sync) { SyncSettingsPane() }
+            Tab("Backups", systemImage: "externaldrive", value: SettingsTab.backups) { settingsPane { BackupSettingsSection() } }
         }
         .frame(width: 520)
+    }
+}
+
+/// Kept in UserDefaults so a link elsewhere in the app can pick the tab before calling `openSettings`.
+enum SettingsTab: String {
+    case general, sidebar, sync, backups
+
+    static let storageKey = "settingsTab"
+
+    static var selected: SettingsTab {
+        get { UserDefaults.standard.string(forKey: storageKey).flatMap(SettingsTab.init) ?? .general }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: storageKey) }
     }
 }
 
@@ -43,6 +57,7 @@ private struct GeneralSettingsPane: View {
 
 private struct SyncSettingsPane: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(SyncCoordinator.self) private var sync
 
     @State private var newRepo = ""
     @State private var newCalendar = ""
@@ -112,6 +127,8 @@ private struct SyncSettingsPane: View {
                     .foregroundStyle(.secondary)
             }
         }
+        // The first repo finishes GitHub's setup, and syncs it.
+        .onChange(of: settings.repos) { Task { await sync.refreshSetup() } }
     }
 
     private func addRepo() {

@@ -95,6 +95,15 @@ struct PRListView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
+                if let setup, !allPRs.isEmpty {
+                    SetupInstructionView(instruction: setup, centered: false)
+                        .padding(.top, 12)
+                } else if syncCoordinator.history.sources[.github]?.isFailing == true {
+                    SyncStatusLabel(source: .github)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 12)
+                        .padding(.horizontal, 4)
+                }
                 if !authors.isEmpty {
                     authorFilter
                 }
@@ -139,8 +148,11 @@ struct PRListView: View {
                     .buttonStyle(.plain)
                 }
                 if visiblePRs.isEmpty {
-                    ContentUnavailableView("No Pull Requests", systemImage: "arrow.triangle.pull")
+                    emptyState
                         .padding(.top, 40)
+                } else if setup == nil, syncCoordinator.history.sources[.github]?.isFailing != true {
+                    SyncStatusLabel(source: .github)
+                        .padding(.vertical, 12)
                 }
             }
             .padding(.horizontal, 16)
@@ -162,6 +174,29 @@ struct PRListView: View {
     }
 
     // MARK: - Sections
+
+    private var setup: SetupInstruction? { SetupInstruction.github(syncCoordinator.githubSetup) }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if let setup, allPRs.isEmpty {
+            SetupInstructionView(instruction: setup)
+        } else if syncCoordinator.githubSetup == .ready, syncCoordinator.history.sources[.github]?.lastSuccess == nil {
+            VStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Syncing pull requests from \(settings.repos.formatted(.list(type: .and)))")
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            ContentUnavailableView {
+                Label("No Pull Requests", systemImage: "arrow.triangle.pull")
+            } description: {
+                if syncCoordinator.history.sources[.github]?.isFailing != true {
+                    SyncStatusLabel(source: .github)
+                }
+            }
+        }
+    }
 
     private var authorFilter: some View {
         FlowLayout(spacing: 6) {

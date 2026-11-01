@@ -1,9 +1,11 @@
+import AppKit
 import SwiftUI
 import SwiftData
 import CaptainsLogKit
 
 struct ContentView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(SyncCoordinator.self) private var syncCoordinator
     @State private var navigator = Navigator()
 
     // Routed through Navigator.select so a user-driven tab change clears the previous tab's stack.
@@ -34,6 +36,11 @@ struct ContentView: View {
             .id(navigator.selectedItem)
         }
         .environment(navigator)
+        // A setup step finished in Terminal shows as soon as the app comes back.
+        .task { await syncCoordinator.refreshSetup() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await syncCoordinator.refreshSetup() }
+        }
         .onAppear {
             // Open on the sidebar's first tab when the Dashboard is hidden.
             if let item = navigator.selectedItem, !settings.isShown(item) {
