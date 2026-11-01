@@ -87,7 +87,7 @@ _release-assemble treeish dir:
     ditto skills "$app/Contents/Resources/skills"
     cd / && rm -rf "$build"
 
-# Assemble the app at the version in Sources/captains-log/Version.swift from the tracked files, uncommitted changes included, sign it with Developer ID and notarize it, into .build/dist with the getting-started guide. Needs the notarytool profile `captainslog`
+# Assemble the app at the version in Sources/captains-log/Version.swift from the tracked files, uncommitted changes included, sign it with Developer ID and notarize it, into .build/dist. Needs the notarytool profile `captainslog`
 release-build:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -114,8 +114,7 @@ release-build:
     xcrun stapler staple "$app"
     spctl --assess --type execute "$app"
     ditto -c -k --keepParent "$app" "$dist/CaptainsLog-$version.zip"
-    git show "${tree:-HEAD}:docs/getting-started.md" > "$dist/getting-started.md"
-    ls -1 "$dist/CaptainsLog-$version.zip" "$dist/getting-started.md"
+    ls -1 "$dist/CaptainsLog-$version.zip"
 
 # Rebuild release v<version> from its tag, with the tag's own build step, and compare it with the published zip. Signatures are normalised, and BuildMachineOSBuild ignored. Needs the tag locally and the Xcode the release was built with
 verify-release version:
@@ -175,7 +174,7 @@ release version:
     git tag "$tag"
     git push --quiet origin main "$tag"
     gh release create "$tag" --verify-tag --title "$tag" --generate-notes \
-        .build/dist/CaptainsLog-$version.zip .build/dist/getting-started.md
+        .build/dist/CaptainsLog-$version.zip
     {{just_executable()}} publish-cask
 
 # Copy homebrew/captains-log.rb into github.com/nindalf/homebrew-tap and push it. `release` runs it; rerun it if that step failed

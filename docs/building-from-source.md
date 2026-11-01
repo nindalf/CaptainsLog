@@ -12,4 +12,4 @@ just install-app        # builds the app and CLI, installs them to /Applications
 
 It uses `sudo` only to copy the app into `/Applications`, if your account can't write there. Grant yourself admin with the Privileges app first. Don't run the whole recipe with `sudo`: the build folder would end up owned by root.
 
-Rerun it after pulling or making changes.
+Rerun it after pulling or making changes. Then open the app: its tabs and Dashboard walk you through logging in to GitHub and Google Calendar, backups and the rest.

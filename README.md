@@ -8,7 +8,7 @@ A Mac app that keeps your work in one place. It pulls in your pull requests, rev
 brew install --cask nindalf/tap/captains-log
 ```
 
-That installs the app, the `captains-log` CLI and the skills, and `brew upgrade` keeps all three current. [`docs/getting-started.md`](docs/getting-started.md) walks through the rest step by step, from a fresh Mac to your first weekly review.
+That installs the app, the `captains-log` CLI and the skills, and `brew upgrade` keeps all three current. Then open the app. Each tab says what it still needs, such as `brew install gh` or a login, and the Dashboard walks you through the rest: backups, importing your team, and your first weekly review.
 
 ## What you get
 
