@@ -19,23 +19,28 @@ struct InterviewListView: View {
     }
 
     var body: some View {
-        List {
-            ForEach(monthGroups) { group in
-                Section {
-                    ForEach(group.interviews) { interview in
-                        NavigationLink(value: interview) {
-                            row(interview)
-                        }
-                        .contextMenu {
-                            Button("Delete Interview…", systemImage: "trash", role: .destructive) {
-                                pendingDelete = .interview(interview)
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
+                ForEach(monthGroups) { group in
+                    Section {
+                        ForEach(group.interviews) { interview in
+                            NavigationRow(value: interview) {
+                                row(interview)
+                            }
+                            .contextMenu {
+                                Button("Delete Interview…", systemImage: "trash", role: .destructive) {
+                                    pendingDelete = .interview(interview)
+                                }
                             }
                         }
+                    } header: {
+                        header(group)
                     }
-                } header: {
-                    header(group)
                 }
             }
+            .contentColumn()
+        }
+        .overlay {
             if interviews.isEmpty {
                 ContentUnavailableView("No Interviews", systemImage: "person.badge.clock")
             }
@@ -55,6 +60,11 @@ struct InterviewListView: View {
             Text(group.label).font(.title3.bold())
             Text(summary).font(.caption).foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 16)
+        .padding(.bottom, 6)
+        .padding(.horizontal, 4)
+        .background(.background)
     }
 
     // Plain text for the co-interviewer, not PersonLinks -- the whole row is already a

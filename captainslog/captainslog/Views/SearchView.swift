@@ -52,9 +52,8 @@ struct SearchView: View {
                     resultRow(row)
                 }
             }
-            .padding(.horizontal, 16)
+            .contentColumn()
             .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
             .animation(.snappy(duration: 0.18), value: expandedID)
         }
         .overlay { emptyState }

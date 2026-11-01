@@ -103,11 +103,11 @@ struct PRListView: View {
             } else {
                 if let setup {
                     SetupInstructionView(instruction: setup, style: .banner)
-                        .padding(.horizontal, 20)
+                        .contentColumn()
                         .padding(.top, 12)
                 } else if !settings.repos.isEmpty {
                     PRRepoBar()
-                        .padding(.horizontal, 20)
+                        .contentColumn()
                         .padding(.top, 10)
                         .padding(.bottom, 2)
                 }
@@ -178,8 +178,7 @@ struct PRListView: View {
                         .padding(.vertical, 12)
                 }
             }
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity)
+            .contentColumn()
         }
         .contentShape(Rectangle())
         .onTapGesture { collapseCard() }

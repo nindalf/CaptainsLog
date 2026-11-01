@@ -144,7 +144,7 @@ struct DashboardView: View {
             TodoListContent(
                 scope: .smart(.today),
                 addTick: todoAddTick,
-                horizontalPadding: 0,
+                fillsWidth: true,
                 focusesOnAppear: false,
                 fittedHeightLimit: 360
             )
@@ -156,7 +156,7 @@ struct DashboardView: View {
             LogListContent(
                 typeFilter: .constant(nil),
                 addTick: logAddTick,
-                horizontalPadding: 0,
+                fillsWidth: true,
                 focusesOnAppear: false,
                 includesCompletedTodos: false
             )

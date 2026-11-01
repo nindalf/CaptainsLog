@@ -62,7 +62,7 @@ struct ProjectHeader: View {
             // Size to the notes rather than taking all the height on offer, which pushed the todos down.
             .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 24)
+        .contentColumn()
         .padding(.top, 16)
         .padding(.bottom, 8)
         .task(id: project.id) {

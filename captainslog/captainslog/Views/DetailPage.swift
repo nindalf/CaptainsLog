@@ -1,10 +1,9 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// A detail page laid out as a document: a centred column that scrolls, holding a `DetailHeader`
+/// A detail page laid out as a document: the content column, scrolling, holding a `DetailHeader`
 /// and `DetailSection`s. Replaces the grouped `Form`, whose rows push values far from their labels.
 struct DetailPage<Content: View>: View {
-    var maxWidth: CGFloat = 760
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -12,10 +11,8 @@ struct DetailPage<Content: View>: View {
             VStack(alignment: .leading, spacing: 24) {
                 content
             }
-            .frame(maxWidth: maxWidth, alignment: .leading)
-            .padding(.horizontal, 28)
+            .contentColumn()
             .padding(.vertical, 20)
-            .frame(maxWidth: .infinity)
         }
         // The page's own title replaces the toolbar's.
         .navigationTitle("")

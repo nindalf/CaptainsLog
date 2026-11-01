@@ -105,24 +105,28 @@ struct MeetingListView: View {
     }
 
     private var meetingList: some View {
-        List {
-            ForEach(meetings) { meeting in
-                NavigationLink(value: meeting) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(meeting.title).font(.headline)
-                        HStack {
-                            Text(DateLabel.dayTime(meeting.date))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if !meeting.attendees.isEmpty {
-                                Text("^[\(meeting.attendees.count) attendee](inflect: true)")
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(meetings) { meeting in
+                    NavigationRow(value: meeting) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(meeting.title).font(.headline)
+                            HStack {
+                                Text(DateLabel.dayTime(meeting.date))
                                     .font(.caption)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
+                                if !meeting.attendees.isEmpty {
+                                    Text("^[\(meeting.attendees.count) attendee](inflect: true)")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
                             }
                         }
                     }
                 }
             }
+            .contentColumn()
+            .padding(.vertical, 8)
         }
     }
 }

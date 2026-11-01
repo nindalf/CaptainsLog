@@ -40,12 +40,16 @@ struct PeopleListView: View {
                         : "No one matches \"\(searchText)\".")
                 )
             } else {
-                List {
-                    ForEach(people) { person in
-                        NavigationLink(value: person) {
-                            PersonRow(person: person)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(people) { person in
+                            NavigationRow(value: person) {
+                                PersonRow(person: person)
+                            }
                         }
                     }
+                    .contentColumn()
+                    .padding(.vertical, 8)
                 }
             }
         }

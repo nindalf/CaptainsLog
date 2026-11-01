@@ -9,7 +9,8 @@ struct TodoListContent: View {
     var requestedScope: TodoSelection
     /// Incremented by the host to request a new draft.
     var addTick: Int = 0
-    var horizontalPadding: CGFloat = 16
+    /// The Dashboard pane fills its card rather than sitting in the content column.
+    var fillsWidth = false
     var focusesOnAppear: Bool = true
     /// When set, the list is only as tall as its rows, up to this height, rather than taking all
     /// the height on offer. The Dashboard sets it so a short Today leaves no gap.
@@ -23,13 +24,13 @@ struct TodoListContent: View {
     init(
         scope: TodoSelection,
         addTick: Int = 0,
-        horizontalPadding: CGFloat = 16,
+        fillsWidth: Bool = false,
         focusesOnAppear: Bool = true,
         fittedHeightLimit: CGFloat? = nil
     ) {
         self.requestedScope = scope
         self.addTick = addTick
-        self.horizontalPadding = horizontalPadding
+        self.fillsWidth = fillsWidth
         self.focusesOnAppear = focusesOnAppear
         self.fittedHeightLimit = fittedHeightLimit
         _scope = State(initialValue: scope)
@@ -301,8 +302,7 @@ struct TodoListContent: View {
                 emptyState
             }
         }
-        .padding(.horizontal, horizontalPadding)
-        .frame(maxWidth: .infinity)
+        .contentColumn(!fillsWidth)
         .coordinateSpace(name: "todoList")
         .animation(.snappy(duration: 0.18), value: liveItems)
     }

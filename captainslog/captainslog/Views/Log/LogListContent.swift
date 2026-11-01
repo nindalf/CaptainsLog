@@ -8,7 +8,8 @@ struct LogListContent: View {
     @Binding var typeFilter: FeedItemType?
     /// Incremented by the host to request a new draft.
     var addTick: Int = 0
-    var horizontalPadding: CGFloat = 16
+    /// The Dashboard pane fills its card rather than sitting in the content column.
+    var fillsWidth = false
     var focusesOnAppear: Bool = true
     /// Off on the Dashboard, whose Today list already shows them.
     var includesCompletedTodos = true
@@ -127,8 +128,7 @@ struct LogListContent: View {
                 .padding(.top, 40)
             }
         }
-        .padding(.horizontal, horizontalPadding)
-        .frame(maxWidth: .infinity)
+        .contentColumn(!fillsWidth)
         .animation(.snappy(duration: 0.18), value: expandedID)
     }
 
