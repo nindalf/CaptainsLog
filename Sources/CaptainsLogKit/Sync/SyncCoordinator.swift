@@ -14,6 +14,12 @@ public final class SyncCoordinator {
     /// Kept apart from `lastError`, which the next successful sync clears; this stays until a backup succeeds.
     public private(set) var backupError: String?
     public private(set) var isBackingUp = false
+    /// Nil until the first check. Rechecked by `refreshSetup` and before each sync.
+    public private(set) var githubSetup: SourceSetup?
+    public private(set) var calendarSetup: SourceSetup?
+    public private(set) var backupStage: Backup.Stage?
+    /// Each source's last success and failure, reloaded after every sync and by `refreshSetup`.
+    public private(set) var history = SyncHistory.load()
 
     private let container: ModelContainer
     private let settings: AppSettings
@@ -87,11 +93,34 @@ public final class SyncCoordinator {
         }
     }
 
+    // MARK: - Setup
+
+    /// Rechecks every source's setup. The app calls it when it comes to the front, so a step finished
+    /// in the terminal shows at once, and a source that has just become ready syncs straight away.
+    public func refreshSetup() async {
+        let wasGitHub = githubSetup
+        let wasCalendar = calendarSetup
+        async let github = SetupCheck.github(repos: settings.repos)
+        async let calendar = SetupCheck.calendar()
+        (githubSetup, calendarSetup) = await (github, calendar)
+        backupStage = Backup.status().stage
+        history = SyncHistory.load()
+        guard !Store.isScratch else { return }
+        if githubSetup == .ready, let wasGitHub, wasGitHub != .ready { syncGitHubNow() }
+        if calendarSetup == .ready, let wasCalendar, wasCalendar != .ready { syncCalendarNow() }
+    }
+
     // MARK: - Sync methods
 
+    /// A source that isn't set up skips its sync rather than failing it: its tab says what to do instead.
     private func syncGitHub() async {
+        githubSetup = await SetupCheck.github(repos: settings.repos)
+        guard githubSetup == .ready else { return }
         isSyncing = true
-        defer { isSyncing = false }
+        defer {
+            isSyncing = false
+            history = SyncHistory.load()
+        }
 
         do {
             let actor = GitHubSync(modelContainer: container)
@@ -110,8 +139,13 @@ public final class SyncCoordinator {
     }
 
     private func syncCalendar() async {
+        calendarSetup = await SetupCheck.calendar()
+        guard calendarSetup == .ready else { return }
         isSyncing = true
-        defer { isSyncing = false }
+        defer {
+            isSyncing = false
+            history = SyncHistory.load()
+        }
 
         let days = settings.calendarFetchWeeks * 7
         let lastDetailedSync = computeLastDetailedSync()
@@ -146,7 +180,11 @@ public final class SyncCoordinator {
     public func backUp() async {
         guard !isBackingUp else { return }
         isBackingUp = true
-        defer { isBackingUp = false }
+        defer {
+            isBackingUp = false
+            backupStage = Backup.status().stage
+            history = SyncHistory.load()
+        }
         do {
             _ = try await Backup.run(keep: settings.backupKeep)
             SyncHistory.update { $0.recordSuccess(.backup) }

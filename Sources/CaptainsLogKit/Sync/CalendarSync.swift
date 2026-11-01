@@ -4,7 +4,7 @@ import os
 
 private let logger = Logger(subsystem: "com.nindalf.captainslog", category: "sync.calendar")
 
-private let gwsPath = "/opt/homebrew/bin/gws"
+private var gwsPath: String { get throws { try SyncTool.gws.requirePath() } }
 
 // MARK: - Agenda DTOs (all-day events)
 

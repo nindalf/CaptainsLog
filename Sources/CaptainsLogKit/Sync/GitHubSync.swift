@@ -4,7 +4,7 @@ import os
 
 private let logger = Logger(subsystem: "com.nindalf.captainslog", category: "sync.github")
 
-private let ghPath = "/opt/homebrew/bin/gh"
+private var ghPath: String { get throws { try SyncTool.gh.requirePath() } }
 
 private let prFields = [
     "number", "title", "state", "url", "createdAt", "mergedAt",
