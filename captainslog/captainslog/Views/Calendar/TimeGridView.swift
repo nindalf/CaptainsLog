@@ -153,61 +153,19 @@ struct TimeGridView: View {
     ) -> [LayoutItem] {
         guard !events.isEmpty else { return [] }
 
-        let sorted = events.sorted { a, b in
-            if a.startTime != b.startTime { return a.startTime < b.startTime }
-            return a.endTime > b.endTime
+        let slots = EventColumns.layout(events.map { ($0.startTime, $0.endTime) })
+        let laneWidth = dayWidth - 2
+
+        return zip(events, slots).map { event, slot in
+            let y = yPosition(for: event.startTime)
+            let height = max(hourHeight / 4, yPosition(for: event.endTime) - y)
+            let columnWidth = laneWidth / CGFloat(slot.columns)
+            let x = columnX + 1 + CGFloat(slot.column) * columnWidth
+            return LayoutItem(
+                event: event,
+                frame: CGRect(x: x, y: y, width: columnWidth * CGFloat(slot.span), height: height)
+            )
         }
-
-        let groups = groupOverlapping(sorted)
-        var items: [LayoutItem] = []
-
-        for group in groups {
-            let slotCount = group.count
-            let slotWidth = (dayWidth - 2) / CGFloat(slotCount)
-
-            for (slotIndex, event) in group.enumerated() {
-                let y = yPosition(for: event.startTime)
-                let height = max(
-                    hourHeight / 4,
-                    yPosition(for: event.endTime) - y
-                )
-                let x = columnX + 1 + CGFloat(slotIndex) * slotWidth
-
-                items.append(LayoutItem(
-                    event: event,
-                    frame: CGRect(x: x, y: y, width: slotWidth, height: height)
-                ))
-            }
-        }
-
-        return items
-    }
-
-    private func groupOverlapping(_ events: [CalendarEvent]) -> [[CalendarEvent]] {
-        var groups: [[CalendarEvent]] = []
-        var currentGroup: [CalendarEvent] = []
-        var groupEnd: Date = .distantPast
-
-        for event in events {
-            if event.startTime >= groupEnd {
-                if !currentGroup.isEmpty {
-                    groups.append(currentGroup)
-                }
-                currentGroup = [event]
-                groupEnd = event.endTime
-            } else {
-                currentGroup.append(event)
-                if event.endTime > groupEnd {
-                    groupEnd = event.endTime
-                }
-            }
-        }
-
-        if !currentGroup.isEmpty {
-            groups.append(currentGroup)
-        }
-
-        return groups
     }
 
     private func yPosition(for date: Date) -> CGFloat {
@@ -234,5 +192,61 @@ struct TimeGridView: View {
         if h < 12 { return "\(h) AM" }
         if h == 12 { return "12 PM" }
         return "\(h - 12) PM"
+    }
+}
+
+/// Places a day's events side by side the way Google Calendar does: each event takes the
+/// first column free at its start, so a cluster is only as wide as its peak overlap, then
+/// stretches right across columns that stay free for its whole span.
+enum EventColumns {
+    struct Slot: Equatable {
+        let column: Int
+        let span: Int
+        let columns: Int
+    }
+
+    /// Events shorter than this still draw this tall, so they lay out as if they last it.
+    static let minimumDuration: TimeInterval = 15 * 60
+
+    static func layout(_ intervals: [(start: Date, end: Date)]) -> [Slot] {
+        let spans = intervals.map { ($0.start, max($0.end, $0.start + minimumDuration)) }
+        let order = spans.indices.sorted { a, b in
+            if spans[a].0 != spans[b].0 { return spans[a].0 < spans[b].0 }
+            return spans[a].1 > spans[b].1
+        }
+        func overlaps(_ a: Int, _ b: Int) -> Bool {
+            spans[a].0 < spans[b].1 && spans[b].0 < spans[a].1
+        }
+
+        var slots = [Slot?](repeating: nil, count: spans.count)
+        var columns: [[Int]] = []
+        var clusterEnd = Date.distantPast
+
+        func closeCluster() {
+            for (column, members) in columns.enumerated() {
+                for event in members {
+                    var span = 1
+                    while column + span < columns.count,
+                          !columns[column + span].contains(where: { overlaps($0, event) }) {
+                        span += 1
+                    }
+                    slots[event] = Slot(column: column, span: span, columns: columns.count)
+                }
+            }
+            columns = []
+        }
+
+        for event in order {
+            if spans[event].0 >= clusterEnd { closeCluster() }
+            if let free = columns.firstIndex(where: { spans[$0.last!].1 <= spans[event].0 }) {
+                columns[free].append(event)
+            } else {
+                columns.append([event])
+            }
+            clusterEnd = max(clusterEnd, spans[event].1)
+        }
+        closeCluster()
+
+        return slots.map { $0! }
     }
 }
