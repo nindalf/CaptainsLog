@@ -14,12 +14,12 @@ public enum ScorecardTodo {
         !hadText && interview.hasWrittenText && linkedTodos.isEmpty
     }
 
-    /// An uninserted todo for today, above every other open todo. Private if the interview is.
+    /// An uninserted todo for today, above every other open todo. Not private, even for a private
+    /// interview: it holds only the candidate's name, which the interview's title already shows.
     public static func make(for interview: Interview, among openTodos: [Todo], now: Date = .now, calendar: Calendar = .current) -> Todo {
         let todo = Todo(title: title(for: interview))
         todo.schedule(on: now, calendar: calendar)
         todo.sortOrder = TodoOrdering.topSortOrder(among: openTodos)
-        todo.isPrivate = interview.isPrivate
         return todo
     }
 }

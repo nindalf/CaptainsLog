@@ -37,19 +37,18 @@ struct ScorecardTodoTests {
         #expect(!ScorecardTodo.isDue(hadText: false, interview: item, linkedTodos: []))
     }
 
-    @Test func theTodoIsForTodayAboveEverythingAndPrivate() {
+    @Test func theTodoIsForTodayAboveEverything() {
         let other = Todo(title: "other")
         other.sortOrder = 3
         let todo = ScorecardTodo.make(for: interview(), among: [other], now: now)
         #expect(todo.title == "Submit scorecard for Ada Lovelace")
         #expect(SmartList.of(todo, now: now) == .today)
         #expect(todo.sortOrder < other.sortOrder)
-        #expect(todo.isPrivate)
     }
 
-    @Test func aSharedInterviewGivesASharedTodo() {
+    @Test func aPrivateInterviewStillGivesASharedTodo() {
         let item = interview()
-        item.isPrivate = false
+        item.isPrivate = true
         #expect(!ScorecardTodo.make(for: item, among: [], now: now).isPrivate)
     }
 

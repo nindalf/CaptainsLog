@@ -13,6 +13,8 @@ public struct SearchHit: Sendable, Identifiable {
     /// Nil for people, open projects and undated open todos: they're current, so they sort first.
     public let date: Date?
     public let match: SearchMatch
+    /// The record's `isPrivate`; false for types that don't have one. The CLI hides private snippets.
+    public let isPrivate: Bool
 
     /// Undated hits first, by kind then title; then newest first.
     static func precedes(_ a: SearchHit, _ b: SearchHit) -> Bool {
@@ -42,9 +44,9 @@ public actor Searcher {
         let number = terms.lazy.compactMap { Int($0.trimmingPrefix("#")) }.first ?? -1
         var hits: [SearchHit] = []
 
-        func add(_ kind: SearchKind, _ id: UUID, _ title: String, _ date: Date?, _ fields: [(name: String, text: String?)]) {
+        func add(_ kind: SearchKind, _ id: UUID, _ title: String, _ date: Date?, isPrivate: Bool = false, _ fields: [(name: String, text: String?)]) {
             guard let match = SearchMatch.first(query, in: fields) else { return }
-            hits.append(SearchHit(kind: kind, id: id, title: title, date: date, match: match))
+            hits.append(SearchHit(kind: kind, id: id, title: title, date: date, match: match, isPrivate: isPrivate))
         }
 
         for p in try context.fetch(FetchDescriptor<Person>(predicate: #Predicate {
@@ -66,13 +68,13 @@ public actor Searcher {
             $0.trashedDate == nil
                 && ($0.title.localizedStandardContains(q) || ($0.notes?.localizedStandardContains(q) ?? false))
         })) {
-            add(.todo, t.id, t.title, t.completedDate ?? t.dueDate, [("title", t.title), ("notes", t.notes)])
+            add(.todo, t.id, t.title, t.completedDate ?? t.dueDate, isPrivate: t.isPrivate, [("title", t.title), ("notes", t.notes)])
         }
 
         for e in try context.fetch(FetchDescriptor<LogEntry>(predicate: #Predicate {
             $0.title.localizedStandardContains(q) || $0.content.localizedStandardContains(q)
         })) {
-            add(.log, e.id, e.title, e.timestamp, [("title", e.title), ("content", e.content)])
+            add(.log, e.id, e.title, e.timestamp, isPrivate: e.isPrivate, [("title", e.title), ("content", e.content)])
         }
 
         for m in try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate {
@@ -82,14 +84,14 @@ public actor Searcher {
                 || ($0.summary?.localizedStandardContains(q) ?? false)
                 || ($0.transcript?.localizedStandardContains(q) ?? false)
         })) {
-            add(.meeting, m.id, m.title, m.date, [
+            add(.meeting, m.id, m.title, m.date, isPrivate: m.isPrivate, [
                 ("title", m.title), ("summary", m.summary), ("notes", m.notes), ("prepNotes", m.prepNotes), ("transcript", m.transcript),
             ])
         }
 
         // Interviews are few, so match their text fields in Swift rather than in a predicate.
         for i in try context.fetch(FetchDescriptor<Interview>()) {
-            add(.interview, i.id, i.candidateName, i.date, [
+            add(.interview, i.id, i.candidateName, i.date, isPrivate: i.isPrivate, [
                 ("candidateName", i.candidateName), ("role", i.role), ("problemName", i.problemName),
                 ("conclusion", i.conclusion), ("rawNotes", i.rawNotes), ("upsides", i.upsides),
                 ("riskFactors", i.riskFactors), ("levelAssessment", i.levelAssessment), ("debriefNotes", i.debriefNotes),

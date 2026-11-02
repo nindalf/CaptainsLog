@@ -8,7 +8,7 @@ The Todos tab copies Things 3's macOS UX: collapsed rows, an expanded card with 
 - `schedule`: only `.someday` matters; `.inbox` and `.anytime` both mean "not Someday".
 - `sortOrder` is one order across **all** open todos; each list shows a slice of it.
 - `isTrashed` and `isCompleted` are computed from `trashedDate` and `completedDate`, so predicates test the dates.
-- A todo filed from an interview or meeting copies its `isPrivate` at creation.
+- A todo filed from an interview or meeting copies its `isPrivate` at creation. The automatic "Submit scorecard" todo is the exception: it's never private.
 
 ## Lists
 

@@ -356,7 +356,6 @@ final class DemoSeeder {
         // Every written-up interview got its scorecard todo, and the scorecard went in.
         for interview in interviews where interview.recommendation != nil {
             let todo = Todo(title: ScorecardTodo.title(for: interview))
-            todo.isPrivate = interview.isPrivate
             todo.schedule(on: interview.date, calendar: clock.calendar)
             todo.completedDate = min(interview.date.addingTimeInterval(3 * 3600), clock.now)
             insert(todo)

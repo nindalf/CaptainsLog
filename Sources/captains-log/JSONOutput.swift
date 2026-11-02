@@ -19,11 +19,19 @@ struct LogEntryDTO: Encodable {
     let source: String
     let isPrivate: Bool
     let title: String
-    let content: String
+    /// Nil in `log list` for a private entry; `show` has it.
+    let content: String?
     let tags: [String]
     /// Names of the people the entry tags.
     let people: [String]
     let externalURL: URL?
+
+    /// For lists: a private entry's content is left to `show`.
+    static func listed(_ e: LogEntry) -> LogEntryDTO {
+        let dto = from(e)
+        return e.isPrivate ? LogEntryDTO(id: dto.id, timestamp: dto.timestamp, source: dto.source, isPrivate: true, title: dto.title,
+                                         content: nil, tags: dto.tags, people: dto.people, externalURL: dto.externalURL) : dto
+    }
 
     static func from(_ e: LogEntry) -> LogEntryDTO {
         LogEntryDTO(
@@ -119,7 +127,7 @@ struct PullRequestDTO: Encodable {
 struct TodoDTO: Encodable {
     let id: UUID
     let title: String
-    let notes: String?
+    var notes: String?
     let dueDate: Date?
     let completedDate: Date?
     let trashedDate: Date?
@@ -130,6 +138,13 @@ struct TodoDTO: Encodable {
     let project: String?
     /// Names of the people the todo tags.
     let people: [String]
+
+    /// For lists: a private todo's notes are left to `show`.
+    static func listed(_ t: Todo) -> TodoDTO {
+        var dto = from(t)
+        if t.isPrivate { dto.notes = nil }
+        return dto
+    }
 
     static func from(_ t: Todo) -> TodoDTO {
         TodoDTO(
@@ -258,6 +273,19 @@ struct SearchResultDTO: Encodable {
     let id: UUID
     let title: String
     let date: Date?
+    let isPrivate: Bool
     let matchedField: String
-    let snippet: String
+    /// Nil for a private record, unless the match was in its title.
+    let snippet: String?
+
+    init(_ hit: SearchHit) {
+        type = hit.kind.rawValue
+        id = hit.id
+        title = hit.title
+        date = hit.date
+        isPrivate = hit.isPrivate
+        matchedField = hit.match.field
+        let inTitle = hit.match.field == "title" || hit.match.field == "candidateName"
+        snippet = hit.isPrivate && !inTitle ? nil : hit.match.snippet
+    }
 }

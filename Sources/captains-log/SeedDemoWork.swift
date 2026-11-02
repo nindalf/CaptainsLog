@@ -212,7 +212,7 @@ extension DemoSeeder {
 
     static let logEntries: [DemoLogEntry] = [
         DemoLogEntry(
-            slot: Slot(-6, .mon, 9, 30), source: .manual, isPrivate: true, title: "Goals", tags: ["goals"],
+            slot: Slot(-6, .mon, 9, 30), source: .manual, isPrivate: false, title: "Goals", tags: ["goals"],
             content: """
                 ## H2 goals
 
@@ -260,7 +260,7 @@ extension DemoSeeder {
             content: "Design for checking baskets against live dark store stock at checkout: the in-process ledger, the 150ms budget, the snapshot fallback above 250ms, shadow mode, and what store ops need to see. Reviewed today with Priya, Marcus, Grace and Sam; decisions are in the review notes."
         ),
         DemoLogEntry(
-            slot: Slot(-2, .fri, 16, 30), source: .manual, isPrivate: true, title: "Weekly review", tags: ["weekly-review"],
+            slot: Slot(-2, .fri, 16, 30), source: .manual, isPrivate: false, title: "Weekly review", tags: ["weekly-review"],
             content: """
                 **INC-412: stale recall list**
                 **What:** Picked up the list age alert, led the incident, fixed the parser and re-checked 14,212 orders the same morning.
@@ -334,7 +334,7 @@ extension DemoSeeder {
             content: "All five INC-412 follow-ups are in: fail-loud parsing, a 6-hour list age alert, checksums, a contract test against the feed format, and a runbook. Closed the project."
         ),
         DemoLogEntry(
-            slot: Slot(-1, .fri, 17, 30), source: .manual, isPrivate: true, title: "Weekly review", tags: ["weekly-review"],
+            slot: Slot(-1, .fri, 17, 30), source: .manual, isPrivate: false, title: "Weekly review", tags: ["weekly-review"],
             content: """
                 **INC-419: duplicate refund drafts**
                 **What:** Incident lead. Contained it within an hour, shipped the idempotency fix by lunch, ran the postmortem on Thursday.

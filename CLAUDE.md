@@ -94,7 +94,7 @@ Once a colleague has a store, every change needs a V2 and a migration stage (iss
 - **Errors**: `throws` over `Result` (use `Result` only for storing deferred outcomes); custom `Error` enum per subsystem; `LocalizedError` for user-facing; treat `CancellationError` as a sentinel.
 - **CLI**: subcommand structs conforming to `AsyncParsableCommand`; JSON to stdout by default, `--pretty` for humans; diagnostics to stderr; non-zero exit on errors; non-interactive.
 - **Models**: `final` on every `@Model class`; native enums (not raw strings); explicit `@Relationship(deleteRule:inverse:)` on every relationship; `@Attribute(.indexed)` on hot query fields.
-- **Privacy**: `isPrivate` is false by default, true for interviews. A todo filed from an interview or meeting copies its `isPrivate` when created (`LinkedTodoList`, `ScorecardTodo`). The weekly-review skill files goals and reviews private.
+- **Privacy**: `isPrivate` is false by default, true for interviews. A todo filed from an interview or meeting copies its `isPrivate` when created (`LinkedTodoList`), except the automatic scorecard todo (`ScorecardTodo`), which is never private. The CLI leaves private records' text to `show` (docs/cli.md).
 - **Logging**: `os.Logger` with subsystem `"com.nindalf.captainslog"` and a category per source (`"sync.github"`, `"search"`, etc.). Not `print`.
 
 ## Don'ts

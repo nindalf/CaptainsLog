@@ -38,8 +38,8 @@ struct SetupChecklist: View {
     @Query(Self.first(Person.self, #Predicate<Person> {
         $0.slackHandle != nil || ($0.email != nil && $0.githubHandle != nil)
     })) private var rosterPerson: [Person]
-    /// The weekly-review skill files its reviews private; tags can't go in a predicate.
-    @Query(filter: #Predicate<LogEntry> { $0.isPrivate }) private var privateEntries: [LogEntry]
+    /// Tags can't go in a predicate, so the weekly-review check filters in memory.
+    @Query private var logEntries: [LogEntry]
 
     @State private var chosen: Step?
     @State private var rosterImport: RosterImportPreview?
@@ -71,7 +71,7 @@ struct SetupChecklist: View {
         case .calendar: return sync.calendarSetup == .ready
         case .roster: return !rosterPerson.isEmpty
         case .backups: return sync.backupStage == .ready
-        case .weeklyReview: return privateEntries.contains { $0.tags.contains("weekly-review") }
+        case .weeklyReview: return logEntries.contains { $0.tags.contains("weekly-review") }
         }
     }
 

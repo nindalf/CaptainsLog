@@ -73,7 +73,10 @@ EOF
 
 ## Privacy
 
-Log entries, meetings, interviews and todos have `isPrivate`. Interviews and their todos are private by default, and so are todos filed from a private meeting; everything else isn't unless I mark it. Before putting store content anywhere others will read it (a Slack message, a doc, a PR), leave out private records. `edit` commands take `--private` / `--no-private`.
+Log entries, meetings, interviews and todos have `isPrivate`. Interviews and their todos are private by default, and so are todos filed from a private meeting; everything else isn't unless I mark it. `edit` commands take `--private` / `--no-private`.
+
+- Don't read the content of private records. Lists, `feed` and `search` already leave out their text; don't `show` them to get it. Their title, date, attendees and (for interviews) recommendation are fine to use, so you can count interviews and their hire/no-hire split, or note that a private meeting happened. Read one only when I ask about that specific record.
+- Before putting store content anywhere others will read it (a Slack message, a doc, a PR), leave out private records.
 
 ## Blind spots
 

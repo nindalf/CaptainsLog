@@ -24,7 +24,7 @@ struct Search: AsyncParsableCommand {
         }
         let context = ModelContext(try Store.makeContainer())
         let results = try Searcher.search(query, in: context).map {
-            SearchResultDTO(type: $0.kind.rawValue, id: $0.id, title: $0.title, date: $0.date, matchedField: $0.match.field, snippet: $0.match.snippet)
+            SearchResultDTO($0)
         }
         try printJSON(results, pretty: pretty)
     }
