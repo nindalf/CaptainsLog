@@ -102,8 +102,33 @@ public enum Backup {
 
     /// Backs up the store into Google Drive, then deletes all but the newest `keep`.
     public static func run(keep: Int) async throws -> Created {
-        if driveMissing { throw noDrive }
+        try await checkDrive()
         return try await create(storeDirectory: Store.directory, backupDirectory: directory, keep: keep)
+    }
+
+    /// Throws why the backup folder can't be used. When Drive quits, its folder can vanish, or stay visible while
+    /// opening a file in it fails with "Operation not permitted", which reads like a missing permission.
+    private static func checkDrive() async throws {
+        let recipient = directory.appending(path: "recipient.txt")
+        let unreadable = exists(recipient) && (try? Data(contentsOf: recipient)) == nil
+        guard driveMissing || unreadable else { return }
+        if usesRealDrive, await !isDriveRunning() {
+            throw BackupError.failed(
+                "Google Drive isn't running. Open Google Drive for desktop, check you're signed in, and try again.")
+        }
+        if driveMissing { throw noDrive }
+        throw BackupError.failed(
+            "Can't read \(path(recipient)). Check Google Drive is signed in, and that this app can read it in System Settings → Privacy & Security → Files & Folders.")
+    }
+
+    /// Whether backups go to the real Google Drive, not a sandbox's stand-in or a folder set in the environment.
+    private static var usesRealDrive: Bool {
+        let env = ProcessInfo.processInfo.environment
+        return env["CAPTAINSLOG_DRIVE_DIR"] == nil && env["CAPTAINSLOG_BACKUP_DIR"] == nil && !Store.isScratch
+    }
+
+    private static func isDriveRunning() async -> Bool {
+        (try? await runProcess("/usr/bin/pgrep", arguments: ["-x", "Google Drive"])) != nil
     }
 
     /// Encrypts a consistent snapshot of the store and `sync-history.json` to the backup key's recipient, then prunes.
