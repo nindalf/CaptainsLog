@@ -170,11 +170,6 @@ public final class AppSettings: @unchecked Sendable {
         }
     }
 
-    public var lastFullCalendarSync: Date? {
-        get { defaults.object(forKey: "lastFullCalendarSync") as? Date }
-        set { defaults.set(newValue, forKey: "lastFullCalendarSync") }
-    }
-
     public var calendarFetchWeeks: Int {
         get {
             let val = defaults.integer(forKey: "calendarFetchWeeks")

@@ -180,4 +180,87 @@ struct CalendarDeleteTests {
         #expect(todo.interview == nil)
         #expect(todo.modelContext != nil)
     }
+
+    // MARK: - removeMissing
+
+    /// Each test passes its own far-off window, so it never sees another test's events.
+    private func makeEvent(_ externalID: String, start: Date, hours: Double = 1, in context: ModelContext)
+        -> CalendarEvent
+    {
+        let event = CalendarEvent(
+            title: externalID, startTime: start, endTime: start.addingTimeInterval(hours * 3600),
+            externalID: externalID)
+        context.insert(event)
+        return event
+    }
+
+    private func day(_ string: String) -> Date {
+        ISO8601DateFormatter().date(from: string + "T00:00:00Z")!
+    }
+
+    @Test func removesEventsGoogleNoLongerReturns() throws {
+        let context = makeContext()
+        let window = DateInterval(start: day("2001-01-01"), end: day("2001-01-29"))
+        makeEvent("rm-kept", start: day("2001-01-10"), in: context)
+        makeEvent("rm-gone", start: day("2001-01-11"), in: context)
+        makeEvent("rm-before", start: day("2000-12-20"), in: context)
+        makeEvent("rm-after", start: day("2001-02-10"), in: context)
+        try context.save()
+
+        let removed = try CalendarEvent.removeMissing(from: window, keeping: ["rm-kept"], in: context)
+        try context.save()
+
+        #expect(removed == 1)
+        #expect(try fetchEvent("rm-kept", in: context) != nil)
+        #expect(try fetchEvent("rm-gone", in: context) == nil)
+        #expect(try fetchEvent("rm-before", in: context) != nil, "history outside the window is left alone")
+        #expect(try fetchEvent("rm-after", in: context) != nil)
+    }
+
+    /// Google returns an event that overlaps the window, so one that started before it is judged too.
+    @Test func judgesEventsThatOverlapTheWindowsStart() throws {
+        let context = makeContext()
+        let window = DateInterval(start: day("2002-01-01"), end: day("2002-01-29"))
+        makeEvent("overlap-kept", start: day("2001-12-20"), hours: 24 * 20, in: context)
+        makeEvent("overlap-gone", start: day("2001-12-21"), hours: 24 * 20, in: context)
+        try context.save()
+
+        try CalendarEvent.removeMissing(from: window, keeping: ["overlap-kept"], in: context)
+        try context.save()
+
+        #expect(try fetchEvent("overlap-kept", in: context) != nil)
+        #expect(try fetchEvent("overlap-gone", in: context) == nil)
+    }
+
+    @Test func nothingSeenRemovesNothing() throws {
+        let context = makeContext()
+        let window = DateInterval(start: day("2003-01-01"), end: day("2003-01-29"))
+        makeEvent("empty-fetch", start: day("2003-01-10"), in: context)
+        try context.save()
+
+        let removed = try CalendarEvent.removeMissing(from: window, keeping: [], in: context)
+
+        #expect(removed == 0)
+        #expect(try fetchEvent("empty-fetch", in: context) != nil)
+    }
+
+    @Test func removingAMissingEventKeepsItsWrittenMeeting() throws {
+        let context = makeContext()
+        let window = DateInterval(start: day("2004-01-01"), end: day("2004-01-29"))
+        makeEvent("missing-kept", start: day("2004-01-09"), in: context)
+        let event = makeEvent("missing-with-notes", start: day("2004-01-10"), in: context)
+        let meeting = Meeting(date: day("2004-01-10"), title: "Weekly sync")
+        meeting.calendarEvent = event
+        meeting.notes = "Decided to ship on Friday"
+        context.insert(meeting)
+        let meetingID = meeting.id
+        try context.save()
+
+        try CalendarEvent.removeMissing(from: window, keeping: ["missing-kept"], in: context)
+        try context.save()
+
+        #expect(try fetchEvent("missing-with-notes", in: context) == nil)
+        let survivor = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.id == meetingID })).first
+        #expect(survivor?.notes == "Decided to ship on Friday")
+    }
 }

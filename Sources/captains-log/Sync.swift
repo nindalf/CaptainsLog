@@ -56,14 +56,9 @@ struct Sync: AsyncParsableCommand {
             let settings = AppSettings()
             let calList = calendars.isEmpty ? settings.calendarAllowlist : calendars
 
-            let days = settings.calendarFetchWeeks * 7
             let actor = CalendarSync(modelContainer: container)
             do {
-                try await actor.sync(
-                    calendarAllowlist: calList,
-                    days: days,
-                    lastDetailedSync: nil
-                )
+                try await actor.sync(calendarAllowlist: calList, weeksAhead: settings.calendarFetchWeeks)
                 SyncHistory.update { $0.recordSuccess(.calendar) }
             } catch {
                 SyncHistory.update { $0.recordFailure(.calendar, error: error.localizedDescription) }
