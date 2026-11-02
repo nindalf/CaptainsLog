@@ -30,6 +30,9 @@ struct PersonDetailView: View {
         )
     }
 
+    /// Feedback, PRs and meetings show the most recent this many, the rest behind Show More.
+    private static let rowLimit = 10
+
     private var authoredPRs: [PullRequest] {
         (person.authoredPRs ?? []).sorted { $0.createdAt > $1.createdAt }
     }
@@ -73,17 +76,17 @@ struct PersonDetailView: View {
 
             if !authoredPRs.isEmpty {
                 DetailSection("Authored PRs") {
-                    DetailRows(data: authoredPRs) { pr in PRLinkRow(pr: pr) }
+                    DetailRows(data: authoredPRs, limit: Self.rowLimit) { pr in PRLinkRow(pr: pr) }
                 }
             }
             if !reviewedPRs.isEmpty {
                 DetailSection("Reviewed PRs") {
-                    DetailRows(data: reviewedPRs) { pr in PRLinkRow(pr: pr) }
+                    DetailRows(data: reviewedPRs, limit: Self.rowLimit) { pr in PRLinkRow(pr: pr) }
                 }
             }
             if !meetings.isEmpty {
                 DetailSection("Meetings") {
-                    DetailRows(data: meetings) { meeting in
+                    DetailRows(data: meetings, limit: Self.rowLimit) { meeting in
                         NavigationLink(value: meeting) {
                             titleDateRow(meeting.title, meeting.date, opens: true)
                         }
@@ -148,7 +151,7 @@ struct PersonDetailView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
             }
-            DetailRows(data: sortedFeedback) { item in
+            DetailRows(data: sortedFeedback, limit: Self.rowLimit) { item in
                 if expandedFeedbackID == item.id {
                     FeedbackEditor(
                         feedback: item,

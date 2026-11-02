@@ -145,15 +145,43 @@ extension DetailSection {
     }
 }
 
-/// Rows in a `DetailSection`, divided as a grouped form divides them.
+/// Rows in a `DetailSection`, divided as a grouped form divides them. Past `limit`, the rest wait
+/// behind a Show More row.
 struct DetailRows<Data: RandomAccessCollection, Row: View>: View where Data.Element: Identifiable {
     let data: Data
+    let limit: Int?
     @ViewBuilder var row: (Data.Element) -> Row
+    @State private var showsAll = false
+
+    init(data: Data, limit: Int? = nil, @ViewBuilder row: @escaping (Data.Element) -> Row) {
+        self.data = data
+        self.limit = limit
+        self.row = row
+    }
+
+    private var hiddenCount: Int {
+        guard let limit else { return 0 }
+        return max(data.count - limit, 0)
+    }
+
+    private var visible: [Data.Element] {
+        guard let limit, !showsAll else { return Array(data) }
+        return Array(data.prefix(limit))
+    }
 
     var body: some View {
-        ForEach(Array(data.enumerated()), id: \.element.id) { index, element in
+        ForEach(Array(visible.enumerated()), id: \.element.id) { index, element in
             if index > 0 { Divider().padding(.vertical, 6) }
             row(element)
+        }
+        if hiddenCount > 0 {
+            Divider().padding(.vertical, 6)
+            Button(showsAll ? "Show Less" : "Show \(hiddenCount) More") {
+                showsAll.toggle()
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 }
