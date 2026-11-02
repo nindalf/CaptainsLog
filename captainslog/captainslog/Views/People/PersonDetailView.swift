@@ -48,7 +48,7 @@ struct PersonDetailView: View {
 
     var body: some View {
         DetailPage {
-            DetailHeader(title: $person.name, placeholder: "Name") {
+            DetailHeader(title: $person.name, placeholder: "Name", onCommit: person.trimWhitespace) {
                 Toggle(isOn: syncsPullRequests) {
                     Text("Sync all their PRs")
                 }
@@ -60,9 +60,9 @@ struct PersonDetailView: View {
             }
 
             DetailProperties {
-                DetailTextProperty(label: "Email", prompt: "Add email", text: optionalBinding(\.email))
-                DetailTextProperty(label: "GitHub", prompt: "Add GitHub handle", text: optionalBinding(\.githubHandle))
-                DetailTextProperty(label: "Slack", prompt: "Add Slack handle", text: optionalBinding(\.slackHandle))
+                DetailTextProperty(label: "Email", prompt: "Add email", text: optionalBinding(\.email), onCommit: person.trimWhitespace)
+                DetailTextProperty(label: "GitHub", prompt: "Add GitHub handle", text: optionalBinding(\.githubHandle), onCommit: person.trimWhitespace)
+                DetailTextProperty(label: "Slack", prompt: "Add Slack handle", text: optionalBinding(\.slackHandle), onCommit: person.trimWhitespace)
             }
             .frame(maxWidth: 520, alignment: .leading)
             .padding(.top, -12)
@@ -118,6 +118,10 @@ struct PersonDetailView: View {
                 }
                 .help("Merge a duplicate person into this one")
             }
+        }
+        // A field still focused when the page goes doesn't lose focus first.
+        .onDisappear {
+            if !person.isDeleted { person.trimWhitespace() }
         }
         .sheet(isPresented: $showMergeSheet) {
             PersonMergePicker(keep: person) { other in

@@ -30,7 +30,7 @@ How the app fits together, and the decisions and rules that aren't obvious from 
 - **Sync loops:** each source runs its own `Task.sleep` loop in the app. Failures record per source in `SyncHistory` (`captains-log status`); GitHub saves what worked and reports the rest.
 - **History pruning:** SwiftData's persistent history can't be switched off and nothing reads it, so the app's hourly loop deletes transactions older than 14 days (`HistoryPruner`). Only the app prunes.
 - **Search** (`Searcher`) is one engine for the app and CLI: every word must start a word somewhere in the record, ignoring case and diacritics.
-- **People** pages list meaningful contacts only (linked to more than a calendar event). A roster import (`Roster`) matches by email, then GitHub, then Slack handle, and only fills empty fields.
+- **People** pages list meaningful contacts only (linked to more than a calendar event). A roster import (`Roster`) matches by email, then GitHub, then Slack handle, and only fills empty fields. Every write path trims names, emails and handles (`Person.trimWhitespace`); the detail page binds keystroke by keystroke, so it trims on Return, focus loss and leaving the page (`onCommit`), never in the binding.
 - **Markdown editor** (`Views/Markdown/Native/`): a TextKit 1 `NSTextView` that restyles only the lines an edit touches (`MarkdownLineScanner`), and writes the model in bursts, before any click or command key.
 - **Backups:** see `docs/security.md`. `age -p` only reads a terminal, so key creation runs it under `script(1)`; restore runs `age` through `runInteractiveProcess`, since `Process` puts children in a background process group that can't read the terminal.
 - **Todos and projects:** `docs/todos.md`.

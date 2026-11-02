@@ -23,13 +23,19 @@ struct DetailPage<Content: View>: View {
 struct DetailHeader<Metadata: View>: View {
     @Binding var title: String
     var placeholder: String = "Title"
+    /// Runs on Return and when the title loses focus: the binding writes every keystroke.
+    var onCommit: () -> Void = {}
     @ViewBuilder var metadata: Metadata
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField(placeholder, text: $title, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.title.bold())
+                .focused($isFocused)
+                .onSubmit(onCommit)
+                .onChange(of: isFocused) { _, focused in if !focused { onCommit() } }
             FlowLayout(spacing: 14) {
                 metadata
             }
@@ -81,6 +87,9 @@ struct DetailTextProperty: View {
     let label: String
     let prompt: String
     @Binding var text: String?
+    /// Runs on Return and when the field loses focus: the binding writes every keystroke.
+    var onCommit: () -> Void = {}
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         DetailProperty(label: label) {
@@ -90,6 +99,9 @@ struct DetailTextProperty: View {
             ), prompt: Text(prompt))
             .textFieldStyle(.plain)
             .labelsHidden()
+            .focused($isFocused)
+            .onSubmit(onCommit)
+            .onChange(of: isFocused) { _, focused in if !focused { onCommit() } }
         }
     }
 }

@@ -40,5 +40,18 @@ public final class Person {
         self.email = email
         self.slackHandle = slackHandle
         self.githubHandle = githubHandle
+        trimWhitespace()
+    }
+
+    /// Strips leading and trailing whitespace from the name, email and handles, and clears
+    /// an email or handle left empty. Call before saving an edit.
+    public func trimWhitespace() {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedName != name { name = trimmedName }
+        for keyPath in [\Person.email, \Person.slackHandle, \Person.githubHandle] {
+            guard let value = self[keyPath: keyPath] else { continue }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed != value { self[keyPath: keyPath] = trimmed.isEmpty ? nil : trimmed }
+        }
     }
 }

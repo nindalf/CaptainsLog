@@ -57,6 +57,18 @@ private struct GCalAttendee: Decodable {
         case resource
     }
 
+    // Trimmed here so the email lookup matches the trimmed value `Person` stores.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        email = try container.decode(String.self, forKey: .email).trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = try container.decodeIfPresent(String.self, forKey: .displayName)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        displayName = name?.isEmpty == false ? name : nil
+        responseStatus = try container.decodeIfPresent(String.self, forKey: .responseStatus)
+        isSelf = try container.decodeIfPresent(Bool.self, forKey: .isSelf)
+        resource = try container.decodeIfPresent(Bool.self, forKey: .resource)
+    }
+
     var emailDomain: String? {
         email.split(separator: "@").last.map { $0.lowercased() }
     }

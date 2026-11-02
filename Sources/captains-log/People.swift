@@ -83,14 +83,11 @@ struct People: AsyncParsableCommand {
         mutating func run() async throws {
             let context = ModelContext(try Store.makeContainer())
             let person = try People.person(id: id, in: context)
-            func cleaned(_ value: String) -> String? {
-                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                return trimmed.isEmpty ? nil : trimmed
-            }
-            if let name { person.name = name.trimmingCharacters(in: .whitespacesAndNewlines) }
-            if let email { person.email = cleaned(email) }
-            if let github { person.githubHandle = cleaned(github) }
-            if let slack { person.slackHandle = cleaned(slack) }
+            if let name { person.name = name }
+            if let email { person.email = email }
+            if let github { person.githubHandle = github }
+            if let slack { person.slackHandle = slack }
+            person.trimWhitespace()
             if let syncPrs {
                 if syncPrs && person.githubHandle == nil {
                     throw ValidationError("\(person.name) has no GitHub handle. Set one with --github")
