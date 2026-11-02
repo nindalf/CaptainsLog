@@ -17,7 +17,11 @@ usage: ui <command>
   press <label> [--nth N]  click the centre of the Nth element whose label contains <label>
   key <combo>...        e.g. return, escape, down, cmd+n, cmd+shift+k
   type <text>           type text into the focused element
+  move X Y              move the cursor to X Y (eased when UI_EASE_MS is set)
+  frame W H [X Y]       resize the main window to W x H pt, optionally moving it to X Y on screen
   wait <ms>
+For recordings: UI_EASE_MS=600 glides the cursor to each click instead of jumping, and
+UI_TYPE_MS=70 types at a human pace.
 """
 
 struct Failure: Error, CustomStringConvertible {
@@ -34,7 +38,9 @@ let shotDir = cwd.appending(path: ".build/ui/shots")
 // MARK: - Target app and windows
 
 func sandboxApp() -> NSRunningApplication? {
-    NSRunningApplication.runningApplications(withBundleIdentifier: Bundle(url: appURL)?.bundleIdentifier ?? "")
+    // UI_PID targets one process, e.g. a second instance of an app that's already running.
+    if let pid = env["UI_PID"].flatMap(pid_t.init) { return NSRunningApplication(processIdentifier: pid) }
+    return NSRunningApplication.runningApplications(withBundleIdentifier: Bundle(url: appURL)?.bundleIdentifier ?? "")
         .first { $0.bundleURL?.resolvingSymlinksInPath().path(percentEncoded: false).trimmingSuffix("/") == appURL.resolvingSymlinksInPath().path(percentEncoded: false).trimmingSuffix("/") }
 }
 
@@ -139,9 +145,33 @@ func toGlobal(_ app: NSRunningApplication, _ x: Double, _ y: Double) throws -> C
     return CGPoint(x: origin.x + x, y: origin.y + y)
 }
 
+let easeMS = Int(env["UI_EASE_MS"] ?? "") ?? 0
+let typeMS = Int(env["UI_TYPE_MS"] ?? "") ?? 15
+
+/// Glides from the current cursor position with ease-in-out, so recordings don't show the cursor jump.
+func glide(to point: CGPoint) {
+    let from = CGEvent(source: nil)?.location ?? point
+    let distance = hypot(point.x - from.x, point.y - from.y)
+    guard easeMS > 0, distance > 2 else {
+        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+        return
+    }
+    // Short hops take less time than long ones, but never under a third of the full duration.
+    let ms = Double(easeMS) * max(0.35, min(1, distance / 700))
+    let steps = max(10, Int(ms / 8))
+    for i in 1...steps {
+        let t = Double(i) / Double(steps)
+        let e = t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2
+        let p = CGPoint(x: from.x + (point.x - from.x) * e, y: from.y + (point.y - from.y) * e)
+        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+        usleep(useconds_t(ms * 1000 / Double(steps)))
+    }
+    usleep(120_000)
+}
+
 func mouse(_ point: CGPoint, button: CGMouseButton, clicks: Int, flags: CGEventFlags = []) {
     let (down, up): (CGEventType, CGEventType) = button == .right ? (.rightMouseDown, .rightMouseUp) : (.leftMouseDown, .leftMouseUp)
-    CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: button)?.post(tap: .cghidEventTap)
+    glide(to: point)
     usleep(50_000)
     for n in 1...clicks {
         for type in [down, up] {
@@ -195,8 +225,27 @@ func type(_ text: String) {
             e?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
             e?.post(tap: .cghidEventTap)
         }
-        usleep(15_000)
+        // A little jitter reads as typing rather than a machine.
+        let base = Double(typeMS)
+        usleep(useconds_t(1000 * (typeMS > 15 ? base * Double.random(in: 0.6...1.5) : base)))
     }
+}
+
+func frameCommand(_ args: [String]) throws {
+    try requireTrust()
+    let n = args.compactMap(Double.init)
+    guard n.count == 2 || n.count == 4 else { throw Failure("expected W H [X Y]") }
+    let app = try requireApp()
+    let w = try axMainWindow(app)
+    if n.count == 4 {
+        var p = CGPoint(x: n[2], y: n[3])
+        if let v = AXValueCreate(.cgPoint, &p) { AXUIElementSetAttributeValue(w, kAXPositionAttribute as CFString, v) }
+    }
+    var s = CGSize(width: n[0], height: n[1])
+    if let v = AXValueCreate(.cgSize, &s) { AXUIElementSetAttributeValue(w, kAXSizeAttribute as CFString, v) }
+    usleep(200_000)
+    let b = try mainWindow(pid: app.processIdentifier).bounds
+    print("window \(Int(b.width))x\(Int(b.height)) pt at \(Int(b.minX)),\(Int(b.minY))")
 }
 
 // MARK: - Commands
@@ -376,6 +425,11 @@ do {
         try requireTrust()
         activate(try requireApp())
         type(rest.joined(separator: " "))
+    case "move":
+        let n = rest.compactMap(Double.init)
+        guard n.count == 2 else { throw Failure("expected X Y") }
+        glide(to: try toGlobal(try requireApp(), n[0], n[1]))
+    case "frame": try frameCommand(rest)
     case "wait": try await Task.sleep(for: .milliseconds(Int(rest.first ?? "") ?? 500))
     default: throw Failure(usage)
     }
