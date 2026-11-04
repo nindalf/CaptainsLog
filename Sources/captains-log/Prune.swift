@@ -7,7 +7,7 @@ struct Prune: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "List or remove records past the retention set in the app's Settings",
         discussion: """
-            Lists what would go; --permanently removes it. Each kind is off until turned on in Settings › Retention: \
+            Lists what would go; --permanently removes it. Each kind is on until turned off in Settings › Retention: \
             interviews lose their written text (the record, name, level and decision stay), calendar events with no \
             written meeting or interview are deleted, and PRs are deleted by their last update on GitHub. The app \
             does the same every hour.

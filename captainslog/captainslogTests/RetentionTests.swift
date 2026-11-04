@@ -34,7 +34,7 @@ struct RetentionTests {
         context.insert(old)
         try context.save()
 
-        let expired = try ExpiredRecords.find(RetentionSettings(), now: now, in: context)
+        let expired = try ExpiredRecords.find(settings(), now: now, in: context)
         #expect(expired.isEmpty)
     }
 

@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// How long one kind of record is kept. Every rule is off until the user turns it on in Settings.
+/// How long one kind of record is kept. Every rule is on until the user turns it off in Settings.
 public struct RetentionRule: Equatable, Sendable {
     public var isEnabled: Bool
     public var days: Int
@@ -31,9 +31,9 @@ public struct RetentionSettings: Equatable, Sendable {
     public static let defaultDays = (interviews: 30, calendarEvents: 180, pullRequests: 365)
 
     public init(
-        interviews: RetentionRule = RetentionRule(isEnabled: false, days: defaultDays.interviews),
-        calendarEvents: RetentionRule = RetentionRule(isEnabled: false, days: defaultDays.calendarEvents),
-        pullRequests: RetentionRule = RetentionRule(isEnabled: false, days: defaultDays.pullRequests)
+        interviews: RetentionRule = RetentionRule(isEnabled: true, days: defaultDays.interviews),
+        calendarEvents: RetentionRule = RetentionRule(isEnabled: true, days: defaultDays.calendarEvents),
+        pullRequests: RetentionRule = RetentionRule(isEnabled: true, days: defaultDays.pullRequests)
     ) {
         self.interviews = interviews
         self.calendarEvents = calendarEvents

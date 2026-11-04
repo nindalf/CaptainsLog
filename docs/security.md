@@ -63,7 +63,7 @@ The app runs `Backup.create` (`Sources/CaptainsLogKit/Backup/Backup.swift`) once
 2. `tar -cJ` compresses it and `age -R recipient.txt` encrypts it to the user's X25519 public key. Plaintext never reaches Drive.
 3. It writes the backup under a `.partial` name and renames it when complete, then prunes to the newest 30 (configurable).
 
-Retention (Settings › Retention, off by default) clears old interview notes and deletes old calendar events and PRs from the store, but backups taken before keep them until they're pruned: up to 30 backups, a month at the default daily interval.
+Retention (Settings › Retention, on by default) clears old interview notes and deletes old calendar events and PRs from the store, but backups taken before keep them until they're pruned: up to 30 backups, a month at the default daily interval.
 
 `Backup.createKey` (Settings → Backups, or `captains-log backup-setup`) creates the key pair once with `age-keygen`. The private key is encrypted with a passphrase the user chooses (`age -p`, scrypt) and saved beside the backups as `identity.age`. The unencrypted private key exists only in memory, and in a `mkfifo -m 600` pipe inside a `0700` temporary folder on its way to `age`. The CLI reads the passphrase with `readpassphrase(3)`, so it isn't echoed or kept in shell history. Neither Google, Drive admins nor anyone else holding the folder can decrypt a backup without the passphrase. There's no recovery: a lost passphrase means lost backups.
 

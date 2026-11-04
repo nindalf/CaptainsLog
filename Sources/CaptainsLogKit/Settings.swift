@@ -173,7 +173,7 @@ public final class AppSettings: @unchecked Sendable {
     private func rule(_ kind: String, defaultDays: Int) -> RetentionRule {
         let days = defaults.integer(forKey: "retention\(kind)Days")
         return RetentionRule(
-            isEnabled: defaults.bool(forKey: "retention\(kind)Enabled"),
+            isEnabled: defaults.object(forKey: "retention\(kind)Enabled") as? Bool ?? true,
             days: RetentionRule.dayChoices.contains(days) ? days : defaultDays
         )
     }

@@ -185,7 +185,7 @@ public final class SyncCoordinator {
         }
     }
 
-    /// Removes records past the retention set in Settings. Every rule is off by default.
+    /// Removes records past the retention set in Settings. Every rule is on by default.
     private func pruneExpired() async {
         let retention = settings.retention
         guard retention.isAnyEnabled else { return }
