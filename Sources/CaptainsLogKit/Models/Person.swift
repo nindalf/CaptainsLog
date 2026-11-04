@@ -10,6 +10,8 @@ public final class Person {
     public var githubHandle: String?
     /// Sync every PR they author in the configured repos, not just the ones asking for my review.
     public var syncsPullRequests: Bool = false
+    /// The app's user. At most one person has it; set through `markAsSelf(in:)`.
+    public var isSelf: Bool = false
 
     #Index<Person>([\.email], [\.slackHandle], [\.githubHandle])
 

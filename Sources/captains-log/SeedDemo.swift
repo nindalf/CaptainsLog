@@ -135,6 +135,7 @@ final class DemoSeeder {
         for seed in Self.people {
             let person = Person(name: seed.name, email: seed.email, slackHandle: seed.key, githubHandle: seed.github)
             person.syncsPullRequests = seed.syncsPullRequests
+            person.isSelf = seed.key == "kirk"
             context.insert(person)
             people[seed.key] = person
             count("people")

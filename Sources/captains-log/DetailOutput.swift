@@ -239,6 +239,7 @@ struct PersonDetail: Encodable {
     let slackHandle: String?
     let githubHandle: String?
     let syncsPullRequests: Bool
+    let isSelf: Bool
     let feedback: [FeedbackDetail]
     let meetings: [RecordRef]
     let interviews: [RecordRef]
@@ -250,7 +251,7 @@ struct PersonDetail: Encodable {
     static func from(_ p: Person) -> PersonDetail {
         PersonDetail(
             id: p.id, name: p.name, email: p.email, slackHandle: p.slackHandle, githubHandle: p.githubHandle,
-            syncsPullRequests: p.syncsPullRequests,
+            syncsPullRequests: p.syncsPullRequests, isSelf: p.isSelf,
             feedback: (p.feedback ?? []).sorted { $0.date > $1.date }.map(FeedbackDetail.from),
             meetings: (p.meetings ?? []).sorted { $0.date > $1.date }.map(RecordRef.from),
             interviews: (p.interviews ?? []).sorted { $0.date > $1.date }.map(RecordRef.from),

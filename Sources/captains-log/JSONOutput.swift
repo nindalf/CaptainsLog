@@ -194,6 +194,7 @@ struct PersonDTO: Encodable {
     let slackHandle: String?
     let githubHandle: String?
     let syncsPullRequests: Bool
+    let isSelf: Bool
     let meetingCount: Int
     let feedbackCount: Int
 
@@ -205,6 +206,7 @@ struct PersonDTO: Encodable {
             slackHandle: p.slackHandle,
             githubHandle: p.githubHandle,
             syncsPullRequests: p.syncsPullRequests,
+            isSelf: p.isSelf,
             meetingCount: (p.meetings ?? []).count,
             feedbackCount: (p.feedback ?? []).count
         )

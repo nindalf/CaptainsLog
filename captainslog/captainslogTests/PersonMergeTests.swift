@@ -127,4 +127,39 @@ struct PersonMergeTests {
         #expect(coInterviewer.isMeaningfulContact == true)
         #expect(coInterviewer.activityScore == 1)
     }
+
+    @Test func absorbKeepsTheSelfMark() throws {
+        let context = makeContext()
+
+        let keep = Person(name: "Me", githubHandle: "me-gh")
+        let dup = Person(name: "me", email: "me@larder.co.uk")
+        context.insert(keep)
+        context.insert(dup)
+        try dup.markAsSelf(in: context)
+        try context.save()
+
+        keep.absorb(dup, in: context)
+        try context.save()
+
+        #expect(keep.isSelf)
+        #expect(try Person.me(in: context)?.id == keep.id)
+    }
+
+    @Test func markAsSelfUnmarksEveryoneElse() throws {
+        let context = makeContext()
+
+        let first = Person(name: "First")
+        let second = Person(name: "Second")
+        context.insert(first)
+        context.insert(second)
+        try first.markAsSelf(in: context)
+        try context.save()
+
+        try second.markAsSelf(in: context)
+        try context.save()
+
+        #expect(!first.isSelf)
+        #expect(second.isSelf)
+        #expect(try context.fetchCount(FetchDescriptor<Person>(predicate: #Predicate { $0.isSelf })) == 1)
+    }
 }

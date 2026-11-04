@@ -6,6 +6,8 @@ argument-hint: "[any day in the week to review; defaults to this week]"
 allowed-tools:
   - Bash(captains-log status)
   - Bash(captains-log status *)
+  - Bash(captains-log whoami)
+  - Bash(captains-log whoami --pretty)
   - Bash(captains-log show *)
   - Bash(captains-log search *)
   - Bash(captains-log feed *)

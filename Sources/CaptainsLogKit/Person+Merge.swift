@@ -72,6 +72,7 @@ extension Person {
         if slackHandle == nil { slackHandle = other.slackHandle }
         if githubHandle == nil { githubHandle = other.githubHandle }
         if other.syncsPullRequests { syncsPullRequests = true }
+        if other.isSelf { isSelf = true }
 
         context.delete(other)
     }

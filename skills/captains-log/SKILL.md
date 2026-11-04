@@ -4,6 +4,8 @@ description: Read and update my work record (meetings and 1:1s, interviews, pull
 allowed-tools:
   - Bash(captains-log status)
   - Bash(captains-log status *)
+  - Bash(captains-log whoami)
+  - Bash(captains-log whoami --pretty)
   - Bash(captains-log show *)
   - Bash(captains-log search *)
   - Bash(captains-log feed *)
@@ -22,6 +24,12 @@ allowed-tools:
 # Captain's Log
 
 `captains-log` is the CLI for my local work-tracking store, shared with the Captain's Log app. It is the only source to use: don't fill gaps from git, GitHub, Slack, Notion or the web. When the store can't answer, say so (see Blind spots).
+
+## Who I am
+
+I'm a person in the store like anyone else: an attendee on my events, the author of my PRs, the one holding feedback I received. Run `captains-log whoami` before reading people, attendees, feedback, transcripts or notes someone else wrote. `me` is that person: leave them out of "who did I meet" answers, and read their name in a transcript or someone else's notes as "I". Person records also carry `isSelf`.
+
+If `me` is null, `candidates` lists likely people with the `reason` for each. Ask me which is me, offering the likeliest few, then run `captains-log whoami --set <id>` (it asks for approval). If none of them is me, carry on and don't ask again this conversation.
 
 ## Reading
 
