@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.nindalf.captainslog", category: "syn
 private var ghPath: String { get throws { try SyncTool.gh.requirePath() } }
 
 private let prFields = [
-    "number", "title", "state", "url", "createdAt", "mergedAt",
+    "number", "title", "state", "url", "createdAt", "updatedAt", "mergedAt",
     "reviewDecision", "additions", "deletions", "author",
     "reviewRequests", "body", "isDraft",
 ].joined(separator: ",")
@@ -15,28 +15,28 @@ private let prFields = [
 /// `reviewDecision` means nothing once a PR is merged or closed, and on a page of them it is
 /// slow enough on a large monorepo to time out (a 502 after 10s).
 private let myClosedFields = [
-    "number", "title", "state", "url", "createdAt", "mergedAt",
+    "number", "title", "state", "url", "createdAt", "updatedAt", "mergedAt",
     "additions", "deletions", "author", "reviewRequests", "body", "isDraft",
 ].joined(separator: ",")
 
 private let teammateOpenFields = [
-    "number", "title", "state", "url", "createdAt",
+    "number", "title", "state", "url", "createdAt", "updatedAt",
     "reviewDecision", "additions", "deletions", "author", "isDraft",
 ].joined(separator: ",")
 
 private let teammateMergedFields = [
-    "number", "title", "state", "url", "createdAt", "mergedAt",
+    "number", "title", "state", "url", "createdAt", "updatedAt", "mergedAt",
     "additions", "deletions", "author", "isDraft",
 ].joined(separator: ",")
 
 private let reviewFields = [
-    "number", "title", "state", "url", "createdAt",
+    "number", "title", "state", "url", "createdAt", "updatedAt",
     "author", "reviewDecision", "isDraft",
 ].joined(separator: ",")
 
 /// No `reviewDecision`, which times out on merged PRs, and most PRs I've reviewed are merged.
 private let myReviewFields = [
-    "number", "title", "state", "url", "createdAt", "mergedAt",
+    "number", "title", "state", "url", "createdAt", "updatedAt", "mergedAt",
     "additions", "deletions", "author", "isDraft", "reviews",
 ].joined(separator: ",")
 
@@ -55,6 +55,7 @@ private struct GHPullRequest: Decodable, Sendable {
     let state: String
     let url: String
     let createdAt: String
+    let updatedAt: String?
     let mergedAt: String?
     let reviewDecision: String?
     let additions: Int?
@@ -83,12 +84,16 @@ private struct GHReviewRequest: Decodable, Sendable {
 
 @ModelActor
 public actor GitHubSync {
+    /// PRs last updated before this are skipped, so retention's deletes don't come back.
+    private var skipUpdatedBefore: Date?
 
-    public func sync(repos: [String]) async throws {
+    /// `skipUpdatedBefore` is the PR retention cutoff, nil while that rule is off.
+    public func sync(repos: [String], skipUpdatedBefore: Date? = nil) async throws {
         guard !repos.isEmpty else {
             logger.info("No repos configured, skipping GitHub sync")
             return
         }
+        self.skipUpdatedBefore = skipUpdatedBefore
         let teammates = try syncedAuthorHandles()
 
         // One repo failing doesn't stop the rest; what synced is saved, then the failures are thrown.
@@ -336,6 +341,8 @@ public actor GitHubSync {
     }
 
     private func upsertPR(_ ghPR: GHPullRequest, repo: String, source: PRSyncSource, myLogin: String? = nil) throws {
+        let updatedAt = ghPR.updatedAt.flatMap(parseISO8601)
+        if let skipUpdatedBefore, let updatedAt, updatedAt < skipUpdatedBefore { return }
         let number = ghPR.number
         let existing = try modelContext.fetch(
             FetchDescriptor<PullRequest>(
@@ -372,6 +379,7 @@ public actor GitHubSync {
         if let mergedAt = ghPR.mergedAt {
             pr.mergedAt = parseISO8601(mergedAt)
         }
+        if let updatedAt { pr.updatedAt = updatedAt }
         // Nil when the fetch didn't ask for the field, so keep what an earlier fetch found.
         if let additions = ghPR.additions { pr.additions = additions }
         if let deletions = ghPR.deletions { pr.deletions = deletions }

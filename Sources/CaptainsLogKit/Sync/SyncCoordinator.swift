@@ -59,6 +59,7 @@ public final class SyncCoordinator {
                 if Backup.isDue(SyncHistory.load().sources[.backup], interval: settings.backupInterval) {
                     await backUp()
                 }
+                await pruneExpired()
                 do {
                     try await Task.sleep(for: .seconds(60 * 60))
                 } catch {
@@ -126,7 +127,7 @@ public final class SyncCoordinator {
 
         do {
             let actor = GitHubSync(modelContainer: container)
-            try await actor.sync(repos: settings.repos)
+            try await actor.sync(repos: settings.repos, skipUpdatedBefore: settings.retention.pullRequests.cutoff())
             lastGitHubSync = .now
             SyncHistory.update { $0.recordSuccess(.github) }
             logger.info("GitHub sync succeeded")
@@ -181,6 +182,18 @@ public final class SyncCoordinator {
         } catch {
             SyncHistory.update { $0.recordFailure(.backup, error: error.localizedDescription) }
             logger.error("Backup failed: \(error)")
+        }
+    }
+
+    /// Removes records past the retention set in Settings. Every rule is off by default.
+    private func pruneExpired() async {
+        let retention = settings.retention
+        guard retention.isAnyEnabled else { return }
+        do {
+            let counts = try await RetentionPruner(modelContainer: container).prune(retention)
+            logger.info("Retention: cleared \(counts.interviews) interviews, deleted \(counts.calendarEvents) events and \(counts.pullRequests) PRs")
+        } catch {
+            logger.error("Retention pruning failed: \(error)")
         }
     }
 

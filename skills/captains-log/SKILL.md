@@ -76,7 +76,7 @@ EOF
 | Interview write-up | `interviews edit <id> --raw-notes -` (and `--upsides`, `--risk-factors`, `--conclusion`, `--recommendation`) |
 
 - An empty value clears a field. `edit` commands change only the fields passed.
-- Never run `delete --permanently`, `empty-trash`, `people merge --yes`, `people import --yes` or `projects complete --complete-todos` unless I asked for that specific action. Prefer `todos trash`, which is recoverable.
+- Never run `delete --permanently`, `prune --permanently`, `empty-trash`, `people merge --yes`, `people import --yes` or `projects complete --complete-todos` unless I asked for that specific action. Prefer `todos trash`, which is recoverable.
 - Never run the `seed-*` commands, and never set `CAPTAINSLOG_STORE_DIR` unless I ask: it points the CLI at a different store.
 
 ## Privacy
@@ -94,6 +94,7 @@ The store holds only what sync brings in and what I write:
 - Calendar: allowlisted calendars, from when syncing started.
 - Meetings and interviews: only what I wrote. One without notes is just a title, a time and attendees.
 - Slack, Notion, Linear, documents and incidents: not ingested.
+- Retention: if I turned it on in Settings › Retention, old interviews lose their written text (name, level and decision stay), and old calendar events without notes and old PRs are deleted. `captains-log prune` lists what the next run removes and which rules are on (`retentionDays`, null when off). Missing old records may be this, not a sync gap.
 - Freshness: data is as of the last sync, which the app runs on a timer. See below.
 
 ## Freshness

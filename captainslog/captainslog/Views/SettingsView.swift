@@ -11,6 +11,7 @@ struct SettingsView: View {
             Tab("Sidebar", systemImage: "sidebar.left", value: .sidebar) { settingsPane { SidebarSettingsSection() } }
             Tab("Sync", systemImage: "arrow.triangle.2.circlepath", value: .sync) { SyncSettingsPane() }
             Tab("Backups", systemImage: "externaldrive", value: SettingsTab.backups) { settingsPane { BackupSettingsSection() } }
+            Tab("Retention", systemImage: "clock.badge.xmark", value: SettingsTab.retention) { settingsPane { RetentionSettingsSection() } }
         }
         .frame(width: 520)
     }
@@ -18,7 +19,7 @@ struct SettingsView: View {
 
 /// Kept in UserDefaults so a link elsewhere in the app can pick the tab before calling `openSettings`.
 enum SettingsTab: String {
-    case general, sidebar, sync, backups
+    case general, sidebar, sync, backups, retention
 
     static let storageKey = "settingsTab"
 

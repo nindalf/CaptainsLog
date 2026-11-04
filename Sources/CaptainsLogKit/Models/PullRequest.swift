@@ -19,6 +19,8 @@ public final class PullRequest {
     public var reviewDecision: ReviewDecision?
     public var createdAt: Date
     public var mergedAt: Date?
+    /// When GitHub last saw a change to it. Nil for PRs not synced since it was added.
+    public var updatedAt: Date?
     public var additions: Int?
     public var deletions: Int?
     public var isAuthoredByMe: Bool

@@ -39,7 +39,7 @@ struct Sync: AsyncParsableCommand {
             } else {
                 let actor = GitHubSync(modelContainer: container)
                 do {
-                    try await actor.sync(repos: repoList)
+                    try await actor.sync(repos: repoList, skipUpdatedBefore: settings.retention.pullRequests.cutoff())
                     SyncHistory.update { $0.recordSuccess(.github) }
                 } catch {
                     SyncHistory.update { $0.recordFailure(.github, error: error.localizedDescription) }

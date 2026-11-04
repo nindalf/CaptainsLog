@@ -46,6 +46,7 @@ struct CaptainsLogApp: App {
 
         Settings {
             SettingsView()
+                .modelContainer(container)
                 .environment(settings)
                 .environment(syncCoordinator)
         }

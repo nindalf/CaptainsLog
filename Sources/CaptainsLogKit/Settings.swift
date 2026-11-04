@@ -148,6 +148,41 @@ public final class AppSettings: @unchecked Sendable {
         }
     }
 
+    /// Separate keys per rule, so a sandbox can try one as a launch argument
+    /// (`-retentionPullRequestsEnabled YES`), which is never saved.
+    public var retention: RetentionSettings {
+        get {
+            access(keyPath: \.retention)
+            let defaultDays = RetentionSettings.defaultDays
+            return RetentionSettings(
+                interviews: rule("Interviews", defaultDays: defaultDays.interviews),
+                calendarEvents: rule("CalendarEvents", defaultDays: defaultDays.calendarEvents),
+                pullRequests: rule("PullRequests", defaultDays: defaultDays.pullRequests)
+            )
+        }
+        set {
+            withMutation(keyPath: \.retention) {
+                setRule(newValue.interviews, "Interviews")
+                setRule(newValue.calendarEvents, "CalendarEvents")
+                setRule(newValue.pullRequests, "PullRequests")
+            }
+            logger.debug("Updated retention: \(String(describing: newValue))")
+        }
+    }
+
+    private func rule(_ kind: String, defaultDays: Int) -> RetentionRule {
+        let days = defaults.integer(forKey: "retention\(kind)Days")
+        return RetentionRule(
+            isEnabled: defaults.bool(forKey: "retention\(kind)Enabled"),
+            days: RetentionRule.dayChoices.contains(days) ? days : defaultDays
+        )
+    }
+
+    private func setRule(_ rule: RetentionRule, _ kind: String) {
+        defaults.set(rule.isEnabled, forKey: "retention\(kind)Enabled")
+        defaults.set(rule.days, forKey: "retention\(kind)Days")
+    }
+
     /// Control-Space opens the quick entry panel from any app. Off by default.
     public var quickEntryEnabled: Bool {
         get {
