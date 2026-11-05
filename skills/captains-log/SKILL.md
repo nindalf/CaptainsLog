@@ -33,15 +33,16 @@ If `me` is null, ask which of the likeliest `candidates` I am, then run `captain
 
 ## Reading
 
-Output is JSON on stdout (pipe it through `jq`); errors go to stderr with a non-zero exit. Pass a record's `id` to the next command. Always spell out `list` (`meetings list`, not `meetings`): reads are pre-approved by name.
+Output is JSON on stdout, laid out to read as printed: a list has one record per line, an object one field per line, keys always in the same order. Read it directly rather than through `jq`. Errors go to stderr with a non-zero exit. Pass a record's `id` to the next command. Always spell out `list` (`meetings list`, not `meetings`): reads are pre-approved by name.
 
-Lists and search are compact. `show <id>` prints any record in full, with the ids of linked records. Read it before summarising or quoting.
+Lists and search are compact. `show <id> [<id>...]` prints records in full, with the ids of linked records. Read it before summarising or quoting.
 
 | Question | Start with |
 |---|---|
 | What did I do between two dates? | `feed --from D --to D`: log, meetings and interviews with notes, my merged PRs, completed todos |
 | Where did X come up? | `search "X"` (every word must match, across every type) |
 | Meetings with someone | `people list --search NAME`, then `meetings list --person NAME --from D` |
+| Preparing for a meeting | the `meeting-prep` skill, built on `meetings prep <event or meeting id>` |
 | A meeting | `show <meeting id>`: also its todos as the app lists them (`link` is `filed`, `tagged` with an attendee, or `completedHere`) and `previousMeetings` with the same people |
 | Todos for someone | `todos list --person <id or name>` (repeatable); add `--completed --from D` for ones closed since |
 | Everything about a person | `show <person id>` |
@@ -55,7 +56,7 @@ Lists and search are compact. `show <id>` prints any record in full, with the id
 | Log entries | `log list --from D --to D --tag T --source S` |
 
 - Dates are local `YYYY-MM-DD`, and `--to` is inclusive. Lists default to the last week (events: the next week).
-- Output timestamps are UTC; show them in local time.
+- Output times are local, with their UTC offset.
 - `--help` on any command lists its options.
 
 ## Writing

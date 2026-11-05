@@ -5,12 +5,52 @@ import Foundation
 // from the data model — lets us flatten relationships (counts, IDs) without
 // encoding cycles or leaking internal details like stateRawValue.
 
+/// Keys are sorted so every record reads in the same order, and dates are local with their offset.
+/// Without `pretty`, a list prints one record per line, and an object one key per line with each
+/// list in it one item per line, so the output reads like a table and still parses as one value.
 func printJSON<T: Encodable>(_ value: T, pretty: Bool) throws {
     let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .iso8601
-    if pretty { encoder.outputFormatting = [.prettyPrinted, .sortedKeys] }
-    let data = try encoder.encode(value)
-    print(String(data: data, encoding: .utf8)!)
+    let format = Date.ISO8601FormatStyle(timeZoneSeparator: .colon, timeZone: .current)
+    encoder.dateEncodingStrategy = .custom { date, encoder in
+        var container = encoder.singleValueContainer()
+        try container.encode(date.formatted(format))
+    }
+    encoder.outputFormatting = pretty
+        ? [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        : [.sortedKeys, .withoutEscapingSlashes]
+    let json = String(decoding: try encoder.encode(value), as: UTF8.self)
+    print(pretty ? json : rowsPerLine(json))
+}
+
+/// Breaks compact JSON after the commas between the top-level value's items, and between the
+/// items of a list nested directly in it.
+private func rowsPerLine(_ json: String) -> String {
+    // Scalars, not Characters: a quote followed by a combining mark would be one Character.
+    var out = String.UnicodeScalarView()
+    var open: [Unicode.Scalar] = []
+    var inString = false
+    var escaped = false
+    for c in json.unicodeScalars {
+        out.append(c)
+        if inString {
+            if escaped { escaped = false } else if c == "\\" { escaped = true } else if c == "\"" { inString = false }
+            continue
+        }
+        switch c {
+        case "\"": inString = true
+        case "{", "[": open.append(c)
+        case "}", "]": open.removeLast()
+        case "," where open.count == 1 || (open.count == 2 && open.last == "["): out.append("\n")
+        default: break
+        }
+    }
+    return String(out)
+}
+
+/// Lets `show` print records of different types together.
+struct AnyEncodable: Encodable {
+    let value: any Encodable
+    func encode(to encoder: Encoder) throws { try value.encode(to: encoder) }
 }
 
 struct LogEntryDTO: Encodable {
@@ -126,6 +166,7 @@ struct TodoDTO: Encodable {
     let completedDate: Date?
     let trashedDate: Date?
     let isCompleted: Bool
+    let isOverdue: Bool
     let isPrivate: Bool
     let schedule: String
     let list: String
@@ -144,7 +185,7 @@ struct TodoDTO: Encodable {
             completedDate: t.completedDate,
             trashedDate: t.trashedDate,
             isCompleted: t.isCompleted,
-           
+            isOverdue: t.isOverdue(),
             isPrivate: t.isPrivate,
             schedule: t.schedule.rawValue,
             list: SmartList.of(t).rawValue,
@@ -209,7 +250,8 @@ struct CalendarEventDTO: Encodable {
     let endTime: Date
     let isAllDay: Bool
     let isRecurring: Bool
-    let isHidden: Bool
+    /// Left out unless the event is hidden, which only `--hidden` lists.
+    let isHidden: Bool?
     let location: String?
     let meetingURL: URL?
     let attendeeCount: Int
@@ -224,7 +266,7 @@ struct CalendarEventDTO: Encodable {
             endTime: e.endTime,
             isAllDay: e.isAllDay,
             isRecurring: e.isRecurring,
-            isHidden: e.isHidden,
+            isHidden: e.isHidden ? true : nil,
             location: e.location,
             meetingURL: e.meetingURL,
             attendeeCount: e.attendees.count,

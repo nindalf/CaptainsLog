@@ -4,55 +4,46 @@ description: Prepare for an upcoming meeting from Captain's Log. Picks a calenda
 argument-hint: "[meeting or person; defaults to offering upcoming events]"
 allowed-tools:
   - Bash(captains-log status)
-  - Bash(captains-log status *)
   - Bash(captains-log whoami)
-  - Bash(captains-log whoami --pretty)
-  - Bash(captains-log show *)
-  - Bash(captains-log events list *)
-  - Bash(captains-log meetings list *)
-  - Bash(captains-log meetings add *)
-  - Bash(captains-log todos list *)
-  - Bash(jq *)
+  - Bash(captains-log events list --upcoming --meetings)
+  - Bash(captains-log meetings prep *)
 ---
 
 # Meeting prep
 
 Get me ready to give an update: what's still open with these people, and what I've closed since we last talked. Load the `captains-log` skill first; its rules apply.
 
-## 1. Pick the meeting
+## Commands
 
-Run `events list` (today and the next week). Leave out interviews (`interviewID` set), all-day events and ones that have started. If I named a meeting or person, pick the match. Otherwise offer the next few as a choice.
+Run these, in order, and nothing else. Read the output as printed, without `jq`: lists print one record per line with keys in the same order, and times are local.
 
-If the event has a `meetingID`, `show` it. Otherwise `meetings add --event <id>`, which creates the meeting and prints the same as `show`:
+1. `captains-log status` and `captains-log whoami`, as the captains-log skill says.
+2. `captains-log events list --upcoming --meetings`: meetings today and over the next week that haven't started, without interviews, all-day events or events with no one else. If I named a meeting or person, pick the match. Otherwise offer the next few as a choice.
+3. `captains-log meetings prep <event id>`: makes the event's meeting if it has none, and prints everything the notes need:
+   - `id` (the meeting's), `attendees`, `isPrivate`, and `prepNotes` if some are saved.
+   - `todos`, as the meeting's page lists them. `link` is `filed` (filed here), `tagged` (open, tagging an attendee) or `completedHere`.
+   - `lastMeetings`: the two latest earlier meetings, newest first, preferring the same series (`match`). Their `notes`, `summary` and `prepNotes` say what was discussed; their `todos` are what we agreed, each with `isCompleted`. Empty if there are none.
+   - `completedSince`: todos closed since `since` that tag an attendee or are in a related project.
+   - `relatedProjects`, and `projectTodos`: their open todos not already in `todos`.
 
-- `attendees`
-- `todos`, as the meeting's page lists them. `link` is `filed` (filed in this meeting), `tagged` (open, tagging an attendee) or `completedHere`.
-- `previousMeetings`, newest first. `match` is `series` (an earlier instance of this recurring event) or `attendees` (mostly the same people).
+   Every todo has `isOverdue` and its `notes`. A private meeting's text isn't printed; use titles and todos.
+4. `captains-log meetings edit <meeting id> --prep-notes -`, once I've seen the draft (below).
 
-## 2. Since last time
-
-Take the newest previous meeting, preferring a `series` match. If there's none, skip to step 3.
-
-- `show` it. Its notes and summary say what was discussed. Its `filed` todos are what we agreed then; each has `isCompleted`.
-- `todos list --completed --from <its date> --person <id>`, with one `--person` per attendee other than me (`whoami`), for what I closed since.
-
-A private meeting's text isn't printed; use its title and todos.
-
-## 3. Prep notes
+## Prep notes
 
 Draft terse bullets: one line each, no prose, nothing I'd have to skim. Name the person where it isn't obvious. Leave out empty sections, and keep the total under about ten bullets.
 
 ```
-**Done since <day>**
-- <todo or agreed item now closed>
+**Done since <the newest last meeting's day>**
+- <from completedSince, or a lastMeetings todo now completed>
 
 **Open**
-- <open todo>: <one-line status if the record says>
+- <from todos or projectTodos, overdue first>: <one-line status if its notes say>
 
 **Follow up**
-- <something from last time's notes with no todo>
+- <something in lastMeetings' notes or summary with no todo, not yet done>
 ```
 
-Show me the draft. Then, if the meeting's `prepNotes` is empty, save it with `meetings edit <id> --prep-notes -`. If it already has prep notes, ask whether to replace them, add below, or leave them. A private meeting's prep notes always read as empty, so for one of those, ask before saving.
+Show me the draft. Then, if the meeting has no `prepNotes`, save it. If it has some, ask whether to replace them, add below, or leave them. A private meeting's prep notes are never printed, so for one of those, ask before saving.
 
-If the previous meeting was private and this one isn't, ask whether to make this one private too (`meetings edit <id> --private`).
+If the newest of `lastMeetings` is private and this meeting isn't, ask whether to make this one private too (`meetings edit <id> --private`).

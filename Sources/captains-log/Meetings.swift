@@ -7,7 +7,7 @@ import SwiftData
 struct Meetings: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Manage meetings",
-        subcommands: [List.self, Add.self, Edit.self],
+        subcommands: [List.self, Add.self, Prep.self, Edit.self],
         defaultSubcommand: List.self
     )
 
@@ -81,6 +81,49 @@ struct Meetings: AsyncParsableCommand {
             try context.save()
 
             try printJSON(MeetingDetail.load(meeting, in: context), pretty: pretty)
+        }
+    }
+
+    struct Prep: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Print a meeting with what its prep notes need, making it from its calendar event if there isn't one yet",
+            discussion: """
+                Prints what show does, plus: lastMeetings, the two latest earlier meetings in the series (topped \
+                up with ones with mostly the same people), newest first, with their notes and the todos filed in \
+                them; relatedProjects, open projects linked to the meeting or its attendees' todos; projectTodos, \
+                their open todos not already in todos; and completedSince, todos closed since the newest of \
+                them (or a week) that tag an attendee or are in a related project.
+                """
+        )
+
+        @Argument(help: "Meeting or calendar event UUID")
+        var id: String
+
+        @Flag(name: .long, help: "Pretty-print JSON output")
+        var pretty: Bool = false
+
+        mutating func run() async throws {
+            guard let uuid = UUID(uuidString: id) else {
+                throw ValidationError("Invalid UUID: \(id)")
+            }
+            let context = ModelContext(try Store.makeContainer())
+            let meeting: Meeting
+            if let event = try context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.id == uuid })).first {
+                if let interview = event.interview {
+                    throw ValidationError("Event is an interview: \(interview.id)")
+                }
+                if let existing = event.meeting {
+                    meeting = existing
+                } else {
+                    meeting = event.createMeeting(in: context)
+                    try context.save()
+                }
+            } else if let existing = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.id == uuid })).first {
+                meeting = existing
+            } else {
+                throw ValidationError("No meeting or calendar event with id \(id)")
+            }
+            try printJSON(MeetingPrepOutput.load(meeting, in: context), pretty: pretty)
         }
     }
 

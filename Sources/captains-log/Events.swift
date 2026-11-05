@@ -24,6 +24,12 @@ struct Events: AsyncParsableCommand {
         @Flag(name: .long, help: "Include hidden events")
         var hidden: Bool = false
 
+        @Flag(name: .long, help: "Only events that haven't started yet")
+        var upcoming: Bool = false
+
+        @Flag(name: .long, help: "Only meetings: leave out all-day events, interviews, and events without at least one other attendee")
+        var meetings: Bool = false
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
 
@@ -43,7 +49,15 @@ struct Events: AsyncParsableCommand {
                 predicate: #Predicate { $0.startTime < end && $0.endTime > start && (includeHidden || !$0.isHidden) },
                 sortBy: [SortDescriptor(\.startTime)]
             )
-            try printJSON(try context.fetch(descriptor).map(CalendarEventDTO.from), pretty: pretty)
+            var events = try context.fetch(descriptor)
+            if upcoming {
+                let now = Date.now
+                events = events.filter { $0.startTime > now }
+            }
+            if meetings {
+                events = events.filter { !$0.isAllDay && $0.interview == nil && $0.attendees.count >= 2 }
+            }
+            try printJSON(events.map(CalendarEventDTO.from), pretty: pretty)
         }
     }
 

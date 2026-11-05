@@ -94,10 +94,7 @@ struct MeetingDetail: Encodable {
             + listed(tagged) { _ in "tagged" }
             + listed(filed.filter(\.isCompleted)) { $0.meeting?.id == id ? "filed" : "completedHere" }
 
-        let date = m.date
-        let earlier = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.date < date }))
-        let me = try Person.me(in: context)?.id
-        let previous = m.previous(among: earlier, me: me).map(PreviousMeetingRef.from)
+        let previous = try previous(of: m, in: context).map(PreviousMeetingRef.from)
 
         return MeetingDetail(
             id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate, tags: m.tags,
@@ -112,12 +109,105 @@ struct MeetingDetail: Encodable {
     }
 }
 
+extension MeetingDetail {
+    static func previous(of m: Meeting, in context: ModelContext) throws -> [(meeting: Meeting, match: Meeting.PreviousMatch)] {
+        let date = m.date
+        let earlier = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.date < date }))
+        return m.previous(among: earlier, me: try Person.me(in: context)?.id)
+    }
+}
+
+/// `meetings prep`: the meeting as `show` prints it, with its keys alongside these.
+struct MeetingPrepOutput: Encodable {
+    let meeting: MeetingDetail
+    let lastMeetings: [LastMeeting]
+    /// The start of `completedSince`: the newest of `lastMeetings`, or a week before this meeting.
+    let since: Date
+    let completedSince: [TodoDTO]
+    let relatedProjects: [RecordRef]
+    let projectTodos: [TodoDTO]
+
+    private enum CodingKeys: CodingKey {
+        case lastMeetings, since, completedSince, relatedProjects, projectTodos
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try meeting.encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(lastMeetings, forKey: .lastMeetings)
+        try container.encode(since, forKey: .since)
+        try container.encode(completedSince, forKey: .completedSince)
+        try container.encode(relatedProjects, forKey: .relatedProjects)
+        try container.encode(projectTodos, forKey: .projectTodos)
+    }
+
+    static func load(_ m: Meeting, in context: ModelContext) throws -> MeetingPrepOutput {
+        let detail = try MeetingDetail.load(m, in: context)
+        let previous = try MeetingDetail.previous(of: m, in: context)
+        let recent = MeetingPrep.recent(of: previous)
+        let me = try Person.me(in: context)?.id
+        let todos = try context.fetch(FetchDescriptor<Todo>(
+            predicate: #Predicate { $0.trashedDate == nil },
+            sortBy: [SortDescriptor(\.sortOrder)]
+        ))
+        let projects = MeetingPrep.relatedProjects(for: m, previous: previous.map(\.meeting), todos: todos, me: me)
+        let since = recent.first?.meeting.date ?? Calendar.current.date(byAdding: .day, value: -7, to: m.date)!
+        let listed = Set(detail.todos.map(\.id))
+
+        let completed = MeetingPrep.completed(for: m, since: since, projects: projects, todos: todos, me: me)
+            .filter { !listed.contains($0.id) }
+        let rank = Dictionary(uniqueKeysWithValues: projects.enumerated().map { ($1.id, $0) })
+        let projectTodos = todos
+            .filter { !$0.isCompleted && !listed.contains($0.id) && $0.project.map { rank[$0.id] != nil } ?? false }
+            .sorted { (rank[$0.project!.id]!, $0.sortOrder) < (rank[$1.project!.id]!, $1.sortOrder) }
+
+        return MeetingPrepOutput(
+            meeting: detail,
+            lastMeetings: try recent.map { try LastMeeting.load($0.meeting, match: $0.match, in: context) },
+            since: since,
+            completedSince: completed.map(TodoDTO.from),
+            relatedProjects: projects.map(RecordRef.from),
+            projectTodos: projectTodos.map(TodoDTO.from)
+        )
+    }
+}
+
+/// One of the meetings prep reads, with what was said and agreed there.
+struct LastMeeting: Encodable {
+    let id: UUID
+    let date: Date
+    let title: String
+    let isPrivate: Bool
+    /// `series` or `attendees`, as in previousMeetings.
+    let match: String
+    let prepNotes: String?
+    let notes: String?
+    let summary: String?
+    /// Filed in it, open or since completed.
+    let todos: [TodoDTO]
+
+    static func load(_ m: Meeting, match: Meeting.PreviousMatch, in context: ModelContext) throws -> LastMeeting {
+        let id = m.id
+        let filed = try context.fetch(FetchDescriptor<Todo>(
+            predicate: #Predicate { $0.trashedDate == nil && $0.meeting?.id == id },
+            sortBy: [SortDescriptor(\.sortOrder)]
+        ))
+        return LastMeeting(
+            id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate, match: match.rawValue,
+            prepNotes: m.isPrivate ? nil : m.prepNotes, notes: m.isPrivate ? nil : m.notes,
+            summary: m.isPrivate ? nil : m.summary, todos: filed.map(TodoDTO.from)
+        )
+    }
+}
+
 struct PreviousMeetingRef: Encodable {
     let id: UUID
     let date: Date
     let title: String
     let isPrivate: Bool
     let hasNotes: Bool
+    let hasSummary: Bool
+    let hasPrepNotes: Bool
     /// `series` for an earlier instance of the same recurring event, `attendees` for mostly the same people.
     let match: String
 
@@ -125,7 +215,7 @@ struct PreviousMeetingRef: Encodable {
         let m = p.meeting
         return PreviousMeetingRef(
             id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate,
-            hasNotes: [m.notes, m.summary, m.prepNotes, m.transcript].contains { $0 != nil },
+            hasNotes: m.notes != nil, hasSummary: m.summary != nil, hasPrepNotes: m.prepNotes != nil,
             match: p.match.rawValue
         )
     }
@@ -218,6 +308,7 @@ struct TodoDetail: Encodable {
     let completedDate: Date?
     let trashedDate: Date?
     let isCompleted: Bool
+    let isOverdue: Bool
     let isPrivate: Bool
     let schedule: String
     let list: String
@@ -230,7 +321,7 @@ struct TodoDetail: Encodable {
     static func from(_ t: Todo) -> TodoDetail {
         TodoDetail(
             id: t.id, title: t.title, notes: t.isPrivate ? nil : t.notes, dueDate: t.dueDate, completedDate: t.completedDate,
-            trashedDate: t.trashedDate, isCompleted: t.isCompleted,
+            trashedDate: t.trashedDate, isCompleted: t.isCompleted, isOverdue: t.isOverdue(),
             isPrivate: t.isPrivate, schedule: t.schedule.rawValue, list: SmartList.of(t).rawValue,
             project: t.project.map(RecordRef.from), people: t.people.map(PersonRef.from),
             meeting: t.meeting.map(RecordRef.from), interview: t.interview.map(RecordRef.from),

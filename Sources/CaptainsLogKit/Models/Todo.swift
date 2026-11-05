@@ -37,3 +37,12 @@ public final class Todo {
         self.dueDate = dueDate
     }
 }
+
+extension Todo {
+    /// Open and due before today.
+    public func isOverdue(now: Date = .now) -> Bool {
+        guard !isCompleted, let dueDate else { return false }
+        let calendar = Calendar.current
+        return calendar.startOfDay(for: dueDate) < calendar.startOfDay(for: now)
+    }
+}

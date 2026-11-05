@@ -20,7 +20,7 @@ struct Todos: AsyncParsableCommand {
         @Flag(name: .long, help: "Show completed todos instead of open ones (same as --list logbook)")
         var completed: Bool = false
 
-        @Flag(name: .long, help: "Show only overdue todos")
+        @Flag(name: .long, help: "Show only overdue todos: open, and due before today")
         var overdue: Bool = false
 
         @Option(name: .long, help: "Show one smart list")
@@ -104,10 +104,7 @@ struct Todos: AsyncParsableCommand {
             }
             if overdue {
                 let now = Date.now
-                todos = todos.filter { t in
-                    guard let due = t.dueDate else { return false }
-                    return due < now && !t.isCompleted
-                }
+                todos = todos.filter { $0.isOverdue(now: now) }
             }
 
             try printJSON(todos.map(TodoDTO.from), pretty: pretty)
