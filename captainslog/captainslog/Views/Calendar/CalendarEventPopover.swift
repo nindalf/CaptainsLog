@@ -4,6 +4,8 @@ import CaptainsLogKit
 struct CalendarEventPopover: View {
     let event: CalendarEvent
     let onAction: (CalendarEventAction) -> Void
+    @Environment(\.openURL) private var openURL
+    @Environment(\.dismiss) private var dismiss
 
     enum CalendarEventAction {
         case createMeeting
@@ -35,17 +37,36 @@ struct CalendarEventPopover: View {
             Divider()
 
             HStack {
+                if let url = event.meetingURL {
+                    Button {
+                        openURL(url)
+                        dismiss()
+                    } label: {
+                        Label("Join", systemImage: "video")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .help(url.absoluteString)
+                }
+
                 Button { onAction(.createMeeting) } label: {
                     Label("Add Notes", systemImage: "square.and.pencil")
                 }
 
-                Button { onAction(.hide) } label: {
-                    Label("Hide Event", systemImage: "eye.slash")
-                }
+                Spacer()
 
-                Button(role: .destructive) { onAction(.delete) } label: {
-                    Label("Delete Event", systemImage: "trash")
+                // Rare next to joining or taking notes, so icons only; the context menu has them too.
+                Group {
+                    Button { onAction(.hide) } label: {
+                        Label("Hide Event", systemImage: "eye.slash")
+                    }
+                    .help("Hide Event")
+
+                    Button(role: .destructive) { onAction(.delete) } label: {
+                        Label("Delete Event", systemImage: "trash")
+                    }
+                    .help("Delete Event")
                 }
+                .labelStyle(.iconOnly)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)

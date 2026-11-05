@@ -42,6 +42,10 @@ struct MeetingDetailView: View {
             DetailHeader(title: $meeting.title) {
                 // The calendar event owns the date.
                 Text(DateLabel.dayTime(meeting.date))
+                if let url = meeting.calendarEvent?.meetingURL {
+                    Link(destination: url) { Label("Join", systemImage: "video") }
+                        .help(url.absoluteString)
+                }
                 LinkMetadataItem(title: "Slack", prompt: "Link to the shared notes", urlString: slackURL)
             }
             if !meeting.attendees.isEmpty {
