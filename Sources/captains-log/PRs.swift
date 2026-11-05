@@ -31,6 +31,9 @@ struct PRs: AsyncParsableCommand {
         @Flag(name: .long, help: "Show only PRs I've reviewed, on any request, mine or a team's. --from and --to then go by my latest review")
         var reviewed: Bool = false
 
+        @Option(name: .long, help: "Only PRs in this project (name or id)")
+        var project: String?
+
         @Option(name: .long, help: "Only PRs created or merged on or after this date (ISO 8601, e.g. 2026-04-28)")
         var from: String?
 
@@ -57,6 +60,7 @@ struct PRs: AsyncParsableCommand {
 
             let container = try Store.makeContainer()
             let context = ModelContext(container)
+            let projectID = try project.map { try Projects.project($0, in: context).id }
 
             let descriptor = FetchDescriptor<PullRequest>(
                 sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
@@ -68,6 +72,7 @@ struct PRs: AsyncParsableCommand {
                 if reviews && (!pr.isReviewRequest || pr.state != .open) { return false }
                 if teammates && !pr.isTeammateOnly { return false }
                 if let wanted, pr.state != wanted { return false }
+                if let projectID, pr.project?.id != projectID { return false }
                 if reviewed {
                     guard let reviewedAt = pr.myReviewedAt else { return false }
                     if let range, !range.contains(reviewedAt) { return false }
@@ -83,7 +88,7 @@ struct PRs: AsyncParsableCommand {
 
     struct Edit: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Change a PR's notes. Everything else comes from GitHub sync",
+            abstract: "Change a PR's notes or project. Everything else comes from GitHub sync",
             discussion: "An empty value clears the notes. Pass - to read them from stdin."
         )
 
@@ -93,11 +98,20 @@ struct PRs: AsyncParsableCommand {
         @Option(name: .long, help: "Notes (markdown)")
         var notes: String?
 
+        @Option(name: .long, help: "Move it into this existing project (name or id)")
+        var project: String?
+
+        @Flag(name: .long, help: "Take it out of its project")
+        var noProject: Bool = false
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
 
         func validate() throws {
-            if notes == nil {
+            if project != nil && noProject {
+                throw ValidationError("--project and --no-project can't be combined")
+            }
+            if notes == nil && project == nil && !noProject {
                 throw ValidationError("Nothing to change")
             }
         }
@@ -106,7 +120,10 @@ struct PRs: AsyncParsableCommand {
             let notes = try TextInput.resolve([notes])[0]
             let context = ModelContext(try Store.makeContainer())
             let pr = try PRs.pullRequest(id: id, in: context)
+            let newProject = try project.map { try Projects.project($0, in: context) }
             if let notes { pr.notes = TextInput.field(notes) }
+            if let newProject { pr.project = newProject }
+            if noProject { pr.project = nil }
             try context.save()
 
             try printJSON(PullRequestDTO.from(pr), pretty: pretty)

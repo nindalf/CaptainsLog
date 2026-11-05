@@ -59,7 +59,6 @@ struct MeetingDetail: Encodable {
     let date: Date
     let title: String
     let isPrivate: Bool
-    let tags: [String]
     let project: RecordRef?
     let attendees: [PersonRef]
     let prepNotes: String?
@@ -97,7 +96,7 @@ struct MeetingDetail: Encodable {
         let previous = try previous(of: m, in: context).map(PreviousMeetingRef.from)
 
         return MeetingDetail(
-            id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate, tags: m.tags,
+            id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate,
             project: m.project.map(RecordRef.from),
             attendees: m.attendees.sorted { $0.name < $1.name }.map(PersonRef.from),
             prepNotes: m.isPrivate ? nil : m.prepNotes, notes: m.isPrivate ? nil : m.notes,
@@ -278,7 +277,6 @@ struct PullRequestDetail: Encodable {
     let mergedAt: Date?
     let additions: Int?
     let deletions: Int?
-    let tags: [String]
     let project: RecordRef?
     let body: String?
     let notes: String?
@@ -293,7 +291,7 @@ struct PullRequestDetail: Encodable {
             myReviewedAt: pr.myReviewedAt, author: pr.author.map(PersonRef.from),
             reviewers: pr.reviewers.sorted { $0.name < $1.name }.map(PersonRef.from),
             createdAt: pr.createdAt, mergedAt: pr.mergedAt, additions: pr.additions, deletions: pr.deletions,
-            tags: pr.tags, project: pr.project.map(RecordRef.from),
+            project: pr.project.map(RecordRef.from),
             body: pr.body, notes: pr.notes, todos: todos.map(RecordRef.from)
         )
     }

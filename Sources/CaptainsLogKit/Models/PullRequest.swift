@@ -31,7 +31,6 @@ public final class PullRequest {
     /// When I last submitted a review of it, whoever the review was requested from.
     public var myReviewedAt: Date?
     public var project: Project?
-    public var tags: [String] = []
     public var isDraft: Bool = false
     public var deploymentStatus: DeploymentStatus = DeploymentStatus.notDeployed
     public var notes: String?

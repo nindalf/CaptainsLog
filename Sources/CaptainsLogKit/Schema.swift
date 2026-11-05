@@ -32,7 +32,8 @@ public enum CaptainsLogMigrationPlan: SchemaMigrationPlan {
         [v1ToV2]
     }
 
-    // Drops CalendarEvent.participantCount and confirmedCount.
+    // Drops CalendarEvent.participantCount and confirmedCount, and Meeting.tags and
+    // PullRequest.tags, which nothing set.
     static let v1ToV2 = MigrationStage.lightweight(
         fromVersion: CaptainsLogSchemaV1.self,
         toVersion: CaptainsLogSchemaV2.self

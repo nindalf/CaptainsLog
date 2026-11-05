@@ -129,13 +129,13 @@ struct CalendarDeleteTests {
         #expect(remaining.isEmpty)
     }
 
-    @Test func meetingWithOnlyATagIsNotEmpty() throws {
+    @Test func meetingWithOnlyAProjectIsNotEmpty() throws {
         let context = makeContext()
         let meeting = Meeting(date: .now, title: "1:1")
-        meeting.tags = ["promotions"]
         context.insert(meeting)
+        meeting.project = Project(name: "Promotions \(UUID())")
 
-        #expect(!meeting.isEmpty, "a tag is user intent and should protect the record")
+        #expect(!meeting.isEmpty, "a project is user intent and should protect the record")
     }
 
     @Test func meetingWithOnlyASlackLinkIsNotEmpty() throws {

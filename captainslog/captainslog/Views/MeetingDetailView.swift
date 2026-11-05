@@ -5,6 +5,7 @@ import CaptainsLogKit
 struct MeetingDetailView: View {
     @Bindable var meeting: Meeting
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Project.sortOrder) private var projects: [Project]
     @State private var todoAddTick = 0
     @State private var pendingDelete: DeletableRecord?
     /// Notes fields shown with their editor. Empty ones show an Add row until added, and a field
@@ -47,6 +48,7 @@ struct MeetingDetailView: View {
                         .help(url.absoluteString)
                 }
                 LinkMetadataItem(title: "Slack", prompt: "Link to the shared notes", urlString: slackURL)
+                ProjectMetadataItem(current: meeting.project, projects: projects) { meeting.project = $0 }
             }
             if !meeting.attendees.isEmpty {
                 PersonLinks(people: meeting.attendees.sorted { $0.name < $1.name })

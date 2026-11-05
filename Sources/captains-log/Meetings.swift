@@ -25,12 +25,16 @@ struct Meetings: AsyncParsableCommand {
         @Option(name: .long, help: "Filter by attendee name")
         var person: String?
 
+        @Option(name: .long, help: "Only meetings in this project (name or id)")
+        var project: String?
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
 
         mutating func run() async throws {
             let container = try Store.makeContainer()
             let context = ModelContext(container)
+            let projectID = try project.map { try Projects.project($0, in: context).id }
 
             let range = try CLIDate.range(from: from, to: to, defaultFrom: CLIDate.weekAgo, defaultTo: .distantFuture)
             let start = range.lowerBound
@@ -46,6 +50,9 @@ struct Meetings: AsyncParsableCommand {
                 meetings = meetings.filter { m in
                     m.attendees.contains { $0.name.localizedCaseInsensitiveContains(person) }
                 }
+            }
+            if let projectID {
+                meetings = meetings.filter { $0.project?.id == projectID }
             }
 
             try printJSON(meetings.map(MeetingDTO.from), pretty: pretty)
@@ -129,7 +136,7 @@ struct Meetings: AsyncParsableCommand {
 
     struct Edit: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Change a meeting's title, date, privacy, notes or Slack link",
+            abstract: "Change a meeting's title, date, project, privacy, notes or Slack link",
             discussion: "An empty value clears a field, as emptying it in the app does. Pass - to read one value from stdin."
         )
 
@@ -141,6 +148,12 @@ struct Meetings: AsyncParsableCommand {
 
         @Option(name: .long, help: "Date as YYYY-MM-DDTHH:MM (local), or YYYY-MM-DD to keep the time")
         var date: String?
+
+        @Option(name: .long, help: "Move it into this existing project (name or id)")
+        var project: String?
+
+        @Flag(name: .long, help: "Take it out of its project")
+        var noProject: Bool = false
 
         @Flag(name: .customLong("private"), inversion: .prefixedNo, help: "Make it private, or not, as the app's lock does")
         var isPrivate: Bool?
@@ -172,7 +185,10 @@ struct Meetings: AsyncParsableCommand {
                     throw ValidationError("Invalid URL: \(slackURL)")
                 }
             }
-            let changes: [Bool] = [title != nil, date != nil, isPrivate != nil, prepNotes != nil, notes != nil, summary != nil, transcript != nil, slackURL != nil]
+            if project != nil && noProject {
+                throw ValidationError("--project and --no-project can't be combined")
+            }
+            let changes: [Bool] = [title != nil, date != nil, project != nil, noProject, isPrivate != nil, prepNotes != nil, notes != nil, summary != nil, transcript != nil, slackURL != nil]
             if !changes.contains(true) {
                 throw ValidationError("Nothing to change")
             }
@@ -182,9 +198,12 @@ struct Meetings: AsyncParsableCommand {
             let texts = try TextInput.resolve([prepNotes, notes, summary, transcript])
             let context = ModelContext(try Store.makeContainer())
             let meeting = try Meetings.meeting(id: id, in: context)
+            let newProject = try project.map { try Projects.project($0, in: context) }
 
             if let title { meeting.title = title.trimmingCharacters(in: .whitespacesAndNewlines) }
             if let date { meeting.date = try CLIDate.dateTime(date, keepingTimeOf: meeting.date) }
+            if let newProject { meeting.project = newProject }
+            if noProject { meeting.project = nil }
             if let isPrivate { meeting.isPrivate = isPrivate }
             if let text = texts[0] { meeting.prepNotes = TextInput.field(text) }
             if let text = texts[1] { meeting.notes = TextInput.field(text) }

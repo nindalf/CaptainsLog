@@ -21,6 +21,7 @@ How the app fits together, and the decisions and rules that aren't obvious from 
 
 ## Rules by area
 
+- **Projects and tags:** todos, log entries, meetings and PRs each take one project, set from the card (or a meeting's header) and the CLI's `--project`. Only log entries have tags: they say what kind of entry it is (`weekly-review`, `goals`), which the other records already are by their type. Don't file a recurring kind of entry as a project: projects complete, and an entry has only one.
 - **Meetings** are made only from a calendar event's Add Notes; the calendar event owns the date. Deleting a meeting keeps its todos and event.
 - **Interviews** come only from calendar sync, as stubs for events titled like an interview (`InterviewHeuristic`). They're private by default. Deleting one hides its calendar event, since sync would otherwise grow a new stub.
 - **PR sync** (`GitHubSync`): repos are added and removed at the top of the Pull Requests tab, not in Settings, so a new user finds them where the PRs would be; `GitHubRepo.parse` takes a pasted link too. Adding one syncs at once. A PR is a review request (`isReviewRequest`) once requested, for good, even if a teammate fetch found it first. One only a teammate or reviewed-by-me fetch found is `isTeammateOnly`. Merged and closed fetches leave out `reviewDecision`, which times out. Any other PR still open locally is rechecked by number.

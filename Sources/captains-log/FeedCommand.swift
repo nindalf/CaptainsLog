@@ -49,7 +49,7 @@ struct FeedCommand: AsyncParsableCommand {
             ))
             items += meetings.filter(Feed.includes).map {
                 FeedItemDTO(type: .meeting, id: $0.id, date: $0.date, title: $0.title, isPrivate: $0.isPrivate,
-                            project: $0.project, tags: $0.tags, snippet: $0.summary ?? $0.notes)
+                            project: $0.project, tags: [], snippet: $0.summary ?? $0.notes)
             }
         }
         if types.contains(.interview) {
@@ -68,7 +68,7 @@ struct FeedCommand: AsyncParsableCommand {
             ))
             items += prs.filter { Feed.includes($0) && range.contains(Feed.date(of: $0)) }.map {
                 FeedItemDTO(type: .pr, id: $0.id, date: Feed.date(of: $0), title: "\($0.repo)#\($0.number) \($0.title)",
-                            isPrivate: nil, project: $0.project, tags: $0.tags, snippet: $0.body)
+                            isPrivate: nil, project: $0.project, tags: [], snippet: $0.body)
             }
         }
         if types.contains(.todo) {

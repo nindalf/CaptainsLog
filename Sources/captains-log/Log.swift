@@ -24,6 +24,9 @@ struct Log: AsyncParsableCommand {
         @Option(name: .long, help: "Only entries with this tag")
         var tag: String?
 
+        @Option(name: .long, help: "Only entries in this project (name or id)")
+        var project: String?
+
         @Option(name: .long, help: "Only entries from this source: manual, slack, linear")
         var source: String?
 
@@ -42,6 +45,7 @@ struct Log: AsyncParsableCommand {
             let end = range.upperBound
 
             let context = ModelContext(try Store.makeContainer())
+            let projectID = try project.map { try Projects.project($0, in: context).id }
             let descriptor = FetchDescriptor<LogEntry>(
                 predicate: #Predicate { $0.timestamp >= start && $0.timestamp < end },
                 sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
@@ -54,6 +58,9 @@ struct Log: AsyncParsableCommand {
             }
             if let tag {
                 entries = entries.filter { $0.tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame } }
+            }
+            if let projectID {
+                entries = entries.filter { $0.project?.id == projectID }
             }
 
             try printJSON(entries.map(LogEntryDTO.from), pretty: pretty)
@@ -81,6 +88,9 @@ struct Log: AsyncParsableCommand {
         @Option(name: .shortAndLong, help: "Comma-separated tags")
         var tags: String?
 
+        @Option(name: .long, help: "Add it to this existing project (name or id)")
+        var project: String?
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
 
@@ -96,6 +106,7 @@ struct Log: AsyncParsableCommand {
             let content = try TextInput.resolve([content])[0] ?? ""
             let container = try Store.makeContainer()
             let context = ModelContext(container)
+            let project = try project.map { try Projects.project($0, in: context) }
             let entry = LogEntry(
                 timestamp: .now,
                 source: src,
@@ -105,6 +116,7 @@ struct Log: AsyncParsableCommand {
             )
             entry.tags = parsedTags
             context.insert(entry)
+            entry.project = project
             try entry.linkMentionedPeople(in: context)
             try context.save()
 
@@ -114,7 +126,7 @@ struct Log: AsyncParsableCommand {
 
     struct Edit: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Change a log entry's title, content, tags, source, or privacy",
+            abstract: "Change a log entry's title, content, tags, project, source, or privacy",
             discussion: "Pass - as the content to read it from stdin."
         )
 
@@ -129,6 +141,12 @@ struct Log: AsyncParsableCommand {
 
         @Option(name: .shortAndLong, help: "Replace the tags, comma-separated. Empty removes them all")
         var tags: String?
+
+        @Option(name: .long, help: "Move it into this existing project (name or id)")
+        var project: String?
+
+        @Flag(name: .long, help: "Take it out of its project")
+        var noProject: Bool = false
 
         @Option(name: .long, help: "Source: manual, slack, linear")
         var source: String?
@@ -146,7 +164,10 @@ struct Log: AsyncParsableCommand {
             if let source, EntrySource(rawValue: source) == nil {
                 throw ValidationError("Invalid source '\(source)'. Use: manual, slack, linear")
             }
-            let changes: [Bool] = [title != nil, content != nil, tags != nil, source != nil, isPrivate != nil]
+            if project != nil && noProject {
+                throw ValidationError("--project and --no-project can't be combined")
+            }
+            let changes: [Bool] = [title != nil, content != nil, tags != nil, project != nil, noProject, source != nil, isPrivate != nil]
             if !changes.contains(true) {
                 throw ValidationError("Nothing to change")
             }
@@ -156,6 +177,7 @@ struct Log: AsyncParsableCommand {
             let content = try TextInput.resolve([content])[0]
             let context = ModelContext(try Store.makeContainer())
             let entry = try Log.entry(id: id, in: context)
+            let newProject = try project.map { try Projects.project($0, in: context) }
 
             if let title { entry.title = title.trimmingCharacters(in: .whitespacesAndNewlines) }
             if let content { entry.content = content }
@@ -164,6 +186,8 @@ struct Log: AsyncParsableCommand {
                     .map { $0.trimmingCharacters(in: .whitespaces) }
                     .filter { !$0.isEmpty }
             }
+            if let newProject { entry.project = newProject }
+            if noProject { entry.project = nil }
             if let source { entry.source = EntrySource(rawValue: source)! }
             if let isPrivate { entry.isPrivate = isPrivate }
             if title != nil || content != nil { try entry.linkMentionedPeople(in: context) }

@@ -10,7 +10,6 @@ struct TodoControls: View {
     var pendingProject: Binding<UUID?>? = nil
 
     @State private var showWhen = false
-    @State private var showProject = false
 
     private var project: Project? {
         guard let pendingProject else { return todo.project }
@@ -29,20 +28,11 @@ struct TodoControls: View {
     }
 
     private var projectControl: some View {
-        Button { showProject.toggle() } label: {
-            if let project {
-                Text(project.name).cardPill(.blue)
-            } else {
-                Image(systemName: "list.bullet")
-            }
-        }
-        .buttonStyle(.plain)
-        .help("Project")
-        .popover(isPresented: $showProject) {
+        ProjectControl(current: project, projects: projects) { picked in
             if let pendingProject {
-                TodoProjectPopover(current: project, projects: projects) { pendingProject.wrappedValue = $0?.id }
+                pendingProject.wrappedValue = picked?.id
             } else {
-                TodoProjectPopover(todo: todo, projects: projects)
+                todo.project = picked
             }
         }
     }

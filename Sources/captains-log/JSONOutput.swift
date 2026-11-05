@@ -62,6 +62,7 @@ struct LogEntryDTO: Encodable {
     /// Nil for a private entry.
     let content: String?
     let tags: [String]
+    let project: String?
     /// Names of the people the entry tags.
     let people: [String]
     let externalURL: URL?
@@ -75,8 +76,8 @@ struct LogEntryDTO: Encodable {
             title: e.title,
             content: e.isPrivate ? nil : e.content,
             tags: e.tags,
+            project: e.project?.name,
             people: e.people.map(\.name).sorted(),
-           
             externalURL: e.externalURL
         )
     }
@@ -88,7 +89,7 @@ struct MeetingDTO: Encodable {
     let title: String
     let isPrivate: Bool
     let attendeeCount: Int
-    let tags: [String]
+    let project: String?
     let hasNotes: Bool
     let hasSummary: Bool
     let slackURL: URL?
@@ -100,8 +101,7 @@ struct MeetingDTO: Encodable {
             title: m.title,
             isPrivate: m.isPrivate,
             attendeeCount: m.attendees.count,
-            tags: m.tags,
-           
+            project: m.project?.name,
             hasNotes: m.notes != nil,
             hasSummary: m.summary != nil,
             slackURL: m.slackURL
@@ -129,6 +129,7 @@ struct PullRequestDTO: Encodable {
     let mergedAt: Date?
     let additions: Int?
     let deletions: Int?
+    let project: String?
     let hasNotes: Bool
 
     static func from(_ pr: PullRequest) -> PullRequestDTO {
@@ -151,7 +152,7 @@ struct PullRequestDTO: Encodable {
             mergedAt: pr.mergedAt,
             additions: pr.additions,
             deletions: pr.deletions,
-           
+            project: pr.project?.name,
             hasNotes: pr.notes != nil
         )
     }

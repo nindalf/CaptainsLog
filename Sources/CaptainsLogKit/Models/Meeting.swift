@@ -10,7 +10,6 @@ public final class Meeting {
     public var attendees: [Person] = []
     public var isPrivate: Bool = false
     public var project: Project?
-    public var tags: [String] = []
     public var prepNotes: String?
     public var notes: String?
     public var transcript: String?
@@ -28,7 +27,6 @@ public final class Meeting {
     /// meeting can be discarded if its calendar event is cancelled.
     public var isEmpty: Bool {
         [prepNotes, notes, transcript, summary].allSatisfy { $0?.isEmpty ?? true }
-            && tags.isEmpty
             && project == nil
             && externalURL == nil
             && slackURL == nil

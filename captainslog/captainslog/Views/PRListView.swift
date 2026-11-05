@@ -478,6 +478,7 @@ struct PRCardView: View {
     @Bindable var pr: PullRequest
     var focusedField: FocusState<PRFocusField?>.Binding
     var onCollapse: () -> Void
+    @Query(sort: \Project.sortOrder) private var projects: [Project]
 
     private var notesBinding: Binding<String> {
         Binding(
@@ -554,6 +555,13 @@ struct PRCardView: View {
                     onCollapse()
                     return .handled
                 }
+
+            HStack {
+                Spacer(minLength: 0)
+                ProjectControl(current: pr.project, projects: projects) { pr.project = $0 }
+            }
+            .font(.system(size: 14))
+            .foregroundStyle(.secondary)
         }
         .padding(12)
         .background(Color(nsColor: .controlBackgroundColor))

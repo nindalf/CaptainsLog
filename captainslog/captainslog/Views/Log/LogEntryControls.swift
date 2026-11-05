@@ -8,7 +8,6 @@ struct LogEntryControls: View {
     let projects: [Project]
 
     @State private var showTags = false
-    @State private var showProject = false
 
     var body: some View {
         HStack(spacing: 14) {
@@ -41,16 +40,7 @@ struct LogEntryControls: View {
     }
 
     private var projectControl: some View {
-        Button { showProject.toggle() } label: {
-            if let project = entry.project {
-                Text(project.name).cardPill(.blue)
-            } else {
-                Image(systemName: "list.bullet")
-            }
-        }
-        .buttonStyle(.plain)
-        .help("Project")
-        .popover(isPresented: $showProject) { LogEntryProjectPopover(entry: entry, projects: projects) }
+        ProjectControl(current: entry.project, projects: projects) { entry.project = $0 }
     }
 }
 
@@ -89,50 +79,6 @@ struct LogEntryTagPopover: View {
                     }
                     newTag = ""
                 }
-        }
-        .padding(12)
-        .frame(width: 200)
-    }
-}
-
-struct LogEntryProjectPopover: View {
-    @Bindable var entry: LogEntry
-    let projects: [Project]
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button {
-                entry.project = nil
-                dismiss()
-            } label: {
-                HStack {
-                    Text("No Project")
-                    Spacer()
-                    if entry.project == nil {
-                        Image(systemName: "checkmark").foregroundStyle(.blue)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
-            Divider()
-
-            ForEach(projects) { project in
-                Button {
-                    entry.project = project
-                    dismiss()
-                } label: {
-                    HStack {
-                        Text(project.name)
-                        Spacer()
-                        if entry.project?.id == project.id {
-                            Image(systemName: "checkmark").foregroundStyle(.blue)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(12)
         .frame(width: 200)

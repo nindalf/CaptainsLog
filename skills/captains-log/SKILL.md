@@ -50,7 +50,7 @@ Lists and search are compact. `show <id> [<id>...]` prints records in full, with
 | What's on my plate | `todos list --list today` (or `inbox`, `upcoming`, `anytime`, `someday`), `prs list --mine --state open`, `prs list --reviews` |
 | PRs I reviewed | `prs list --reviewed --from D --to D`, dated by my latest review |
 | What teammates shipped | `prs list --teammates --from D --to D` |
-| A project | `projects list`, then `show <id>` |
+| A project | `projects list`, then `show <id>`: its todos, meetings, PRs and log entries. `--project` narrows `log list`, `meetings list`, `prs list` and `todos list` |
 | My calendar | `events list --from D --to D` (`--hidden` for hidden events) |
 | Interviews | `interviews list --from D` (`--candidate`, `--recommendation`) |
 | Log entries | `log list --from D --to D --tag T --source S` |
@@ -72,8 +72,9 @@ EOF
 | To record | Use |
 |---|---|
 | Meeting summary or notes | `meetings edit <id> --summary -` (or `--notes`, `--prep-notes`, `--transcript`) |
-| A note, reflection or write-up | `log add "Title" --content - --tags a,b` (`--private` for reflections) |
+| A note, reflection or write-up | `log add "Title" --content - --tags a,b [--project NAME]` (`--private` for reflections) |
 | A todo | `todos add "Title" [--due-date D] [--project NAME] [--notes -]` |
+| A record's project | `edit <id> --project NAME` (or `--no-project`) on `todos`, `log`, `meetings` or `prs` |
 | Feedback | `people feedback add <person id> -`. Feedback to me goes on my own person, starting `From <name>:` |
 | Interview write-up | `interviews edit <id> --raw-notes -` (and `--upsides`, `--risk-factors`, `--conclusion`, `--recommendation`) |
 | People from a roster file | `people import roster.json` previews the changes; `--yes` applies them. `people export` prints a roster |
