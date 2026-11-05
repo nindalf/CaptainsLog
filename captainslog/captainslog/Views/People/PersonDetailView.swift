@@ -282,6 +282,7 @@ private struct FeedbackEditor: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+                .help("Delete Feedback")
             }
             MarkdownEditor(
                 text: $feedback.content,

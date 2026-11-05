@@ -1,12 +1,11 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// A log entry's controls, at the bottom right of its card: source, tags, project, privacy, trash.
+/// A log entry's controls, at the bottom right of its card: source, tags, project, privacy.
 /// Set tags or a project show as pills, else as icons.
 struct LogEntryControls: View {
     @Bindable var entry: LogEntry
     let projects: [Project]
-    var onDelete: () -> Void
 
     @State private var showTags = false
     @State private var showProject = false
@@ -21,7 +20,6 @@ struct LogEntryControls: View {
             tagsControl
             projectControl
             PrivacyEye(isOn: $entry.isPrivate)
-            CardTrashButton(help: "Delete", action: onDelete)
         }
         .font(.system(size: 14))
         .foregroundStyle(.secondary)

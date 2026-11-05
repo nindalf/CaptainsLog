@@ -86,15 +86,15 @@ struct MeetingDetailView: View {
                 }
                 .keyboardShortcut("n", modifiers: .command)
             }
-            // The eye then the trash, as at the bottom right of every card.
+            // The eye, as at the bottom right of every card, then the trash.
             ToolbarItem {
                 PrivacyEye(isOn: $meeting.isPrivate, inToolbar: true)
             }
             ToolbarItem {
                 Button { pendingDelete = .meeting(meeting) } label: {
-                    Label("Delete Meeting", systemImage: "trash")
+                    Label("Delete Meeting…", systemImage: "trash")
                 }
-                .help("Delete this meeting")
+                .help("Delete Meeting")
             }
         }
         .deleteConfirmation($pendingDelete) { _ in dismiss() }

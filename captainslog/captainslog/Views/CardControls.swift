@@ -28,21 +28,6 @@ struct PrivacyEye: View {
     }
 }
 
-/// The trash at the right end of a card's controls, right of the eye.
-struct CardTrashButton: View {
-    let help: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "trash")
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.red.opacity(0.7))
-        .help(help)
-    }
-}
-
 extension View {
     /// A tappable pill in a card's controls: a project, a date, a tag.
     func cardPill(_ tint: Color) -> some View {

@@ -8,8 +8,6 @@ struct TodoCardView: View {
     var focusedField: FocusState<TodoFocusField?>.Binding
     var onComplete: () -> Void
     var onCollapse: () -> Void = {}
-    /// None for a draft, which isn't saved yet.
-    var onDelete: (() -> Void)? = nil
 
     private var notesBinding: Binding<String> {
         Binding(
@@ -30,7 +28,7 @@ struct TodoCardView: View {
                     .caretAtEndWhenFocused(focusedField.wrappedValue == .title(todo.id))
             }
             notesEditor
-            TodoControls(todo: todo, projects: projects, onDelete: onDelete)
+            TodoControls(todo: todo, projects: projects)
                 .padding(.leading, 30)
         }
         .padding(12)

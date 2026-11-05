@@ -110,15 +110,15 @@ struct InterviewDetailView: View {
                 }
                 .keyboardShortcut("n", modifiers: .command)
             }
-            // The eye then the trash, as at the bottom right of every card.
+            // The eye, as at the bottom right of every card, then the trash.
             ToolbarItem {
                 PrivacyEye(isOn: $interview.isPrivate, inToolbar: true)
             }
             ToolbarItem {
                 Button { pendingDelete = .interview(interview) } label: {
-                    Label("Delete Interview", systemImage: "trash")
+                    Label("Delete Interview…", systemImage: "trash")
                 }
-                .help("Delete this interview")
+                .help("Delete Interview")
             }
         }
         .deleteConfirmation($pendingDelete) { _ in dismiss() }

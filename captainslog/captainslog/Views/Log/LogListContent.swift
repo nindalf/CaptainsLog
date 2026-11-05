@@ -204,10 +204,10 @@ struct LogListContent: View {
                 entry: entry,
                 projects: projects,
                 focusedField: $focusedField,
-                onCollapse: { collapseAndCommit() },
-                onDelete: { pendingDelete = .log(entry) }
+                onCollapse: { collapseAndCommit() }
             )
             .padding(.vertical, 2)
+            .contextMenu { deleteMenu(.log(entry)) }
         } else {
             FeedRowView(item: .log(entry), isSelected: selectedID == entry.id)
                 .onTapGesture {
@@ -229,10 +229,10 @@ struct LogListContent: View {
                 todo: todo,
                 projects: projects,
                 focusedField: $focusedField,
-                onCollapse: { collapseAndCommit() },
-                onDelete: { requestDelete(.todo(todo)) }
+                onCollapse: { collapseAndCommit() }
             )
             .padding(.vertical, 2)
+            .contextMenu { deleteMenu(.todo(todo)) }
         } else {
             FeedRowView(item: .todo(todo), isSelected: selectedID == todo.id, onReopen: {
                 ReopenConfirmation.request([todo], pending: &pendingReopen, in: modelContext)

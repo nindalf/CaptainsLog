@@ -8,7 +8,6 @@ struct CompletedTodoCardView: View {
     let projects: [Project]
     var focusedField: FocusState<LogFocusField?>.Binding
     var onCollapse: () -> Void
-    var onDelete: () -> Void
 
     private var notesBinding: Binding<String> {
         Binding(
@@ -43,7 +42,7 @@ struct CompletedTodoCardView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                TodoControls(todo: todo, projects: projects, onDelete: onDelete)
+                TodoControls(todo: todo, projects: projects)
             }
         }
         .padding(12)

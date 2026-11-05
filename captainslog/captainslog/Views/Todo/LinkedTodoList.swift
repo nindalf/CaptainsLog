@@ -174,12 +174,7 @@ struct LinkedTodoList: View {
             onExpand: { expand(todo) },
             onComplete: { toggleComplete(todo) }
         )
-        .contextMenu {
-            Button("Move to Trash", systemImage: "trash") {
-                todo.moveToTrash()
-                try? modelContext.save()
-            }
-        }
+        .contextMenu { trashMenu(todo) }
     }
 
     private func card(for todo: Todo) -> some View {
@@ -188,16 +183,21 @@ struct LinkedTodoList: View {
             projects: projects,
             focusedField: $focusedField,
             onComplete: { if todo !== draft { toggleComplete(todo) } },
-            onCollapse: { collapseAndCommit() },
-            onDelete: todo === draft ? nil : {
-                expandedID = nil
-                todo.moveToTrash()
-                try? modelContext.save()
-            }
+            onCollapse: { collapseAndCommit() }
         )
+        // A draft isn't saved yet, so there's nothing to trash.
+        .contextMenu { if todo !== draft { trashMenu(todo) } }
         .onKeyPress(.escape) {
             collapseAndCommit()
             return .handled
+        }
+    }
+
+    private func trashMenu(_ todo: Todo) -> some View {
+        Button("Move to Trash", systemImage: "trash") {
+            if expandedID == todo.id { expandedID = nil }
+            todo.moveToTrash()
+            try? modelContext.save()
         }
     }
 

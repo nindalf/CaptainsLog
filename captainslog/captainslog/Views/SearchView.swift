@@ -119,10 +119,10 @@ struct SearchView: View {
                 entry: entry,
                 projects: projects,
                 focusedField: $focusedField,
-                onCollapse: { collapse() },
-                onDelete: { pendingDelete = .log(entry) }
+                onCollapse: { collapse() }
             )
             .padding(.vertical, 2)
+            .contextMenu { deleteMenu(row) }
         case .pr(let pr) where isExpanded:
             PRCardView(pr: pr, focusedField: $prFocusedField, onCollapse: { collapse() })
                 .overlay(alignment: .topTrailing) {
@@ -133,6 +133,15 @@ struct SearchView: View {
         default:
             SearchResultRow(row: row, terms: SearchMatch.terms(of: searchedQuery), isSelected: selectedID == row.id)
                 .onTapGesture { tap(row) }
+                .contextMenu { deleteMenu(row) }
+        }
+    }
+
+    /// Only log entries, which open in place here; everything else is deleted where it opens.
+    @ViewBuilder
+    private func deleteMenu(_ row: SearchRow) -> some View {
+        if case .log(let entry) = row.result {
+            Button("Delete Entry…", systemImage: "trash", role: .destructive) { pendingDelete = .log(entry) }
         }
     }
 

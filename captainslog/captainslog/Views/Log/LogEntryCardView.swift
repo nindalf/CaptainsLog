@@ -7,7 +7,6 @@ struct LogEntryCardView: View {
     let projects: [Project]
     var focusedField: FocusState<LogFocusField?>.Binding
     var onCollapse: () -> Void
-    var onDelete: () -> Void = {}
 
     private var contentBinding: Binding<String> {
         Binding(
@@ -36,7 +35,7 @@ struct LogEntryCardView: View {
                 onReturn: onCollapse
             )
 
-            LogEntryControls(entry: entry, projects: projects, onDelete: onDelete)
+            LogEntryControls(entry: entry, projects: projects)
         }
         .padding(12)
         .background(Color(nsColor: .controlBackgroundColor))

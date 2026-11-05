@@ -1,14 +1,13 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// A todo's controls, at the bottom right of its card and of Quick Entry: project, When, privacy,
-/// then the trash where there is one. A set project or When shows as a pill, else as an icon.
+/// A todo's controls, at the bottom right of its card and of Quick Entry: project, When, privacy.
+/// A set project or When shows as a pill, else as an icon.
 struct TodoControls: View {
     @Bindable var todo: Todo
     let projects: [Project]
     /// Quick Entry keeps its project here until Save, since relating a draft inserts it.
     var pendingProject: Binding<UUID?>? = nil
-    var onDelete: (() -> Void)? = nil
 
     @State private var showWhen = false
     @State private var showProject = false
@@ -24,9 +23,6 @@ struct TodoControls: View {
             projectControl
             whenControl
             PrivacyEye(isOn: $todo.isPrivate)
-            if let onDelete {
-                CardTrashButton(help: "Move to Trash", action: onDelete)
-            }
         }
         .font(.system(size: 14))
         .foregroundStyle(.secondary)

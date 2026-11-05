@@ -451,8 +451,7 @@ struct TodoListContent: View {
                 projects: projects,
                 focusedField: $focusedField,
                 onComplete: { toggleComplete(todo) },
-                onCollapse: { collapseAndCommit() },
-                onDelete: { trash([todo]) }
+                onCollapse: { collapseAndCommit() }
             )
             .padding(.vertical, 2)
             .contextMenu { todoContextMenu(todo) }

@@ -15,7 +15,7 @@ How the app fits together, and the decisions and rules that aren't obvious from 
 - **Dates** go through `DateLabel` (Kit): Yesterday/Today/Tomorrow, a weekday within this Monday-to-Sunday week, else "21 Oct", with the year only outside this year. Dates of things already done are picked with `DayField`.
 - **Detail pages** (meeting, interview, person) are documents, not `Form`s (`DetailPage`): an editable title, a metadata line, boxed `DetailSection`s.
 - **Content width:** lists and detail pages share one centred 760pt column (`contentColumn()`, inside the `ScrollView` so the scroller stays at the edge). Calendar and Dashboard fill the window. Tab lists are `ScrollView` + `LazyVStack` with `NavigationRow`, not `List`: a macOS `List` ignores `contentMargins`, and capping its frame moves its scroller into the window.
-- **Card controls** end every editable card in the same order, bottom right: the record's pills or picker icons, the privacy eye (`PrivacyEye`), the trash (`CardTrashButton`). The trash confirms only permanent deletes; a todo goes to the Trash at once.
+- **Card controls** end every editable card in the same order, bottom right: the record's pills or picker icons, then the privacy eye (`PrivacyEye`). No trash on cards: delete is in the context menu, on the open card as on its row, and the Delete key on a selected row. Only permanent deletes confirm; a todo goes to the Trash at once.
 - **Navigation:** `Navigator` opens a linked record by pushing onto the current tab's stack, so Back returns to the link. Switching tabs clears the stack. Links still open a tab hidden in Settings.
 - **Hiding a tab** in Settings › Sidebar hides its Dashboard panes too.
 
