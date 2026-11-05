@@ -23,42 +23,42 @@ allowed-tools:
 
 # Captain's Log
 
-`captains-log` is the CLI for my local work-tracking store, shared with the Captain's Log app. It is the only source to use: don't fill gaps from git, GitHub, Slack, Notion or the web. When the store can't answer, say so (see Blind spots).
+`captains-log` reads and writes my local work store, the one the Captain's Log app uses. Use nothing else: not git, GitHub, Slack, Notion or the web. If the store can't answer, say so.
 
 ## Who I am
 
-I'm a person in the store like anyone else: an attendee on my events, the author of my PRs, the one holding feedback I received. Run `captains-log whoami` before reading people, attendees, feedback, transcripts or notes someone else wrote. `me` is that person: leave them out of "who did I meet" answers, and read their name in a transcript or someone else's notes as "I". Person records also carry `isSelf`.
+I'm in the store as a person like anyone else. Run `captains-log whoami` before reading people, attendees, feedback, transcripts or other people's notes. Leave `me` out of "who did I meet", and read my name in a transcript or someone's notes as "I". Person records also carry `isSelf`.
 
-If `me` is null, `candidates` lists likely people with the `reason` for each. Ask me which is me, offering the likeliest few, then run `captains-log whoami --set <id>` (it asks for approval). If none of them is me, carry on and don't ask again this conversation.
+If `me` is null, ask which of the likeliest `candidates` I am, then run `captains-log whoami --set <id>`. If none of them is me, carry on and don't ask again this conversation.
 
 ## Reading
 
-Every command prints JSON to stdout; pipe it through `jq`. Errors go to stderr with a non-zero exit. Every record carries an `id` (a UUID) to pass to the next command. Always name the `list` subcommand (`meetings list`, not `meetings`): the read commands are pre-approved by name, and writes ask first.
+Output is JSON on stdout (pipe it through `jq`); errors go to stderr with a non-zero exit. Pass a record's `id` to the next command. Always spell out `list` (`meetings list`, not `meetings`): reads are pre-approved by name.
 
-**Find, then read.** Lists and search are compact: titles, dates, flags, short snippets. `captains-log show <id>` prints one record of any type in full (notes, summary, transcript, PR body, every interview section) plus the ids of linked records (attendees, project, a todo's meeting). Read the full record before summarising or quoting it.
+Lists and search are compact. `show <id>` prints any record in full, with the ids of linked records. Read it before summarising or quoting.
 
 | Question | Start with |
 |---|---|
-| What did I do between two dates? | `feed --from D --to D` (log, meetings and interviews with notes, my PRs by merge date, completed todos) |
-| Where did X come up? | `search "X"`; every word must match, across every type including people, projects and feedback; each hit has `type`, `matchedField` and a snippet |
-| Meetings with someone | `people list --search NAME` to confirm who, then `meetings list --person NAME --from D` |
-| Everything about a person | `show <person id>`: their feedback, meetings, interviews, PRs |
-| Feedback given or received | `people feedback list --from D --to D` (`--person <id>`). Each item is feedback its person received: what I gave is on their page, what I got is on mine and says who it's from |
+| What did I do between two dates? | `feed --from D --to D`: log, meetings and interviews with notes, my merged PRs, completed todos |
+| Where did X come up? | `search "X"` (every word must match, across every type) |
+| Meetings with someone | `people list --search NAME`, then `meetings list --person NAME --from D` |
+| Everything about a person | `show <person id>` |
+| Feedback | `people feedback list --from D --to D [--person <id>]`. Each item is feedback its person received: what I gave is on their page, what I got is on mine and says who from |
 | What's on my plate | `todos list --list today` (or `inbox`, `upcoming`, `anytime`, `someday`), `prs list --mine --state open`, `prs list --reviews` |
-| PRs I reviewed | `prs list --reviewed --from D --to D` (by the date of my latest review; team requests included) |
-| What teammates shipped or opened | `prs list --teammates --from D --to D` (created or merged in the range; each has its `author`) |
-| A project | `projects list`, then `show <project id>` |
-| My calendar | `events list --from D --to D` (`--hidden` includes hidden events) |
-| Interviews | `interviews list --from D`, `--candidate`, `--recommendation` |
+| PRs I reviewed | `prs list --reviewed --from D --to D`, dated by my latest review |
+| What teammates shipped | `prs list --teammates --from D --to D` |
+| A project | `projects list`, then `show <id>` |
+| My calendar | `events list --from D --to D` (`--hidden` for hidden events) |
+| Interviews | `interviews list --from D` (`--candidate`, `--recommendation`) |
 | Log entries | `log list --from D --to D --tag T --source S` |
 
-- Dates are `YYYY-MM-DD` in local time and `--to` includes that day. Lists default to the last week (events: the coming week), so pass `--from` when looking further back.
-- Output timestamps are UTC. Convert to local time when presenting them.
-- `captains-log <command> --help` lists every option.
+- Dates are local `YYYY-MM-DD`, and `--to` is inclusive. Lists default to the last week (events: the next week).
+- Output timestamps are UTC; show them in local time.
+- `--help` on any command lists its options.
 
 ## Writing
 
-Write only when I've asked for it, or after proposing the exact change and getting a yes. Pass long text on stdin with `-` and a quoted heredoc, so nothing needs shell-quoting:
+Write only when I've asked, or after I've said yes to the exact change. Pass long text on stdin with `-` and a quoted heredoc:
 
 ```bash
 captains-log meetings edit <id> --summary - <<'EOF'
@@ -68,44 +68,39 @@ EOF
 
 | To record | Use |
 |---|---|
-| A meeting summary or notes | `meetings edit <id> --summary -` (or `--notes`, `--prep-notes`, `--transcript`) |
-| A standalone note, reflection or write-up | `log add "Title" --content - --tags a,b` (`--private` for reflections) |
-| Something to do | `todos add "Title" [--due-date D] [--project NAME] [--notes -]` |
-| Feedback for someone | `people feedback add <person id> -`. Feedback to me goes on my own person, starting `From <name>:` |
-| Join up people from a roster file | `people import roster.json` previews the creates, merges, fills and conflicts; `--yes` applies them. `people export` prints a roster |
+| Meeting summary or notes | `meetings edit <id> --summary -` (or `--notes`, `--prep-notes`, `--transcript`) |
+| A note, reflection or write-up | `log add "Title" --content - --tags a,b` (`--private` for reflections) |
+| A todo | `todos add "Title" [--due-date D] [--project NAME] [--notes -]` |
+| Feedback | `people feedback add <person id> -`. Feedback to me goes on my own person, starting `From <name>:` |
 | Interview write-up | `interviews edit <id> --raw-notes -` (and `--upsides`, `--risk-factors`, `--conclusion`, `--recommendation`) |
+| People from a roster file | `people import roster.json` previews the changes; `--yes` applies them. `people export` prints a roster |
 
-- An empty value clears a field. `edit` commands change only the fields passed.
-- Never run `delete --permanently`, `prune --permanently`, `empty-trash`, `people merge --yes`, `people import --yes` or `projects complete --complete-todos` unless I asked for that specific action. Prefer `todos trash`, which is recoverable.
-- Never run the `seed-*` commands, and never set `CAPTAINSLOG_STORE_DIR` unless I ask: it points the CLI at a different store.
+- `edit` changes only the fields you pass; an empty value clears one.
+- Run these only when I've asked for that exact action: `delete --permanently`, `prune --permanently`, `empty-trash`, `people merge --yes`, `people import --yes`, `projects complete --complete-todos`. Prefer `todos trash`, which can be undone.
+- Never run `seed-*` commands or set `CAPTAINSLOG_STORE_DIR` (it switches stores) unless I ask.
 
 ## Privacy
 
-Log entries, meetings, interviews and todos have `isPrivate`. Interviews and their todos are private by default, and so are todos filed from a private meeting; everything else isn't unless I mark it. `edit` commands take `--private` / `--no-private`.
+Log entries, meetings, interviews and todos have `isPrivate` (`--private` / `--no-private` on `edit`). Interviews are private by default, as are todos filed from a private interview or meeting.
 
-- Don't read the content of private records. Lists, `feed` and `search` already leave out their text; don't `show` them to get it. Their title, date, attendees and (for interviews) recommendation are fine to use, so you can count interviews and their hire/no-hire split, or note that a private meeting happened. Read one only when I ask about that specific record.
-- Before putting store content anywhere others will read it (a Slack message, a doc, a PR), leave out private records.
+- Don't read private records' content. Lists, `feed` and `search` leave it out; don't `show` them to get it. Title, date, attendees and an interview's recommendation are fine, so you can count interviews and their hire/no-hire split. Read one only when I ask about it specifically.
+- Leave private records out of anything others will read (Slack, docs, PRs).
 
-## Blind spots
+## What the store can't see
 
-The store holds only what sync brings in and what I write:
+The store has only what sync brings in and what I write.
 
-- GitHub: PRs I authored (the latest 50 per state in the configured repos), PRs whose review is requested from me personally (not my teams), the open and merged PRs of teammates I sync (`people edit <id> --sync-prs`; `prs list --teammates`), and PRs I reviewed on any request whose last update was in the past 30 days (`prs list --reviewed`; only my latest review's date is kept). Not comments, reviews of PRs that went 30 days without an update before sync saw them, or other repos.
-- Calendar: allowlisted calendars, from when syncing started.
-- Meetings and interviews: only what I wrote. One without notes is just a title, a time and attendees.
-- Slack, Notion, Linear, documents and incidents: not ingested.
-- Retention: if I turned it on in Settings › Retention, old interviews lose their written text (name, level and decision stay), and old calendar events without notes and old PRs are deleted. `captains-log prune` lists what the next run removes and which rules are on (`retentionDays`, null when off). Missing old records may be this, not a sync gap.
-- Freshness: data is as of the last sync, which the app runs on a timer. See below.
+- **GitHub**, configured repos only: my PRs (latest 50 per state); PRs asking me personally for review (not my teams); open and merged PRs of teammates I sync (`people edit <id> --sync-prs`); PRs I reviewed, if sync saw them within 30 days of their last update (only my latest review's date is kept). No comments.
+- **Calendar:** allowlisted calendars, since syncing started.
+- **Meetings and interviews:** only what I wrote. Without notes, one is just a title, a time and attendees.
+- **Slack, Notion, Linear, documents, incidents:** not ingested.
+- **Retention:** if it's on (Settings › Retention), old interviews lose their text but keep name, level and decision, and old calendar events without notes and old PRs are deleted. `captains-log prune` shows what the next run removes and `retentionDays` (null when off). A missing old record may have been pruned.
+
+When an answer runs into one of these, say what the store couldn't see; don't guess or look elsewhere. Then offer to record it as a **potential gap in Captain's Log**: something I might build, as the app's author. Always call them that, never "todos", and offer them apart from my real todos. Each one is stored as a todo: check `search "Captain's Log:"` for an existing one, then `todos add "Captain's Log: <what's missing>" --notes -`, saying which question needed it.
 
 ## Freshness
 
-Before answering a question about recent work, run `captains-log status`. For each source (`github`, `calendar`, `backup`) it gives `lastSuccess`, `syncedToday`, `isFailing` and the `lastError`.
+Before answering about recent work, run `captains-log status`. Each source (`github`, `calendar`, `backup`) has `lastSuccess`, `syncedToday`, `isFailing` and `lastError`.
 
-- If the sources the answer relies on all have `syncedToday` true and `isFailing` false, say nothing about freshness.
-- Otherwise add one short line naming the stale or failing source and when it last synced ("GitHub last synced Tuesday; the latest attempt failed: bad credentials"), so I know what the answer might be missing.
-- `captains-log sync` refreshes GitHub and the calendar. Offer to run it when a source is stale; ask first.
-- `backup` is the app's daily encrypted backup to Google Drive. Whenever you run `status`, check it: if it has no `lastSuccess`, or the last success is more than 7 days old, open your answer with one line saying so, with its `lastError`. If the error says there's no backup key, suggest Settings → Backups. Don't run backups yourself. To restore lost or broken data, I run `captains-log restore` in a terminal (it needs my passphrase); suggest it, never run it.
-
-## Reporting gaps
-
-When an answer depends on one of the blind spots, say plainly what the store couldn't see rather than guessing or looking elsewhere. Then offer to record it as a **potential gap in Captain's Log**: something I might build into the app, as the person building it. When talking to me, call these "potential gaps in Captain's Log", never "todos" or "gap todos", and offer them separately from my real work todos so the two don't get mixed up. Under the hood each one is a todo: check `search "Captain's Log:"` for an existing one first, then `todos add "Captain's Log: <what's missing>" --notes -`, saying what question needed it.
+- If the sources you relied on synced today and aren't failing, don't mention freshness. Otherwise add one line naming the stale source and when it last synced ("GitHub last synced Tuesday; the latest attempt failed: bad credentials"), and offer to run `captains-log sync`.
+- `backup` is the app's daily encrypted backup to Google Drive. If it has never succeeded, or last did more than 7 days ago, open your answer with one line saying so, with `lastError`; for a missing backup key, point me to Settings → Backups. Don't run backups. If data needs restoring, suggest I run `captains-log restore` in a terminal; never run it yourself.
