@@ -12,6 +12,11 @@ struct CalendarWeekView: View {
 
     @State private var displayedWeekStart: Date = mondayOfCurrentWeek()
     @State private var unlinkedEvent: CalendarEvent?
+    /// Opens on the working day, a little above its first hour so that hour's label shows.
+    /// Kept across weeks, as switching week shouldn't jump the view.
+    @State private var scrollPosition = ScrollPosition(
+        y: CGFloat(TimeGridConstants.workdayStartHour - TimeGridConstants.startHour) * TimeGridConstants.hourHeight - 12
+    )
 
     private let calendar = Calendar.current
 
@@ -56,19 +61,15 @@ struct CalendarWeekView: View {
 
             if !allDayEvents.isEmpty { Divider() }
 
-            ScrollViewReader { proxy in
-                ScrollView(.vertical) {
-                    TimeGridView(
-                        events: timedEvents,
-                        weekStart: displayedWeekStart,
-                        dayCount: dayCount,
-                        onTap: { handleEventTap($0) }
-                    )
-                    .id("timeGrid")
-                }
-                .onAppear { scrollToCurrentTime(proxy: proxy) }
-                .onChange(of: displayedWeekStart) { scrollToCurrentTime(proxy: proxy) }
+            ScrollView(.vertical) {
+                TimeGridView(
+                    events: timedEvents,
+                    weekStart: displayedWeekStart,
+                    dayCount: dayCount,
+                    onTap: { handleEventTap($0) }
+                )
             }
+            .scrollPosition($scrollPosition)
             .frame(maxHeight: .infinity)
         }
         .popover(item: $unlinkedEvent) { event in
@@ -99,10 +100,6 @@ struct CalendarWeekView: View {
         if let newStart = calendar.date(byAdding: .weekOfYear, value: weeks, to: displayedWeekStart) {
             displayedWeekStart = newStart
         }
-    }
-
-    private func scrollToCurrentTime(proxy: ScrollViewProxy) {
-        proxy.scrollTo("timeGrid", anchor: .center)
     }
 
     private func handleEventAction(_ event: CalendarEvent, action: CalendarEventPopover.CalendarEventAction) {

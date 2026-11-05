@@ -4,8 +4,10 @@ import CaptainsLogKit
 enum TimeGridConstants {
     static let hourHeight: CGFloat = 60
     static let gutterWidth: CGFloat = 50
-    static let startHour: Int = 8
-    static let endHour: Int = 19
+    static let startHour: Int = 0
+    static let endHour: Int = 24
+    /// The calendar opens scrolled to here: the working day.
+    static let workdayStartHour: Int = 8
     static let totalHours: Int = endHour - startHour
     static let gridHeight: CGFloat = CGFloat(totalHours) * hourHeight
 }
@@ -46,15 +48,17 @@ struct TimeGridView: View {
             ForEach(0...TimeGridConstants.totalHours, id: \.self) { hourOffset in
                 let y = CGFloat(hourOffset) * hourHeight
 
-                // Hour label
-                Text(hourLabel(TimeGridConstants.startHour + hourOffset))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(width: TimeGridConstants.gutterWidth - 8, alignment: .trailing)
-                    .position(
-                        x: (TimeGridConstants.gutterWidth - 8) / 2,
-                        y: y
-                    )
+                // Hour label, skipped at the grid's edges where it would be cut in half
+                if hourOffset > 0 && hourOffset < TimeGridConstants.totalHours {
+                    Text(hourLabel(TimeGridConstants.startHour + hourOffset))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(width: TimeGridConstants.gutterWidth - 8, alignment: .trailing)
+                        .position(
+                            x: (TimeGridConstants.gutterWidth - 8) / 2,
+                            y: y
+                        )
+                }
 
                 // Horizontal line
                 Path { path in
@@ -158,7 +162,7 @@ struct TimeGridView: View {
 
         return zip(events, slots).map { event, slot in
             let y = yPosition(for: event.startTime)
-            let height = max(hourHeight / 4, yPosition(for: event.endTime) - y)
+            let height = max(hourHeight / 4, endYPosition(for: event) - y)
             let columnWidth = laneWidth / CGFloat(slot.columns)
             let x = columnX + 1 + CGFloat(slot.column) * columnWidth
             return LayoutItem(
@@ -174,6 +178,12 @@ struct TimeGridView: View {
         let minute = components.minute ?? 0
         let fractional = Double(hour) + Double(minute) / 60.0
         return CGFloat(fractional - Double(TimeGridConstants.startHour)) * hourHeight
+    }
+
+    /// An event that runs past midnight ends at the bottom of its start day's column.
+    private func endYPosition(for event: CalendarEvent) -> CGFloat {
+        guard calendar.isDate(event.endTime, inSameDayAs: event.startTime) else { return gridHeight }
+        return yPosition(for: event.endTime)
     }
 
     private func dayOffsetForDate(_ date: Date) -> Int? {
