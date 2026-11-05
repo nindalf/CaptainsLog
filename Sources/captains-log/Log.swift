@@ -56,7 +56,7 @@ struct Log: AsyncParsableCommand {
                 entries = entries.filter { $0.tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame } }
             }
 
-            try printJSON(entries.map(LogEntryDTO.listed), pretty: pretty)
+            try printJSON(entries.map(LogEntryDTO.from), pretty: pretty)
         }
     }
 

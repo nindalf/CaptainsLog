@@ -78,6 +78,23 @@ struct SearcherTests {
         #expect(Set(try search(a).map(\.id)) == [both.id, one.id])
     }
 
+    @Test func privateTitlesOnlyKeepsPrivateTextOutOfMatches() throws {
+        let (a, b) = (uniqueWord(), uniqueWord())
+        let entry = LogEntry(timestamp: .now, source: .manual, title: "About \(a)", content: "and \(b)", isPrivate: true)
+        let interview = Interview(date: .now, candidateName: "Sam \(a)")
+        interview.riskFactors = "Unsure about \(b)"
+        let open = LogEntry(timestamp: .now, source: .manual, title: "Open", content: b)
+        insert(entry, interview, open)
+        try context.save()
+
+        let titlesOnly = { (q: String) in try Searcher.search(q, in: context, privateTitlesOnly: true) }
+        #expect(Set(try titlesOnly(a).map(\.id)) == [entry.id, interview.id])
+        #expect(try titlesOnly(b).map(\.id) == [open.id])
+        // A title match isn't completed by words from the private text.
+        #expect(try titlesOnly("\(a) \(b)").isEmpty)
+        #expect(Set(try search(b).map(\.id)) == [entry.id, interview.id, open.id])
+    }
+
     @Test func leavesOutTrashedTodosAndCalendarOnlyPeople() throws {
         let word = uniqueWord()
         let kept = Todo(title: "Ask about \(word)")

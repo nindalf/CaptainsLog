@@ -5,6 +5,7 @@ import Foundation
 // untruncated, plus refs to linked records so their ids can be passed to the next command.
 // Reading relationship arrays is fine here: each run fetches fresh from the store, so the
 // stale-inverse problem views have doesn't arise.
+// A private record's text comes out nil: the CLI's only reader is Claude, which keeps out of it.
 
 struct RecordRef: Encodable {
     let id: UUID
@@ -34,7 +35,7 @@ struct LogEntryDetail: Encodable {
     let source: String
     let isPrivate: Bool
     let title: String
-    let content: String
+    let content: String?
     let tags: [String]
     let externalURL: URL?
     let externalID: String?
@@ -44,7 +45,7 @@ struct LogEntryDetail: Encodable {
     static func from(_ e: LogEntry) -> LogEntryDetail {
         LogEntryDetail(
             id: e.id, timestamp: e.timestamp, source: e.source.rawValue, isPrivate: e.isPrivate,
-            title: e.title, content: e.content, tags: e.tags,
+            title: e.title, content: e.isPrivate ? nil : e.content, tags: e.tags,
             externalURL: e.externalURL, externalID: e.externalID,
             project: e.project.map(RecordRef.from), people: e.people.map(PersonRef.from)
         )
@@ -74,7 +75,8 @@ struct MeetingDetail: Encodable {
             id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate, tags: m.tags,
             project: m.project.map(RecordRef.from),
             attendees: m.attendees.sorted { $0.name < $1.name }.map(PersonRef.from),
-            prepNotes: m.prepNotes, notes: m.notes, transcript: m.transcript, summary: m.summary,
+            prepNotes: m.isPrivate ? nil : m.prepNotes, notes: m.isPrivate ? nil : m.notes,
+            transcript: m.isPrivate ? nil : m.transcript, summary: m.isPrivate ? nil : m.summary,
             externalURL: m.externalURL, slackURL: m.slackURL, calendarEventID: m.calendarEvent?.id,
             todos: todos.map(RecordRef.from)
         )
@@ -103,14 +105,15 @@ struct InterviewDetail: Encodable {
     let todos: [RecordRef]
 
     static func from(_ i: Interview, todos: [Todo]) -> InterviewDetail {
-        InterviewDetail(
+        func text(_ value: String?) -> String? { i.isPrivate ? nil : value }
+        return InterviewDetail(
             id: i.id, date: i.date, candidateName: i.candidateName, role: i.role,
             isPrivate: i.isPrivate,
-            problemName: i.problemName, whiteboardLink: i.whiteboardLink,
+            problemName: i.problemName, whiteboardLink: text(i.whiteboardLink),
             coInterviewer: i.coInterviewer.map(PersonRef.from),
-            rawNotes: i.rawNotes, upsides: i.upsides, riskFactors: i.riskFactors,
-            levelAssessment: i.levelAssessment, recommendation: i.recommendation?.rawValue,
-            conclusion: i.conclusion, debriefDate: i.debriefDate, debriefNotes: i.debriefNotes,
+            rawNotes: text(i.rawNotes), upsides: text(i.upsides), riskFactors: text(i.riskFactors),
+            levelAssessment: text(i.levelAssessment), recommendation: i.recommendation?.rawValue,
+            conclusion: text(i.conclusion), debriefDate: i.debriefDate, debriefNotes: text(i.debriefNotes),
             calendarEventID: i.calendarEvent?.id, todos: todos.map(RecordRef.from)
         )
     }
@@ -178,7 +181,7 @@ struct TodoDetail: Encodable {
 
     static func from(_ t: Todo) -> TodoDetail {
         TodoDetail(
-            id: t.id, title: t.title, notes: t.notes, dueDate: t.dueDate, completedDate: t.completedDate,
+            id: t.id, title: t.title, notes: t.isPrivate ? nil : t.notes, dueDate: t.dueDate, completedDate: t.completedDate,
             trashedDate: t.trashedDate, isCompleted: t.isCompleted,
             isPrivate: t.isPrivate, schedule: t.schedule.rawValue, list: SmartList.of(t).rawValue,
             project: t.project.map(RecordRef.from), people: t.people.map(PersonRef.from),

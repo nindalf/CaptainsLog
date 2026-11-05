@@ -8,7 +8,7 @@ struct Search: AsyncParsableCommand {
         abstract: "Search people, projects, todos, log entries, meetings, interviews, PRs and feedback",
         discussion: """
             Every word must appear somewhere in the record. Each result says which field matched best and \
-            shows the text around the match. Undated results (people, open projects and todos) come first, then newest first.
+            shows the text around the match. A private record matches on its title alone. Undated results (people, open projects and todos) come first, then newest first.
             """
     )
 
@@ -23,7 +23,7 @@ struct Search: AsyncParsableCommand {
             throw ValidationError("Search query can't be empty")
         }
         let context = ModelContext(try Store.makeContainer())
-        let results = try Searcher.search(query, in: context).map {
+        let results = try Searcher.search(query, in: context, privateTitlesOnly: true).map {
             SearchResultDTO($0)
         }
         try printJSON(results, pretty: pretty)

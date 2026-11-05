@@ -108,7 +108,7 @@ struct FeedItemDTO: Encodable {
         self.isPrivate = isPrivate
         self.project = project?.name
         self.tags = tags
-        // A private record's text is left to `show`.
+        // A private record's text is never printed.
         self.snippet = isPrivate == true ? nil : snippet.flatMap { $0.isEmpty ? nil : String($0.prefix(200)) }
     }
 }

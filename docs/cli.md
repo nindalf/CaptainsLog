@@ -8,7 +8,7 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 
 - JSON to stdout (`--pretty` for humans), errors to stderr as `ValidationError` with a non-zero exit. Invalid input is an error, never ignored.
 - Every record carries its `id`. Lists leave out long-form text (meeting notes, transcripts, PR bodies, interview sections) so a week fits in an agent's context; `show` prints everything. Text that is the record itself (log content, todo and project notes) stays in lists. Every DTO of a model with `isPrivate` includes it.
-- Private records keep their text to `show`: `log list` and `todos list` drop their content and notes, `feed` their snippet, and `search` its snippet unless the title matched. The app's Feed and Search still show it.
+- The CLI never prints a private record's text, `show` and write output included: those fields are left out of the JSON, and `search` matches a private record on its title alone (`Searcher`'s `privateTitlesOnly`). Title, date, people, tags and an interview's recommendation still come through. There's deliberately no flag to override it: Claude is the CLI's only reader, and would use one. The app's Feed and Search still show the text.
 - Dates go through `CLIDate` (`Dates.swift`): `YYYY-MM-DD` in local time, `--to` inclusive, impossible dates rejected. Lists default to the last week.
 - Long-text options take `-` to read stdin (`TextInput`). Where the app clears a field by emptying it, an empty value clears.
 - Permanent changes need a flag, since the CLI can't ask: `--permanently` for deletes, `--yes` for merging people and importing a roster, `--complete-todos` where the app confirms. Todos have a Trash; nothing else does.

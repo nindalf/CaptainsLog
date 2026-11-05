@@ -83,7 +83,8 @@ EOF
 
 Log entries, meetings, interviews and todos have `isPrivate` (`--private` / `--no-private` on `edit`). Interviews are private by default, as are todos filed from a private interview or meeting.
 
-- Don't read private records' content. Lists, `feed` and `search` leave it out; don't `show` them to get it. Title, date, attendees and an interview's recommendation are fine, so you can count interviews and their hire/no-hire split. Read one only when I ask about it specifically.
+- The CLI never prints a private record's text (content, notes, summaries, interview write-ups), `show` included, and `search` matches only its title. You still get title, date, attendees, tags and an interview's recommendation, so you can count interviews and their hire/no-hire split, and write to a private record by id.
+- If I ask what a private record says, tell me it's private and to open it in the app. Never make one public (`--no-private`) unless I ask for that.
 - Leave private records out of anything others will read (Slack, docs, PRs).
 
 ## What the store can't see

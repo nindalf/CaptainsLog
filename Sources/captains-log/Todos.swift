@@ -85,7 +85,7 @@ struct Todos: AsyncParsableCommand {
                 }
             }
 
-            try printJSON(todos.map(TodoDTO.listed), pretty: pretty)
+            try printJSON(todos.map(TodoDTO.from), pretty: pretty)
         }
     }
 

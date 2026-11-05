@@ -13,7 +13,7 @@ public struct SearchHit: Sendable, Identifiable {
     /// Nil for people, open projects and undated open todos: they're current, so they sort first.
     public let date: Date?
     public let match: SearchMatch
-    /// The record's `isPrivate`; false for types that don't have one. The CLI hides private snippets.
+    /// The record's `isPrivate`; false for types that don't have one.
     public let isPrivate: Bool
 
     /// Undated hits first, by kind then title; then newest first.
@@ -37,14 +37,18 @@ public actor Searcher {
         try Self.search(query, in: modelContext)
     }
 
-    public static func search(_ query: String, in context: ModelContext) throws -> [SearchHit] {
+    /// With `privateTitlesOnly`, a private record matches on its title alone, so a hit gives away
+    /// nothing of its text. The CLI searches this way.
+    public static func search(_ query: String, in context: ModelContext, privateTitlesOnly: Bool = false) throws -> [SearchHit] {
         let terms = SearchMatch.terms(of: query)
         // SQLite narrows each type by the longest word; SearchMatch then checks every word in Swift.
         guard let q = terms.max(by: { $0.count < $1.count }) else { return [] }
         let number = terms.lazy.compactMap { Int($0.trimmingPrefix("#")) }.first ?? -1
         var hits: [SearchHit] = []
 
+        // The first field is the record's title.
         func add(_ kind: SearchKind, _ id: UUID, _ title: String, _ date: Date?, isPrivate: Bool = false, _ fields: [(name: String, text: String?)]) {
+            let fields = isPrivate && privateTitlesOnly ? Array(fields.prefix(1)) : fields
             guard let match = SearchMatch.first(query, in: fields) else { return }
             hits.append(SearchHit(kind: kind, id: id, title: title, date: date, match: match, isPrivate: isPrivate))
         }
