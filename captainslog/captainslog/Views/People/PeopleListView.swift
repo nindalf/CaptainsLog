@@ -91,17 +91,20 @@ private struct PersonRow: View {
     let person: Person
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(person.name).font(.headline)
-            if let subtitle = handleLine {
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            if let summary = associationSummary {
-                Text(summary)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+        HStack(spacing: 10) {
+            PersonAvatar(name: person.name)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(person.name).font(.headline)
+                if let subtitle = handleLine {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let summary = associationSummary {
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .padding(.vertical, 2)
