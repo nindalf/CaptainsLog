@@ -23,7 +23,8 @@ struct PrivacyEye: View {
                 // Fixed width, so swapping the two eyes doesn't shift the icons beside it.
                 .frame(width: 20)
         }
-        .help(isOn ? "Private: kept out of anything shared" : "Make private")
+        // Matches what the CLI prints (docs/cli.md).
+        .help(isOn ? "Private: hidden from Claude, apart from its title" : "Visible to Claude. Make private")
     }
 }
 
