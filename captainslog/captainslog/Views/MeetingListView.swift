@@ -118,7 +118,7 @@ struct MeetingListView: View {
                                 if !meeting.attendees.isEmpty {
                                     Text("^[\(meeting.attendees.count) attendee](inflect: true)")
                                         .font(.caption)
-                                        .foregroundStyle(.tertiary)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
                         }

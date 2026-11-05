@@ -91,13 +91,13 @@ struct InterviewListView: View {
                 if let role = interview.role {
                     Text(role)
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
                 if let coInterviewer = interview.coInterviewer {
                     Label(coInterviewer.name, systemImage: "person.2")
                         .labelStyle(.titleAndIcon)
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }

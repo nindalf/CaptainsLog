@@ -77,7 +77,7 @@ struct FeedRowView: View {
                 if meeting.notes != nil {
                     Text("has notes")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
         case .interview(let interview):
@@ -96,7 +96,7 @@ struct FeedRowView: View {
                     .foregroundStyle(.secondary)
                 Text(pr.repo)
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         case .todo(let todo):
             HStack(spacing: 6) {

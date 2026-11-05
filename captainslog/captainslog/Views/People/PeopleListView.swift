@@ -103,7 +103,7 @@ private struct PersonRow: View {
                 if let summary = associationSummary {
                     Text(summary)
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
