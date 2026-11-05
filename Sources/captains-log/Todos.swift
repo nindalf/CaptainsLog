@@ -29,10 +29,22 @@ struct Todos: AsyncParsableCommand {
         @Option(name: .long, help: "Show only todos in this project")
         var project: String?
 
+        @Option(name: .long, help: "Show only todos tagging this person (UUID or name). Repeat to match any of several")
+        var person: [String] = []
+
+        @Option(name: .long, help: "With --completed: completed on or after this day (ISO 8601, e.g. 2026-04-28)")
+        var from: String?
+
+        @Option(name: .long, help: "With --completed: completed on or before this day, inclusive")
+        var to: String?
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
 
         func validate() throws {
+            if (from != nil || to != nil) && !completed && list != .logbook {
+                throw ValidationError("--from and --to filter by completion date; pass --completed")
+            }
             if completed && list != nil {
                 throw ValidationError("--completed and --list can't be combined; use --list logbook")
             }
@@ -76,6 +88,19 @@ struct Todos: AsyncParsableCommand {
             }
             if let projectID {
                 todos = todos.filter { $0.project?.id == projectID }
+            }
+            if !person.isEmpty {
+                let ids = Set(person.compactMap(UUID.init(uuidString:)))
+                let names = person.filter { UUID(uuidString: $0) == nil }
+                todos = todos.filter { todo in
+                    todo.people.contains { p in
+                        ids.contains(p.id) || names.contains { p.name.localizedCaseInsensitiveContains($0) }
+                    }
+                }
+            }
+            if from != nil || to != nil {
+                let range = try CLIDate.range(from: from, to: to, defaultFrom: .distantPast, defaultTo: .distantFuture)
+                todos = todos.filter { $0.completedDate.map(range.contains) ?? false }
             }
             if overdue {
                 let now = Date.now

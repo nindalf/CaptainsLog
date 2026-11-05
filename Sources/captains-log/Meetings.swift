@@ -54,7 +54,7 @@ struct Meetings: AsyncParsableCommand {
 
     struct Add: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Make a meeting from a calendar event, as the event's Add Notes does"
+            abstract: "Make a meeting from a calendar event, as the event's Add Notes does, and print it as show does"
         )
 
         @Option(name: .long, help: "Calendar event UUID, from events list")
@@ -80,7 +80,7 @@ struct Meetings: AsyncParsableCommand {
             let meeting = calEvent.createMeeting(in: context)
             try context.save()
 
-            try printJSON(MeetingDTO.from(meeting), pretty: pretty)
+            try printJSON(MeetingDetail.load(meeting, in: context), pretty: pretty)
         }
     }
 

@@ -17,6 +17,7 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 
 ## Rules
 
+- **A calendar event's series comes from its Google id** (`CalendarEvent.seriesID`): an instance's id is the series id plus `_` and its original start. Don't use `recurringEventId` for this: sync only sees the last week, and editing "this and following" gives the second half a new `_R<start>` series id while its instances keep the old prefix.
 - **Never point a write at the real store while developing.** Run `.build/debug/captains-log` with `CAPTAINSLOG_STORE_DIR` set to a scratch directory seeded by `CAPTAINSLOG_STORE_DIR=/tmp/x bash scripts/seed-data.sh`.
 - **Upserts fetch first** (CLAUDE.md). Projects go through `ProjectNaming`, and commands never create one implicitly.
 - **Shared rules go in CaptainsLogKit,** where the app can use them and tests can reach them (`SmartList`, `TodoWhen`, `ProjectCompletion`, `Person.absorb`, `Roster`, `Feed`, `Searcher`, `SyncHistory`). Keep command files thin.

@@ -144,6 +144,7 @@ public actor CalendarSync {
         calEvent.endTime = endTime
         calEvent.location = event.location?.isEmpty == true ? nil : event.location
         calEvent.isAllDay = true
+        calEvent.isRecurring = event.recurringEventId != nil
     }
 
     private func upsertTimedEvent(_ event: GoogleCalendarEvent) throws {
@@ -166,6 +167,7 @@ public actor CalendarSync {
         cal.endTime = endTime
         cal.location = event.location?.isEmpty == true ? nil : event.location
         cal.isAllDay = false
+        cal.isRecurring = event.recurringEventId != nil
 
         if let meetingURL = event.hangoutLink.flatMap({ URL(string: $0) }) {
             cal.meetingURL = meetingURL

@@ -172,9 +172,21 @@ final class DemoSeeder {
 
     // MARK: Calendar, meetings and interviews
 
-    private func insertEvent(_ title: String, at slot: Slot, minutes: Int, attendees: [String], location: String?, id: String) -> CalendarEvent {
+    /// A recurring event's id is its series and start, as Google's are, so `seriesID` finds the series.
+    private func insertEvent(_ title: String, at slot: Slot, minutes: Int, attendees: [String], location: String?, id: String, recurring: Bool = false) -> CalendarEvent {
         let start = clock.date(slot)
-        let event = CalendarEvent(title: title, startTime: start, endTime: start.addingTimeInterval(Double(minutes) * 60), externalID: "seed-\(id)")
+        let externalID: String
+        if recurring {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+            formatter.timeZone = .gmt
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            externalID = "seed\(title.lowercased().filter { $0.isLetter || $0.isNumber })_\(formatter.string(from: start))"
+        } else {
+            externalID = "seed-\(id)"
+        }
+        let event = CalendarEvent(title: title, startTime: start, endTime: start.addingTimeInterval(Double(minutes) * 60), externalID: externalID)
+        event.isRecurring = recurring
         event.location = location
         context.insert(event)
         event.attendees = attendees.map(person)
@@ -188,15 +200,13 @@ final class DemoSeeder {
         let squad = ["hannah", "priya", "marcus", "aisha", "tomas", "ben", "elena"]
         for week in -2...1 {
             for day in [Slot.Day.mon, .tue, .wed, .thu, .fri] {
-                let event = insertEvent("Fulfilment standup", at: Slot(week, day, 9, 45), minutes: 15, attendees: squad, location: nil, id: "standup-\(week)-\(day.rawValue)")
-                event.isRecurring = true
+                let event = insertEvent("Fulfilment standup", at: Slot(week, day, 9, 45), minutes: 15, attendees: squad, location: nil, id: "standup-\(week)-\(day.rawValue)", recurring: true)
                 event.meetingURL = URL(string: "https://meet.google.com/kfc-stnd-upx")
             }
         }
 
         for (index, seed) in Self.meetings.enumerated() {
-            let event = insertEvent(seed.title, at: seed.slot, minutes: seed.minutes, attendees: seed.attendees, location: seed.location, id: "meeting-\(index)")
-            event.isRecurring = seed.recurring
+            let event = insertEvent(seed.title, at: seed.slot, minutes: seed.minutes, attendees: seed.attendees, location: seed.location, id: "meeting-\(index)", recurring: seed.recurring)
             let isPast = clock.isPast(seed.slot)
             let notes = isPast ? seed.notes : nil
             guard notes != nil || seed.prep != nil else { continue }

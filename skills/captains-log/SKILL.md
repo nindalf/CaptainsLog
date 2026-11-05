@@ -42,6 +42,8 @@ Lists and search are compact. `show <id>` prints any record in full, with the id
 | What did I do between two dates? | `feed --from D --to D`: log, meetings and interviews with notes, my merged PRs, completed todos |
 | Where did X come up? | `search "X"` (every word must match, across every type) |
 | Meetings with someone | `people list --search NAME`, then `meetings list --person NAME --from D` |
+| A meeting | `show <meeting id>`: also its todos as the app lists them (`link` is `filed`, `tagged` with an attendee, or `completedHere`) and `previousMeetings` with the same people |
+| Todos for someone | `todos list --person <id or name>` (repeatable); add `--completed --from D` for ones closed since |
 | Everything about a person | `show <person id>` |
 | Feedback | `people feedback list --from D --to D [--person <id>]`. Each item is feedback its person received: what I gave is on their page, what I got is on mine and says who from |
 | What's on my plate | `todos list --list today` (or `inbox`, `upcoming`, `anytime`, `someday`), `prs list --mine --state open`, `prs list --reviews` |

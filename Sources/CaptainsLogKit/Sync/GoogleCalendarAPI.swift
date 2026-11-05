@@ -49,6 +49,8 @@ public struct GoogleCalendarEvent: Decodable, Sendable {
     public let eventType: String?
     public let status: String?
     public let hangoutLink: String?
+    /// Set on each instance of a recurring event.
+    public let recurringEventId: String?
 
     public var isAllDay: Bool { start?.date != nil }
 

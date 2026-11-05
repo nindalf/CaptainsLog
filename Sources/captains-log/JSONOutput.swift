@@ -132,6 +132,8 @@ struct TodoDTO: Encodable {
     let project: String?
     /// Names of the people the todo tags.
     let people: [String]
+    /// On a meeting: `filed` in it, `tagged` with an attendee, or `completedHere`.
+    var link: String? = nil
 
     static func from(_ t: Todo) -> TodoDTO {
         TodoDTO(

@@ -70,13 +70,9 @@ struct LinkedTodoList: View {
     /// Open todos tagging any of `peopleIDs` that aren't filed here already, in the People list's
     /// order (`TodoPeopleGroup`), so rows with the same label sit together.
     private var taggedTodos: [Todo] {
-        guard !peopleIDs.isEmpty else { return [] }
         let linkedIDs = Set(linkedTodos.map(\.id))
-        var tagged: [(todo: Todo, names: [String])] = []
-        for todo in openTodos where !todo.isTrashed && !linkedIDs.contains(todo.id) {
-            let names = taggedPeopleNames(todo)
-            if !names.isEmpty { tagged.append((todo, names)) }
-        }
+        var tagged = MeetingTodos.tagging(peopleIDs, among: openTodos, excluding: linkedIDs)
+            .map { (todo: $0, names: taggedPeopleNames($0)) }
         tagged.sort { lhs, rhs in
             if lhs.names != rhs.names { return TodoPeopleGroup.precedes(lhs.names, rhs.names) }
             return lhs.todo.sortOrder < rhs.todo.sortOrder

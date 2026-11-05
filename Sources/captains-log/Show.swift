@@ -25,11 +25,7 @@ struct Show: AsyncParsableCommand {
             return try printJSON(LogEntryDetail.from(e), pretty: pretty)
         }
         if let m = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.id == uuid })).first {
-            let todos = try context.fetch(FetchDescriptor<Todo>(
-                predicate: #Predicate { $0.trashedDate == nil && ($0.meeting?.id == uuid || $0.completedInMeeting?.id == uuid) },
-                sortBy: [SortDescriptor(\.sortOrder)]
-            ))
-            return try printJSON(MeetingDetail.from(m, todos: todos), pretty: pretty)
+            return try printJSON(MeetingDetail.load(m, in: context), pretty: pretty)
         }
         if let i = try context.fetch(FetchDescriptor<Interview>(predicate: #Predicate { $0.id == uuid })).first {
             let todos = try context.fetch(FetchDescriptor<Todo>(

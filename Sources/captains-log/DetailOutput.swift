@@ -1,5 +1,6 @@
 import CaptainsLogKit
 import Foundation
+import SwiftData
 
 // Full records for `show`. List DTOs stay compact; these carry every field the app displays,
 // untruncated, plus refs to linked records so their ids can be passed to the next command.
@@ -68,17 +69,64 @@ struct MeetingDetail: Encodable {
     let externalURL: URL?
     let slackURL: URL?
     let calendarEventID: UUID?
-    let todos: [RecordRef]
+    let isRecurring: Bool
+    /// As the meeting's page lists them: open ones filed here, open ones tagging an attendee, then
+    /// those completed here.
+    let todos: [TodoDTO]
+    let previousMeetings: [PreviousMeetingRef]
 
-    static func from(_ m: Meeting, todos: [Todo]) -> MeetingDetail {
-        MeetingDetail(
+    /// Reads what the meeting's page shows alongside the meeting itself.
+    static func load(_ m: Meeting, in context: ModelContext) throws -> MeetingDetail {
+        let id = m.id
+        let filed = try context.fetch(FetchDescriptor<Todo>(
+            predicate: #Predicate { $0.trashedDate == nil && ($0.meeting?.id == id || $0.completedInMeeting?.id == id) },
+            sortBy: [SortDescriptor(\.sortOrder)]
+        ))
+        let open = try context.fetch(FetchDescriptor<Todo>(
+            predicate: #Predicate { $0.completedDate == nil && $0.trashedDate == nil },
+            sortBy: [SortDescriptor(\.sortOrder)]
+        ))
+        let tagged = MeetingTodos.tagging(Set(m.attendees.map(\.id)), among: open, excluding: Set(filed.map(\.id)))
+        func listed(_ todos: [Todo], _ link: (Todo) -> String) -> [TodoDTO] {
+            todos.map { var dto = TodoDTO.from($0); dto.link = link($0); return dto }
+        }
+        let todos = listed(filed.filter { !$0.isCompleted }) { _ in "filed" }
+            + listed(tagged) { _ in "tagged" }
+            + listed(filed.filter(\.isCompleted)) { $0.meeting?.id == id ? "filed" : "completedHere" }
+
+        let date = m.date
+        let earlier = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.date < date }))
+        let me = try Person.me(in: context)?.id
+        let previous = m.previous(among: earlier, me: me).map(PreviousMeetingRef.from)
+
+        return MeetingDetail(
             id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate, tags: m.tags,
             project: m.project.map(RecordRef.from),
             attendees: m.attendees.sorted { $0.name < $1.name }.map(PersonRef.from),
             prepNotes: m.isPrivate ? nil : m.prepNotes, notes: m.isPrivate ? nil : m.notes,
             transcript: m.isPrivate ? nil : m.transcript, summary: m.isPrivate ? nil : m.summary,
             externalURL: m.externalURL, slackURL: m.slackURL, calendarEventID: m.calendarEvent?.id,
-            todos: todos.map(RecordRef.from)
+            isRecurring: m.calendarEvent?.seriesID != nil,
+            todos: todos, previousMeetings: previous
+        )
+    }
+}
+
+struct PreviousMeetingRef: Encodable {
+    let id: UUID
+    let date: Date
+    let title: String
+    let isPrivate: Bool
+    let hasNotes: Bool
+    /// `series` for an earlier instance of the same recurring event, `attendees` for mostly the same people.
+    let match: String
+
+    static func from(_ p: (meeting: Meeting, match: Meeting.PreviousMatch)) -> PreviousMeetingRef {
+        let m = p.meeting
+        return PreviousMeetingRef(
+            id: m.id, date: m.date, title: m.title, isPrivate: m.isPrivate,
+            hasNotes: [m.notes, m.summary, m.prepNotes, m.transcript].contains { $0 != nil },
+            match: p.match.rawValue
         )
     }
 }
