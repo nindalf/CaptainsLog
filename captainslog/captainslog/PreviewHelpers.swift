@@ -5,7 +5,7 @@ import CaptainsLogKit
 @MainActor
 enum PreviewData {
     static let container: ModelContainer = {
-        let schema = Schema(CaptainsLogSchemaV1.models)
+        let schema = Schema(CaptainsLogSchema.models)
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try! ModelContainer(for: schema, configurations: [config])
         populateSampleData(container.mainContext)
@@ -138,19 +138,14 @@ enum PreviewData {
 
         let today = Calendar.current.startOfDay(for: .now)
         let event1 = CalendarEvent(title: "Fulfilment Standup", startTime: today.addingTimeInterval(9 * 3600), endTime: today.addingTimeInterval(9.5 * 3600), externalID: "evt-standup")
-        event1.participantCount = 6
-        event1.confirmedCount = 5
         event1.isRecurring = true
         context.insert(event1)
 
         let event2 = CalendarEvent(title: "Delivery Slot Migration Review", startTime: today.addingTimeInterval(11 * 3600), endTime: today.addingTimeInterval(12 * 3600), externalID: "evt-migration")
-        event2.participantCount = 4
-        event2.confirmedCount = 4
         context.insert(event2)
 
         let event3 = CalendarEvent(title: "Team Lunch", startTime: today.addingTimeInterval(12.5 * 3600), endTime: today.addingTimeInterval(13.5 * 3600), externalID: "evt-lunch")
         event3.isAllDay = false
-        event3.participantCount = 12
         context.insert(event3)
 
         let event4 = CalendarEvent(title: "Company All-Hands", startTime: today, endTime: today.addingTimeInterval(86400), externalID: "evt-allhands")

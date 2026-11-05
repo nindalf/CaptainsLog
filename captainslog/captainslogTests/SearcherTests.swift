@@ -9,7 +9,7 @@ import CaptainsLogKit
 @MainActor
 struct SearcherTests {
     private static let container: ModelContainer = {
-        let schema = Schema(CaptainsLogSchemaV1.models)
+        let schema = Schema(CaptainsLogSchema.models)
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(for: schema, configurations: [config])
     }()

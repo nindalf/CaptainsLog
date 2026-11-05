@@ -415,8 +415,6 @@ struct CalendarEventDetail: Encodable {
     let isHidden: Bool
     let location: String?
     let meetingURL: URL?
-    let participantCount: Int
-    let confirmedCount: Int
     let attendees: [PersonRef]
     let meeting: RecordRef?
     let interview: RecordRef?
@@ -425,7 +423,6 @@ struct CalendarEventDetail: Encodable {
         CalendarEventDetail(
             id: e.id, title: e.title, startTime: e.startTime, endTime: e.endTime, isAllDay: e.isAllDay,
             isRecurring: e.isRecurring, isHidden: e.isHidden, location: e.location, meetingURL: e.meetingURL,
-            participantCount: e.participantCount, confirmedCount: e.confirmedCount,
             attendees: e.attendees.sorted { $0.name < $1.name }.map(PersonRef.from),
             meeting: e.meeting.map(RecordRef.from), interview: e.interview.map(RecordRef.from)
         )

@@ -10,7 +10,7 @@ import CaptainsLogKit
 struct RetentionTests {
     private static let container: ModelContainer = {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        return try! ModelContainer(for: Schema(CaptainsLogSchemaV1.models), configurations: [config])
+        return try! ModelContainer(for: Schema(CaptainsLogSchema.models), configurations: [config])
     }()
 
     private var context: ModelContext { Self.container.mainContext }

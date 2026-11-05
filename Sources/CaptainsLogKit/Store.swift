@@ -22,7 +22,7 @@ public enum Store {
     }
 
     public static func makeContainer() throws -> ModelContainer {
-        let schema = Schema(CaptainsLogSchemaV1.models)
+        let schema = Schema(CaptainsLogSchema.models)
         let dir = directory
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appending(path: "CaptainsLog.store")

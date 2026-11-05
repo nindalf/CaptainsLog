@@ -8,7 +8,7 @@ How the app fits together, and the decisions and rules that aren't obvious from 
 - **App** (`captainslog/captainslog/`): SwiftUI, unsandboxed, single user.
 - **CLI** (`Sources/captains-log/`): how Claude reaches the store. See `docs/cli.md`.
 - **Skills** (`skills/`): `captains-log` (answer from the store) and `weekly-review` (Friday interview into brag-doc entries). Homebrew links them into `~/.claude/skills` and Codex's `~/.agents/skills` (`captains-log skills install`); `just install-skills` links a checkout's. `weekly-review/agents/openai.yaml` keeps Codex from running it unasked.
-- **Store:** one SwiftData SQLite file (WAL) at `~/Library/Application Support/CaptainsLog/`, shared by app and CLI. `CAPTAINSLOG_STORE_DIR` points either at a scratch store, which never syncs. Schema `CaptainsLogSchemaV1`, no migrations yet. Expected scale after a year: a few thousand records per type, so query tuning doesn't matter.
+- **Store:** one SwiftData SQLite file (WAL) at `~/Library/Application Support/CaptainsLog/`, shared by app and CLI. `CAPTAINSLOG_STORE_DIR` points either at a scratch store, which never syncs. Versioned schema with a migration plan (`Schema.swift`); see the schema-change rules in CLAUDE.md. Expected scale after a year: a few thousand records per type, so query tuning doesn't matter.
 
 ## Conventions across the app
 

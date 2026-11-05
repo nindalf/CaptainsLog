@@ -177,8 +177,6 @@ public actor CalendarSync {
         let humanAttendees = (event.attendees ?? []).filter {
             $0.resource != true && !$0.email.contains("group")  // group.google.com email address
         }
-        cal.participantCount = humanAttendees.count
-        cal.confirmedCount = humanAttendees.filter { $0.responseStatus == "accepted" }.count
 
         if humanAttendees.count < 15 {
             try linkAttendees(humanAttendees, to: cal)

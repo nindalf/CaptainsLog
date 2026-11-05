@@ -12,8 +12,6 @@ public final class CalendarEvent {
     public var meetingURL: URL?
     public var isRecurring: Bool = false
     public var isAllDay: Bool = false
-    public var participantCount: Int = 0
-    public var confirmedCount: Int = 0
     public var externalID: String
     /// Hidden by the user. Kept as a row rather than removed so sync can tell it apart from a
     /// new event and doesn't bring it back.

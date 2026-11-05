@@ -190,8 +190,6 @@ final class DemoSeeder {
         event.location = location
         context.insert(event)
         event.attendees = attendees.map(person)
-        event.participantCount = attendees.count + 1
-        event.confirmedCount = attendees.count + 1
         count("events")
         return event
     }

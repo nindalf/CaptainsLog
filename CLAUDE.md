@@ -42,7 +42,7 @@ Tests use **Swift Testing** (`import Testing`, `@Test`, `#expect`) and run throu
   ```swift
   private static let container: ModelContainer = {
       let config = ModelConfiguration(isStoredInMemoryOnly: true)
-      return try! ModelContainer(for: Schema(CaptainsLogSchemaV1.models), configurations: [config])
+      return try! ModelContainer(for: Schema(CaptainsLogSchema.models), configurations: [config])
   }()
   ```
 - Test sync correctness, search, summary, and merge logic — not tests for their own sake.
@@ -78,13 +78,12 @@ The few rules where one mistake silently breaks things:
 
 **`onKeyPress` closures go stale.** SwiftUI keeps calling the closure from an earlier render, so a plain input property it reads can be out of date. Anything a key handler reads must be `@State`, `@Query` or a reference type. The Delete key arrives as U+007F, which `onKeyPress(.delete)` doesn't match; match `press.characters`.
 
-**Schema changes: test on a copy first.** While the store has one user, a model change is an in-place edit of `CaptainsLogSchemaV1`, which SwiftData migrates when it opens the store. For each change:
-1. `just backup`.
-2. Snapshot the real store into `.build/migration-test/` with `sqlite3 .backup` (read-only on the source).
-3. Open the copy with the new build (`CAPTAINSLOG_STORE_DIR`, CLI first, then the app). Compare row counts and every relationship before and after: the join tables get renumbered, so compare joined values, not table names.
-4. Release, then `brew upgrade --cask captains-log`, which replaces the app and the CLI together.
-
-Once a colleague has a store, every change needs a V2 and a migration stage (issue #5).
+**Schema changes: a new version, tested on a copy.** The top-level `@Model` classes are the current version (`CaptainsLogSchema` in `Schema.swift`); each older version keeps a frozen copy of its models (`SchemaV1.swift`) so SwiftData can recognise a store written by it. A frozen copy must match that release's stored properties, relationships (delete rule, inverse), `#Unique` and `#Index` exactly, or the store matches no version and won't open. It also uses the top-level enums (`EntrySource`, ...), so removing a case a store still holds breaks it. For each change:
+1. Copy the current models, stored parts only, into a new frozen `CaptainsLogSchemaV<n>` file, edit the top-level classes, bump the current version, point `CaptainsLogSchema` at it, and add a stage: `.lightweight` for added, removed or renamed (`originalName:`) fields; `.custom` when data has to be computed.
+2. `just backup`.
+3. Snapshot the real store into `.build/migration-test/` with `sqlite3 .backup` (read-only on the source), and dump it with `scripts/migration-dump.py`, skipping any dropped columns.
+4. Open the copy with the new build (`CAPTAINSLOG_STORE_DIR`; a command that reads records, as `status` doesn't open the store), then another copy with the app. Dump each and diff against the first: it compares joined values, since migration renumbers primary keys and join tables.
+5. Release, then `brew upgrade --cask captains-log`, which replaces the app and the CLI together. A store can't be opened by an older build once migrated.
 
 ## Default patterns
 
