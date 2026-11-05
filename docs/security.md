@@ -71,9 +71,9 @@ Retention (Settings › Retention, on by default) clears old interview notes and
 
 ## Claude Code and Codex
 
-The `captains-log` and `weekly-review` skills (`skills/`) let Claude Code or Codex read and write the store through the CLI. This is the one path by which store contents leave the laptop. **When the agent reads a record, that record is sent to its provider (Anthropic or OpenAI) as part of the conversation**, under whatever terms the company's use already has. The app does nothing with an agent on its own; this only happens when the user asks one something.
+The skills in `skills/` let Claude Code or Codex read and write the store through the CLI. This is the one path by which store contents leave the laptop. **When the agent reads a record, that record is sent to its provider (Anthropic or OpenAI) as part of the conversation**, under whatever terms the company's use already has. The app does nothing with an agent on its own; this only happens when the user asks one something.
 
-- Read commands are pre-approved in the skills' `allowed-tools` (`list`, `show`, `search`, `feed`, `status`, plus `jq`). Every write prompts the user first. `allowed-tools` is experimental in the Agent Skills spec, so Codex may prompt for reads too.
+- Read commands are pre-approved in the skills' `allowed-tools` (`list`, `show`, `search`, `feed`, `status`, plus `jq`). `allowed-tools` is experimental in the Agent Skills spec, so Codex may prompt for reads too.
 - The skills tell Claude not to look outside the store (no git, GitHub, Slack or web), and not to run destructive commands (`delete --permanently`, `empty-trash`, `people merge --yes`) unless the user asks for that one action.
 - Records can be marked private (`isPrivate`), meaning the user wants them kept out of anything shared. It isn't access control: the store is single-user, and the CLI returns every record.
 

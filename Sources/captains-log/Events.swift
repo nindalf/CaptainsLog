@@ -55,7 +55,7 @@ struct Events: AsyncParsableCommand {
                 events = events.filter { $0.startTime > now }
             }
             if meetings {
-                events = events.filter { !$0.isAllDay && $0.interview == nil && $0.attendees.count >= 2 }
+                events = events.filter(\.isMeeting)
             }
             try printJSON(events.map(CalendarEventDTO.from), pretty: pretty)
         }

@@ -25,4 +25,4 @@ Each subcommand is a file in `Sources/captains-log/`, registered in `CaptainsLog
 - **Shared rules go in CaptainsLogKit,** where the app can use them and tests can reach them (`SmartList`, `TodoWhen`, `ProjectCompletion`, `Person.absorb`, `Roster`, `Feed`, `Searcher`, `SyncHistory`). Keep command files thin.
 - **One store, WAL.** The app sees CLI writes through `@Query`; views reading relationship arrays don't update.
 - **Smoke-test by hand** against the scratch store, error paths included. `just ui-build` when CaptainsLogKit changed.
-- **When a command changes,** update `skills/captains-log/SKILL.md` (and `skills/weekly-review/` if it reads the command). The installed CLI comes from the latest release, so until then try a new command with `.build/debug/captains-log`, or `just install-app` to install the checkout over Homebrew's.
+- **When a command changes,** update `skills/captains-log/SKILL.md` (and `skills/weekly-review/` or `skills/meeting-prep/` if it reads the command). The installed CLI comes from the latest release, so until then try a new command with `.build/debug/captains-log`, or `just install-app` to install the checkout over Homebrew's.

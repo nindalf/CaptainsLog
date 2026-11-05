@@ -61,16 +61,26 @@ struct MeetingDetailView: View {
             }
             let hidden = notesOrder.filter { !isShown($0) }
             if !hidden.isEmpty {
-                HStack(spacing: 18) {
-                    ForEach(hidden, id: \.self) { field in
-                        // Styled like LinkedTodoList's Add Todo row.
-                        Button("Add \(field.title.lowercased())", systemImage: "plus") {
-                            shownNotes.insert(field)
-                            // The editor only exists after this update, so focus it on the next one.
-                            Task { focusedNotes = field }
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 18) {
+                        ForEach(hidden, id: \.self) { field in
+                            // Styled like LinkedTodoList's Add Todo row.
+                            Button("Add \(field.title.lowercased())", systemImage: "plus") {
+                                shownNotes.insert(field)
+                                // The editor only exists after this update, so focus it on the next one.
+                                Task { focusedNotes = field }
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
+                    }
+                    if let prepCommand {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Or have Claude Code draft the prep notes:")
+                                .foregroundStyle(.secondary)
+                            CommandBox(command: prepCommand)
+                                .frame(maxWidth: 560)
+                        }
                     }
                 }
                 .padding(.horizontal, 4)
@@ -105,6 +115,16 @@ struct MeetingDetailView: View {
             get: { meeting.slackURL?.absoluteString },
             set: { meeting.slackURL = $0.flatMap(URL.init(string:)) }
         )
+    }
+
+    /// The meeting-prep skill's command for this meeting, until a notes field is opened and while the
+    /// skill can find it: an event `events list --upcoming --meetings` lists (a meeting, within its week).
+    private var prepCommand: String? {
+        let calendar = Calendar.current
+        let weekEnd = calendar.date(byAdding: .day, value: 7, to: calendar.startOfDay(for: .now))!
+        guard !NotesField.allCases.contains(where: isShown), let event = meeting.calendarEvent, event.isMeeting,
+              event.startTime > .now, event.startTime < weekEnd else { return nil }
+        return "/meeting-prep \(event.title), \(DateLabel.dayTime(event.startTime))"
     }
 
     private func hasText(_ field: NotesField) -> Bool {

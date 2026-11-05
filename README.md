@@ -15,6 +15,7 @@ That installs the app, the `captains-log` CLI and the skills, and `brew upgrade`
 - **One screen to start the day.** Today's meetings, your open PRs, the reviews waiting on you and today's todos. Click through to GitHub or the meeting; it doesn't try to replace them.
 - **Notes that link up.** Tag a colleague in a todo and it shows on their page and in your next meeting with them. Their page gathers your feedback, PRs, meetings and interviews with them, which is most of what a performance review needs.
 - **Your week, written up.** `/weekly-review` in Claude Code reads your week, asks you what mattered, and saves the answers as brag-doc entries. Ask "what did we decide about the migration?" and Claude answers from your own notes.
+- **Ready for every meeting.** `/meeting-prep` writes a meeting's prep notes: what you've closed since you last met, what's still open with those people, and what you said you'd follow up on.
 
 GitHub and your calendar sync on their own. Everything else you write here, so it pays off once it's where you keep your todos and take meeting notes. If those live in Things or Notion today, moving them is what it asks of you.
 
@@ -34,9 +35,10 @@ Once the skills are installed, ask Claude things like:
 - "What did I work on last week?"
 - "What did Steve and I decide about the migration?"
 - "What's on my plate today?"
+- "Prep me for my 1:1 with Tom."
 - "Summarise this transcript and file it against today's 1:1 with Tom."
 
-The `captains-log` skill answers from your store and nothing else. Read commands are pre-approved; anything that writes asks first. The `weekly-review` skill (`/weekly-review`) reads your week, interviews you about what mattered, and saves brag-doc entries back to the log.
+The `captains-log` skill answers from your store and nothing else. The `weekly-review` skill (`/weekly-review`) reads your week, interviews you about what mattered, and saves brag-doc entries back to the log. The `meeting-prep` skill (`/meeting-prep`) drafts an upcoming meeting's prep notes from your todos and past meetings with the attendees, and saves them once you've seen them.
 
 The CLI works on its own too. Try `captains-log feed --pretty` for the past week, or `captains-log --help` for everything. [`docs/cli.md`](docs/cli.md) has the full reference.
 
