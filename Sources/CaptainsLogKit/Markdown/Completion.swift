@@ -169,7 +169,7 @@ public func possessiveJoin(in text: String, caretOffset: Int) -> PossessiveJoin?
 
 /// Punctuation that sits against the tag before it. Accepting a suggestion inserts `@alice `, so
 /// typing `?` straight after gives `@alice ?`; `punctuationJoin` takes the space back out.
-private let tagClosingPunctuation: Set<Character> = [",", ".", "?", "!", ";"]
+private let tagClosingPunctuation: Set<Character> = [",", ".", "?", "!", ";", ":", ")"]
 
 /// Whether the two characters before the caret could end a punctuation join. Constant time, like
 /// `mayEndPossessive`.
@@ -178,7 +178,7 @@ public func mayEndPunctuation(space: Character, last: Character) -> Bool {
 }
 
 /// Character offset of the space to remove if the caret sits just after a tag followed by a space
-/// and one of `, . ? ! ;`. The tag is anything `completionQuery` would read as one.
+/// and one of `, . ? ! ; : )`. The tag is anything `completionQuery` would read as one.
 public func punctuationJoin(in text: String, caretOffset: Int) -> Int? {
     let characters = Array(text)
     guard caretOffset >= 2, caretOffset <= characters.count else { return nil }

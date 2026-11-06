@@ -340,7 +340,10 @@ final class MarkdownEditorController: NSObject, NSTextViewDelegate {
                 onReturn()
                 return true
             }
-            return textView.continueBlockOnNewline()
+            guard textView.continueBlockOnNewline() else { return false }
+            // `replace` moves the caret without scrolling, so scroll as a plain newline does.
+            textView.scrollRangeToVisible(textView.selectedRange())
+            return true
         case #selector(NSResponder.insertTab(_:)):
             return textView.indentLines(outdent: false)
         case #selector(NSResponder.insertBacktab(_:)):

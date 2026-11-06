@@ -343,12 +343,12 @@ struct PunctuationJoinTests {
         #expect(joined("@Alice Smith .") == "@Alice Smith.")
         #expect(joined("@asmith !") == "@asmith!")
         #expect(joined("@asmith ;") == "@asmith;")
+        #expect(joined("@asmith :") == "@asmith:")
+        #expect(joined("(with @asmith )") == "(with @asmith)")
         #expect(joined("#4521 .") == "#4521.")
     }
 
     @Test func onlyThePunctuationThatClosesASentenceOrClause() {
-        #expect(joined("@asmith :") == nil)
-        #expect(joined("@asmith )") == nil)
         #expect(joined("@asmith -") == nil)
     }
 
