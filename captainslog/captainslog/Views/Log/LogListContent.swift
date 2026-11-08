@@ -141,7 +141,9 @@ struct LogListContent: View {
                 focusedField: $focusedField,
                 onCollapse: { collapseAndCommit() }
             )
-            .padding(.vertical, 2)
+            // Clear of the heading, as the date headers' top padding is.
+            .padding(.top, 16)
+            .padding(.bottom, 2)
         }
     }
 
