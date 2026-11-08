@@ -30,7 +30,7 @@ struct DetailHeader<Metadata: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField(placeholder, text: $title, axis: .vertical)
+            TextField(placeholder, text: $title.skippingNoOps, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.title.bold())
                 .focused($isFocused)
@@ -92,10 +92,11 @@ struct DetailTextProperty: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
+        let stored = $text.skippingNoOps
         DetailProperty(label: label) {
             TextField(label, text: Binding(
-                get: { text ?? "" },
-                set: { text = $0.isEmpty ? nil : $0 }
+                get: { stored.wrappedValue ?? "" },
+                set: { stored.wrappedValue = $0.isEmpty ? nil : $0 }
             ), prompt: Text(prompt))
             .textFieldStyle(.plain)
             .labelsHidden()
@@ -212,11 +213,12 @@ struct LinkMetadataItem: View {
             }
         }
         .popover(isPresented: $isEditing) {
+            let stored = $urlString.skippingNoOps
             TextField(title, text: Binding(
-                get: { urlString ?? "" },
+                get: { stored.wrappedValue ?? "" },
                 set: {
                     let trimmed = $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                    urlString = trimmed.isEmpty ? nil : trimmed
+                    stored.wrappedValue = trimmed.isEmpty ? nil : trimmed
                 }
             ), prompt: Text(prompt))
             .textFieldStyle(.roundedBorder)

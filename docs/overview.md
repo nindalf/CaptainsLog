@@ -18,6 +18,7 @@ How the app fits together, and the decisions and rules that aren't obvious from 
 - **Card controls** end every editable card in the same order, bottom right: the record's pills or picker icons, then the privacy eye (`PrivacyEye`). No trash on cards: delete is in the context menu, on the open card as on its row, and the Delete key on a selected row. Only permanent deletes confirm; a todo goes to the Trash at once.
 - **Navigation:** `Navigator` opens a linked record by pushing onto the current tab's stack, so Back returns to the link. Switching tabs clears the stack. Links still open a tab hidden in Settings.
 - **Hiding a tab** in Settings › Sidebar hides its Dashboard panes too.
+- **Text fields bound to a model** go through `.skippingNoOps`. A `TextField` writes its current value back when it takes focus, and SwiftData counts that as a change. The app refreshes open records when the CLI writes (SwiftData's remote change), but not ones with unsaved changes, and saving one writes back every field as the app last read it, silently undoing the CLI's write. A field you really edit still wins over the CLI's write to that field, until the app saves.
 
 ## Rules by area
 

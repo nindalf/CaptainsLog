@@ -17,7 +17,7 @@ struct LogEntryCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Title", text: $entry.title)
+            TextField("Title", text: $entry.title.skippingNoOps)
                 .textFieldStyle(.plain)
                 .font(.body)
                 .focusedWithTagCompletion(focusedField, equals: .title(entry.id))

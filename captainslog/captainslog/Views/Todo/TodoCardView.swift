@@ -20,7 +20,7 @@ struct TodoCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 TodoCheckbox(todo: todo, onComplete: onComplete)
-                TextField("New To-Do", text: $todo.title)
+                TextField("New To-Do", text: $todo.title.skippingNoOps)
                     .textFieldStyle(.plain)
                     .font(.body)
                     .focusedWithTagCompletion(focusedField, equals: .title(todo.id))
