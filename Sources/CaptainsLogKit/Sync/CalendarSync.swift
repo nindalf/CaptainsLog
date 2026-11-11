@@ -180,6 +180,8 @@ public actor CalendarSync {
 
         if humanAttendees.count < 15 {
             try linkAttendees(humanAttendees, to: cal)
+            // A meeting's attendees are its event's; nothing else edits them.
+            cal.meeting?.attendees = cal.attendees
         } else {
             cal.attendees = []
         }
