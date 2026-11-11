@@ -2,14 +2,17 @@ import AppKit
 import SwiftUI
 import CaptainsLogKit
 
-/// The one thing to do next to set up a sync source. Terminal steps open a browser, so the app shows
-/// the command to paste rather than running it, and rechecks when it comes back to the front.
+/// The one thing to do next to set up a sync source. Most terminal steps open a browser, so the app
+/// shows the command to paste rather than running it, and rechecks when it comes back to the front.
+/// The calendar login is the exception when the build carries the OAuth client: the app runs it.
 struct SetupInstruction {
     let title: String
     let message: String
     var command: String?
     /// Asks for a repo in place, instead of giving a command.
     var addsRepo = false
+    /// Runs the calendar login in the app, instead of giving a command.
+    var logsInToCalendar = false
 
     static func github(_ setup: SourceSetup?) -> SetupInstruction? {
         switch setup {
@@ -33,13 +36,23 @@ struct SetupInstruction {
         }
     }
 
-    static func calendar(_ setup: SourceSetup?) -> SetupInstruction? {
+    static func calendar(_ setup: SourceSetup?, canLogIn: Bool) -> SetupInstruction? {
         switch setup {
         case .notInstalled:
             SetupInstruction(
                 title: "Install the Google Workspace CLI",
                 message: "Your calendar syncs through gws. Install it with Homebrew; `brew install gws` is an unrelated tool.",
                 command: "brew install googleworkspace-cli")
+        case .notLoggedIn where canLogIn:
+            SetupInstruction(
+                title: "Log in to Google Calendar",
+                message: "Log in with your work account in the browser. \"Access blocked\" means you picked a personal one.",
+                logsInToCalendar: true)
+        case .missingScope where canLogIn:
+            SetupInstruction(
+                title: "Give gws full calendar access",
+                message: "gws is logged in without access to change your calendar, which declining and deleting events need. Logging in again with your work account replaces gws's current login.",
+                logsInToCalendar: true)
         case .notLoggedIn:
             SetupInstruction(
                 title: "Log in to Google Calendar",
@@ -47,19 +60,20 @@ struct SetupInstruction {
                 command: calendarLogin)
         case .missingScope:
             SetupInstruction(
-                title: "Let gws read your calendar",
-                message: "gws is logged in without calendar access. Log in again with your company's client ID and secret; this replaces gws's current login.",
+                title: "Give gws full calendar access",
+                message: "gws is logged in without access to change your calendar, which declining and deleting events need. Log in again with your company's client ID and secret; this replaces gws's current login.",
                 command: calendarLogin)
         case .notConfigured, .ready, nil:
             nil
         }
     }
 
-    /// Read-only, calendar only. gws saves the client with the token, so it's passed only this once.
+    /// For a build without `GoogleClient.json`: the login the app would run. gws saves the client with
+    /// the token, so it's passed only this once.
     private static let calendarLogin = """
         GOOGLE_WORKSPACE_CLI_CLIENT_ID=<client-id> \\
         GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=<client-secret> \\
-        gws auth login --readonly -s calendar
+        gws auth login --services calendar
         """
 }
 
@@ -88,6 +102,9 @@ struct SetupInstructionView: View {
             if instruction.addsRepo {
                 RepoField()
             }
+            if instruction.logsInToCalendar {
+                CalendarLoginControl(centered: centered)
+            }
         }
         .frame(maxWidth: centered ? 460 : .infinity, alignment: centered ? .center : .leading)
         .padding(style == .banner ? 12 : 0)
@@ -96,6 +113,59 @@ struct SetupInstructionView: View {
                 RoundedRectangle(cornerRadius: 10).fill(.orange.opacity(0.08))
                 RoundedRectangle(cornerRadius: 10).strokeBorder(.orange.opacity(0.3))
             }
+        }
+    }
+}
+
+/// Runs gws's login, then offers the link it prints. The link opens in the default browser, or can be
+/// copied into the browser profile signed in to the work account.
+struct CalendarLoginControl: View {
+    let centered: Bool
+    @Environment(SyncCoordinator.self) private var sync
+    @State private var copied = false
+
+    var body: some View {
+        VStack(alignment: centered ? .center : .leading, spacing: 8) {
+            switch sync.calendarLogin {
+            case .idle, .failed:
+                if case .failed(let reason) = sync.calendarLogin {
+                    Text(reason)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(4)
+                        .textSelection(.enabled)
+                        .multilineTextAlignment(centered ? .center : .leading)
+                }
+                Button("Log In to Google…") { sync.startCalendarLogin() }
+                    .buttonStyle(.borderedProminent)
+            case .starting:
+                ProgressView().controlSize(.small)
+            case .waiting(let url):
+                HStack(spacing: 8) {
+                    Button("Open Google Login") { NSWorkspace.shared.open(url) }
+                        .buttonStyle(.borderedProminent)
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+                        copied = true
+                    } label: {
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                    }
+                    .help("Copy the link, for another browser")
+                    Button("Cancel") { sync.cancelCalendarLogin() }
+                }
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Waiting for you to finish in the browser")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .task(id: copied) {
+            guard copied else { return }
+            try? await Task.sleep(for: .seconds(2))
+            copied = false
         }
     }
 }

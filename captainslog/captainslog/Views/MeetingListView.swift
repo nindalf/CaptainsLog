@@ -67,7 +67,7 @@ struct MeetingListView: View {
         }
     }
 
-    private var setup: SetupInstruction? { SetupInstruction.calendar(syncCoordinator.calendarSetup) }
+    private var setup: SetupInstruction? { SetupInstruction.calendar(syncCoordinator.calendarSetup, canLogIn: syncCoordinator.canLogInToCalendar) }
 
     /// A setup step or a failing sync, over a calendar that still shows what synced before.
     @ViewBuilder

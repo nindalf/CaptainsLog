@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.nindalf.captainslog", category: "set
 public enum SourceSetup: Int, Comparable, Sendable {
     case notInstalled
     case notLoggedIn
-    /// Logged in, but without the scope the source reads (gws logged in for other APIs).
+    /// Logged in, but without the scope the source needs (gws logged in for other APIs, or only to read the calendar).
     case missingScope
     /// Nothing to sync yet: no repos added on the Pull Requests tab.
     case notConfigured
@@ -75,7 +75,7 @@ public enum SetupCheck {
         guard let method = status.auth_method, method != "none" else { return .notLoggedIn }
         // Older gws doesn't list scopes; let sync find out.
         guard let scopes = status.scopes else { return .ready }
-        let calendar = "https://www.googleapis.com/auth/calendar"
-        return scopes.contains { $0 == calendar || $0.hasPrefix(calendar + ".") } ? .ready : .missingScope
+        // The full scope: the app declines and deletes events as well as reading them.
+        return scopes.contains("https://www.googleapis.com/auth/calendar") ? .ready : .missingScope
     }
 }

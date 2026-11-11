@@ -158,7 +158,7 @@ struct SetupChecklist: View {
                 SetupInstructionView(instruction: instruction, style: .inline)
             }
         case .calendar:
-            if let instruction = SetupInstruction.calendar(sync.calendarSetup) {
+            if let instruction = SetupInstruction.calendar(sync.calendarSetup, canLogIn: sync.canLogInToCalendar) {
                 SetupInstructionView(instruction: instruction, style: .inline)
             }
         case .roster:

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import SwiftData
 import CaptainsLogKit
@@ -20,7 +21,15 @@ struct CaptainsLogApp: App {
         let container = self.container
         let settings = AppSettings()
         _settings = State(initialValue: settings)
-        _syncCoordinator = State(initialValue: SyncCoordinator(container: container, settings: settings))
+        let syncCoordinator = SyncCoordinator(
+            container: container, settings: settings, googleClient: GoogleClient.bundled())
+        _syncCoordinator = State(initialValue: syncCoordinator)
+        // A login left running would keep gws listening after the app has gone.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { syncCoordinator.cancelCalendarLogin() }
+        }
         _quickEntry = State(initialValue: QuickEntryController(container: container, settings: settings))
     }
 

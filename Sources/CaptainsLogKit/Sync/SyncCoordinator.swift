@@ -16,16 +16,20 @@ public final class SyncCoordinator {
     public private(set) var backupStage: Backup.Stage?
     /// Each source's last success and failure, reloaded after every sync and by `refreshSetup`.
     public private(set) var history = SyncHistory.load()
+    public private(set) var calendarLogin = CalendarLoginState.idle
 
     private let container: ModelContainer
     private let settings: AppSettings
+    private let googleClient: GoogleClient?
+    private var loginTask: Task<Void, Never>?
     private var githubTask: Task<Void, Never>?
     private var calendarTask: Task<Void, Never>?
     private var backupTask: Task<Void, Never>?
 
-    public init(container: ModelContainer, settings: AppSettings) {
+    public init(container: ModelContainer, settings: AppSettings, googleClient: GoogleClient? = nil) {
         self.container = container
         self.settings = settings
+        self.googleClient = googleClient
     }
 
     public func startPeriodicSync() {
@@ -111,6 +115,58 @@ public final class SyncCoordinator {
     public func reposChanged() async {
         githubSetup = await SetupCheck.github(repos: settings.repos)
         if githubSetup == .ready, !Store.isScratch { syncGitHubNow() }
+    }
+
+    // MARK: - Calendar login
+
+    /// The app can log gws in itself only when the build carries the OAuth client.
+    public var canLogInToCalendar: Bool { googleClient != nil }
+
+    /// Runs `gws auth login` until the user finishes in the browser, rechecking the login meanwhile so
+    /// the Calendar tab moves on as soon as gws has saved the token.
+    public func startCalendarLogin() {
+        guard let googleClient, loginTask == nil else { return }
+        calendarLogin = .starting
+        loginTask = Task {
+            let polling = Task {
+                // Cancelled once gws exits; a check started after that would run gws in a cancelled task.
+                while (try? await Task.sleep(for: .seconds(2))) != nil {
+                    await refreshCalendarSetup()
+                }
+            }
+            defer {
+                polling.cancel()
+                loginTask = nil
+            }
+            do {
+                try await GoogleLogin.run(client: googleClient, timeout: .seconds(15 * 60)) { url in
+                    Task { @MainActor in
+                        if self.calendarLogin == .starting { self.calendarLogin = .waiting(url) }
+                    }
+                }
+                calendarLogin = .idle
+            } catch is CancellationError {
+                calendarLogin = .idle
+            } catch ProcessError.timedOut {
+                calendarLogin = .failed("The login timed out. Try again.")
+            } catch ProcessError.nonZeroExit(_, let stderr) {
+                calendarLogin = .failed(GoogleLogin.failureReason(stderr))
+            } catch {
+                calendarLogin = .failed(error.localizedDescription)
+            }
+            await refreshCalendarSetup()
+        }
+    }
+
+    /// Stops gws, which would otherwise keep listening for Google's redirect.
+    public func cancelCalendarLogin() {
+        loginTask?.cancel()
+    }
+
+    private func refreshCalendarSetup() async {
+        let was = calendarSetup
+        calendarSetup = await SetupCheck.calendar()
+        if calendarSetup == .ready, was != .ready, !Store.isScratch { syncCalendarNow() }
     }
 
     // MARK: - Sync methods

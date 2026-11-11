@@ -13,3 +13,5 @@ just install-app        # builds the app and CLI, installs them to /Applications
 It uses `sudo` only to copy the app into `/Applications`, if your account can't write there. Grant yourself admin with the Privileges app first. Don't run the whole recipe with `sudo`: the build folder would end up owned by root.
 
 Rerun it after pulling or making changes. Then open the app: its tabs and Dashboard walk you through logging in to GitHub and Google Calendar, backups and the rest.
+
+The app logs in to Google Calendar itself with the company's OAuth client, which isn't in the repo. Put it in `captainslog/captainslog/GoogleClient.json`, which is gitignored, as `{"clientID": "...", "clientSecret": "..."}`; every build picks it up. Without it the Calendar tab gives a command to paste into Terminal instead. `just release-build` refuses to run without it, and `just verify-release` rebuilds with your copy, so it only matches a release built with the same client.

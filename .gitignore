@@ -18,3 +18,6 @@ xcuserdata/
 
 # Rosters hold colleagues' emails and handles
 roster*.json
+
+# The Google OAuth client, built into the app but kept out of the public repo (docs/building-from-source.md)
+captainslog/captainslog/GoogleClient.json

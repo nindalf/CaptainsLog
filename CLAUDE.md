@@ -70,7 +70,7 @@ The few rules where one mistake silently breaks things:
 
 **`@Model` is not `Sendable`.** Don't pass `LogEntry` / `Meeting` / etc. across actor boundaries. Pass IDs and refetch on the destination actor.
 
-**`Process` shell-outs use the `runProcess` helper.** Never `waitUntilExit()` before draining stdout/stderr — deadlocks when child output exceeds the kernel pipe buffer. Arguments as `[String]`, no shell quoting.
+**`Process` shell-outs use the `runProcess` helper** (`runWatchingStderr` for a child that runs until the user acts). Never `waitUntilExit()` before draining stdout/stderr — deadlocks when child output exceeds the kernel pipe buffer. Arguments as `[String]`, no shell quoting.
 
 **No `import SwiftUI` or `import AppKit` in `CaptainsLogKit` or the CLI target.** UI frameworks are app-target-only.
 

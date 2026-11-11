@@ -4,7 +4,7 @@ A personal work log for macOS: a SwiftUI app, a `captains-log` CLI and skills fo
 
 It reads your calendar and your GitHub activity, and you'll keep sensitive notes in it. So it promises little, and the promises are easy to check:
 
-1. **It only reads.** It fetches from GitHub (through `gh`), Google Calendar (through `gws`). It never writes to any of them or acts on your behalf.
+1. **It changes nothing you didn't ask it to.** It fetches from GitHub (through `gh`) and Google Calendar (through `gws`). It never writes to GitHub. On Calendar it declines or deletes an event only when you tell it to, and writes nothing else.
 2. **The app calls no AI.** No LLM calls and no API spend. Claude sees your data only when you ask it something in Claude Code, which reads the store through the CLI.
 3. **Your data stays on company hardware.** Everything lives in one SQLite file on your laptop. Backups go to your work Google Drive, encrypted so nobody else can read them. Nothing goes to iCloud.
 
@@ -30,7 +30,7 @@ The last two rows are the sensitive ones. They're the same notes people already 
 
 ## External access
 
-The app and CLI have no network code of their own: no `URLSession`, no sockets, no web views, no LLM calls. Everything external goes through one helper, `runProcess` (`Sources/CaptainsLogKit/Process/RunProcess.swift`), which runs a binary at a fixed path with arguments as an array (no shell, no string interpolation into commands). These are all its call sites:
+The app and CLI have no network code of their own: no `URLSession`, no sockets, no web views, no LLM calls. Everything external goes through two helpers in `Sources/CaptainsLogKit/Process/RunProcess.swift`, `runProcess` and, for the calendar login, `runWatchingStderr`, which run a binary at a fixed path with arguments as an array (no shell, no string interpolation into commands). These are all their call sites:
 
 | Binary | Arguments | Call site |
 |---|---|---|
@@ -39,21 +39,22 @@ The app and CLI have no network code of their own: no `URLSession`, no sockets, 
 | `/opt/homebrew/bin/gh` | `pr view N --repo R --json F` | `GitHubSync.fetchPR` |
 | `/opt/homebrew/bin/gws` | `calendar +agenda --days D --format json` | `CalendarSync.syncAllDayEvents` |
 | `/opt/homebrew/bin/gws` | `calendar events list --params {timeMin, timeMax, singleEvents, ...}` | `CalendarSync` |
+| `/opt/homebrew/bin/gws` | `auth login --services calendar`, with the OAuth client in its environment | `GoogleLogin.run` |
 | `/opt/homebrew/bin/age-keygen` | none, then `-y`: a new key and its public key | `Backup.createKey` |
 | `/usr/bin/script` | `-q /dev/null age -p -o identity.age <fifo>`, then `sh -c 'age -d identity.age \| age-keygen -y'` to check it | `Backup.createKey` |
 | `/usr/bin/tar`, `/opt/homebrew/bin/age` | `-cJf` and `-R recipient.txt -o`, to back up; `-d -i identity.age -o` and `-xJf`, to restore | `Backup.create`, `Backup.restore` |
 
-Every `gh` and `gws` call reads. Nothing in the code writes to GitHub or Calendar.
+Every `gh` and `gws` call above reads; nothing in the code writes to GitHub or Calendar yet. Declining and deleting events will be the only writes, to Calendar, each added to this table.
 
 The only other outbound action is opening a URL in the default browser when the user clicks one (a PR, a document link, a link in their own notes), through `NSWorkspace.shared.open`.
 
 ## Credentials
 
-The app never reads, stores or handles a credential. `gh` and `gws` keep their own tokens and are called as subprocesses. So the token's scopes, not the app's code, bound what a compromise of the app could do:
+The app never reads or stores a user's credential. `gh` and `gws` keep their own tokens and are called as subprocesses. The one secret the app carries is the OAuth client's, below. So the token's scopes, not the app's code, bound what a compromise of the app could do:
 
 - **GitHub.** `gh auth login` grants `repo`, `read:org` and `gist` by default, which can write. The app only runs the read commands above. A fine-grained, read-only token through `GH_TOKEN` would cap this at the token level; it isn't tested or documented yet.
-- **Google Calendar.** The Calendar tab's login command logs in with `gws auth login --readonly -s calendar`, which should grant only `calendar.readonly`. `gws` encrypts the token at rest, with the key in the macOS keychain. Check what a token actually holds with `gws auth status`: someone who logged in to `gws` for other reasons may already have broader scopes (full `calendar`, `gmail.modify`, `cloud-platform`), and the app would run with those.
-- **The OAuth client is the company's.** Everyone logs in through one Desktop OAuth client in a company-owned Google Cloud project, internal to the company's Workspace (so only company accounts can sign in) and granted only `calendar.readonly`. The client only identifies the app to Google: tokens and calendar data stay on each laptop, and the project's owners can't see them. Google treats a Desktop client's secret as not confidential, so publishing the client ID and secret internally exposes nothing. Users pass them to `gws auth login` once, as `GOOGLE_WORKSPACE_CLI_CLIENT_ID` / `GOOGLE_WORKSPACE_CLI_CLIENT_SECRET`, and `gws` saves them with the token.
+- **Google Calendar.** The Calendar tab's Log In button runs `gws auth login --services calendar`, which grants the full `calendar` scope, read and write, so the app can decline and delete events. `gws` encrypts the token at rest, with the key in the macOS keychain. Check what a token actually holds with `gws auth status`: someone who logged in to `gws` for other reasons may already have broader scopes (`gmail.modify`, `cloud-platform`), and the app would run with those.
+- **The OAuth client is the company's.** Everyone logs in through one Desktop OAuth client in a company-owned Google Cloud project, internal to the company's Workspace, so only company accounts can sign in. The client only identifies the app to Google: tokens and calendar data stay on each laptop, and the project's owners can't see them. Google treats a Desktop client's secret as not confidential, so anyone with the app can read it and that exposes nothing. Releases carry it as `GoogleClient.json` in the app's Resources, gitignored so it stays out of the public repo. The app passes it to `gws auth login` as `GOOGLE_WORKSPACE_CLI_CLIENT_ID` / `GOOGLE_WORKSPACE_CLI_CLIENT_SECRET`, and `gws` saves it with the token.
 
 ## Backups
 

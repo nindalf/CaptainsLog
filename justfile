@@ -64,7 +64,7 @@ install-app:
     echo "Installed Captain's Log $(git describe --tags --always --dirty) to /Applications, with the CLI and skills"
     if $running; then open "$app"; fi
 
-# Build <treeish> unsigned into <dir>/Captain's Log.app, with the CLI in Contents/Helpers and the skills in Contents/Resources/skills. It always builds at the same path, which the linker hashes into each binary's UUID, so a release can be rebuilt byte for byte from its tag
+# Build <treeish> unsigned into <dir>/Captain's Log.app, with the CLI in Contents/Helpers and the skills in Contents/Resources/skills. It always builds at the same path, which the linker hashes into each binary's UUID, so a release can be rebuilt byte for byte from its tag. The gitignored Google OAuth client comes from the working tree, when there is one
 _release-assemble treeish dir:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -74,6 +74,8 @@ _release-assemble treeish dir:
     app="$out/Captain's Log.app"
     rm -rf "$build" "$app" && mkdir -p "$src"
     git archive "{{treeish}}" | tar -x -C "$src"
+    client=captainslog/captainslog/GoogleClient.json
+    if [ -f "$client" ]; then cp "$client" "$src/$client"; fi
     cd "$src"
     echo "Building the app..."
     xcodebuild -quiet -project {{xcode_project}} -scheme {{app_name}} -configuration Release \
@@ -92,6 +94,7 @@ release-build:
     #!/usr/bin/env bash
     set -euo pipefail
     xcrun notarytool history --keychain-profile captainslog >/dev/null
+    [ -f captainslog/captainslog/GoogleClient.json ] || { echo "Missing captainslog/captainslog/GoogleClient.json, the Google OAuth client the app logs in to Calendar with"; exit 1; }
     version=$(sed -n -E 's/^let cliVersion = "(.*)"$/\1/p' Sources/captains-log/Version.swift)
     identity="Developer ID Application"
     dist=.build/dist

@@ -11,8 +11,10 @@ struct SourceSetupTests {
         #expect(setup(#"{"auth_method": "none", "credential_source": "none", "token_cache_exists": false}"#) == .notLoggedIn)
     }
 
-    @Test func loggedInReadOnly() {
-        #expect(setup(#"{"auth_method": "oauth2", "scopes": ["openid", "https://www.googleapis.com/auth/calendar.readonly"]}"#) == .ready)
+    /// An older login that can read the calendar but not decline or delete events.
+    @Test func loggedInToReadOnlyNeedsToLogInAgain() {
+        #expect(setup(#"{"auth_method": "oauth2", "scopes": ["openid", "https://www.googleapis.com/auth/calendar.readonly"]}"#) == .missingScope)
+        #expect(setup(#"{"auth_method": "oauth2", "scopes": ["https://www.googleapis.com/auth/calendar.events"]}"#) == .missingScope)
     }
 
     @Test func loggedInWithFullCalendar() {
