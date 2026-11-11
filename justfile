@@ -225,27 +225,6 @@ test-only PATTERN:
 db:
     sqlite3 "{{db_path}}"
 
-# Clear local SwiftData store (asks for confirmation)
-clear-local-state:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ ! -d "{{data_dir}}" ]; then
-        echo "No data directory found at {{data_dir}}"
-        exit 0
-    fi
-    echo "This will delete all local data at:"
-    echo "  {{data_dir}}"
-    echo ""
-    ls -lh "{{data_dir}}/"
-    echo ""
-    read -p "Are you sure? [y/N] " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        rm -rf "{{data_dir}}"
-        echo "Deleted."
-    else
-        echo "Cancelled."
-    fi
-
 # Encrypt a snapshot of the real store (safe while the app is running) into Google Drive. Run backup-setup once first
 backup:
     swift build -q --product captains-log
