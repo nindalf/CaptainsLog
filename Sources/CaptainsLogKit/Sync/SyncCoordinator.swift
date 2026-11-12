@@ -12,6 +12,7 @@ public final class SyncCoordinator {
     public private(set) var isBackingUp = false
     /// Nil until the first check. Rechecked by `refreshSetup` and before each sync.
     public private(set) var githubSetup: SourceSetup?
+    /// Nil until a check succeeds. A failed check keeps the last state rather than reading as logged out.
     public private(set) var calendarSetup: SourceSetup?
     public private(set) var backupStage: Backup.Stage?
     /// Each source's last success and failure, reloaded after every sync and by `refreshSetup`.
@@ -103,7 +104,9 @@ public final class SyncCoordinator {
         let wasCalendar = calendarSetup
         async let github = SetupCheck.github(repos: settings.repos)
         async let calendar = SetupCheck.calendar()
-        (githubSetup, calendarSetup) = await (github, calendar)
+        let calendarCheck: SourceSetup?
+        (githubSetup, calendarCheck) = await (github, calendar)
+        if let calendarCheck { calendarSetup = calendarCheck }
         backupStage = Backup.status().stage
         history = SyncHistory.load()
         guard !Store.isScratch else { return }
@@ -163,9 +166,13 @@ public final class SyncCoordinator {
         loginTask?.cancel()
     }
 
+    private func checkCalendarSetup() async {
+        if let setup = await SetupCheck.calendar() { calendarSetup = setup }
+    }
+
     private func refreshCalendarSetup() async {
         let was = calendarSetup
-        calendarSetup = await SetupCheck.calendar()
+        await checkCalendarSetup()
         if calendarSetup == .ready, was != .ready, !Store.isScratch { syncCalendarNow() }
     }
 
@@ -195,8 +202,9 @@ public final class SyncCoordinator {
         }
     }
 
+    /// After a failed check, syncs if the calendar was last seen ready, so a broken gws shows as a sync error.
     private func syncCalendar() async {
-        calendarSetup = await SetupCheck.calendar()
+        await checkCalendarSetup()
         guard calendarSetup == .ready else { return }
         isSyncing = true
         defer {

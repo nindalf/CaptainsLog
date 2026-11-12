@@ -3,7 +3,7 @@ import Testing
 import CaptainsLogKit
 
 struct SourceSetupTests {
-    private func setup(_ json: String) -> SourceSetup {
+    private func setup(_ json: String) -> SourceSetup? {
         SetupCheck.calendarSetup(authStatus: Data(json.utf8))
     }
 
@@ -30,7 +30,8 @@ struct SourceSetupTests {
         #expect(setup(#"{"auth_method": "oauth2"}"#) == .ready)
     }
 
-    @Test func unreadable() {
-        #expect(setup("Using keyring backend: keyring") == .notLoggedIn)
+    /// A check that can't be read says nothing about the login, so it mustn't ask to log in again.
+    @Test func unreadableIsUnknown() {
+        #expect(setup("Using keyring backend: keyring") == nil)
     }
 }

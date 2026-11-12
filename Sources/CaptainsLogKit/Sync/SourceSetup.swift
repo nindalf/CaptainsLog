@@ -51,26 +51,28 @@ public enum SetupCheck {
         return repos.isEmpty ? .notConfigured : .ready
     }
 
-    public static func calendar() async -> SourceSetup {
+    /// Nil when the check itself fails (gws errors, times out, or prints something unreadable), which
+    /// says nothing about the login: only a status gws reports counts as logged out.
+    public static func calendar() async -> SourceSetup? {
         guard let gws = SyncTool.gws.path else { return .notInstalled }
         do {
             let result = try await runProcess(gws, arguments: ["auth", "status"], timeout: .seconds(15))
             return calendarSetup(authStatus: result.stdout)
         } catch {
             logger.error("gws auth status failed: \(error)")
-            return .notLoggedIn
+            return nil
         }
     }
 
-    /// From `gws auth status`, which exits 0 logged in or not.
-    public static func calendarSetup(authStatus: Data) -> SourceSetup {
+    /// From `gws auth status`, which exits 0 logged in or not. Nil when unreadable.
+    public static func calendarSetup(authStatus: Data) -> SourceSetup? {
         struct Status: Decodable {
             let auth_method: String?
             let scopes: [String]?
         }
         guard let status = try? JSONDecoder().decode(Status.self, from: authStatus) else {
             logger.error("Unreadable gws auth status")
-            return .notLoggedIn
+            return nil
         }
         guard let method = status.auth_method, method != "none" else { return .notLoggedIn }
         // Older gws doesn't list scopes; let sync find out.
