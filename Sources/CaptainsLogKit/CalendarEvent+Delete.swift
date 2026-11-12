@@ -6,6 +6,8 @@ extension CalendarEvent {
     /// Those relationships nullify rather than cascade, so a meeting or interview the user has
     /// actually written in survives as an orphan with no `calendarEvent`.
     public func deleteWithEmptyStubs(in context: ModelContext) {
+        // Sync may have removed it while a decline or delete was waiting on Google.
+        guard modelContext != nil, !isDeleted else { return }
         if let meeting, meeting.isEmpty {
             context.delete(meeting)
         }

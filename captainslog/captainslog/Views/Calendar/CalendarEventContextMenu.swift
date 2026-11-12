@@ -2,22 +2,51 @@ import SwiftUI
 import SwiftData
 import CaptainsLogKit
 
-/// Hide and Delete on right-click. A tap on an event with a meeting or interview opens it
+/// Hide, Decline and Delete on right-click. A tap on an event with a meeting or interview opens it
 /// instead of the popover, so this is the only way to remove those.
 struct CalendarEventContextMenu: ViewModifier {
     let event: CalendarEvent
 
     @Environment(\.modelContext) private var modelContext
+    @State private var confirmingDelete = false
+    @State private var error: String?
 
     func body(content: Content) -> some View {
-        content.contextMenu {
-            Button("Hide Event", systemImage: "eye.slash") {
-                event.isHidden = true
-                try? modelContext.save()
+        content
+            .contextMenu {
+                Button("Hide Event", systemImage: "eye.slash") {
+                    event.isHidden = true
+                    try? modelContext.save()
+                }
+                switch CalendarEventRemoval.offered(for: event) {
+                case .decline:
+                    Button("Decline", systemImage: "xmark.circle") { remove(.decline) }
+                case .delete:
+                    Button(deleteTitle, systemImage: "trash", role: .destructive) { confirmingDelete = true }
+                case nil:
+                    EmptyView()
+                }
             }
-            Button(deleteTitle, systemImage: "trash", role: .destructive) {
+            .confirmationDialog(CalendarEventRemoval.deletePrompt(event), isPresented: $confirmingDelete) {
+                Button("Delete", role: .destructive) { remove(.delete) }
+            } message: {
+                Text(CalendarEventRemoval.deleteMessage)
+            }
+            .alert("Couldn't change the event", isPresented: Binding { error != nil } set: { if !$0 { error = nil } }) {
+                Button("OK") { error = nil }
+            } message: {
+                Text(error ?? "")
+            }
+    }
+
+    private func remove(_ action: CalendarEventRemoval.Action) {
+        Task {
+            do {
+                try await CalendarEventRemoval.write(action, to: event)
                 event.deleteWithEmptyStubs(in: modelContext)
                 try? modelContext.save()
+            } catch {
+                self.error = error.localizedDescription
             }
         }
     }

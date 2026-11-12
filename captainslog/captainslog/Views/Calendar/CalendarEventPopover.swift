@@ -6,11 +6,15 @@ struct CalendarEventPopover: View {
     let onAction: (CalendarEventAction) -> Void
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
+    @State private var working = false
+    @State private var error: String?
+    @State private var confirmingDelete = false
 
     enum CalendarEventAction {
         case createMeeting
         case hide
-        case delete
+        /// Declined or deleted in Google Calendar: drop it here too.
+        case removed
     }
 
     var body: some View {
@@ -61,18 +65,58 @@ struct CalendarEventPopover: View {
                     }
                     .help("Hide Event")
 
-                    Button(role: .destructive) { onAction(.delete) } label: {
-                        Label("Delete Event", systemImage: "trash")
+                    if working {
+                        ProgressView().controlSize(.small)
+                    } else if let action = CalendarEventRemoval.offered(for: event) {
+                        switch action {
+                        case .decline:
+                            Button { remove(.decline) } label: {
+                                Label("Decline", systemImage: "xmark.circle")
+                            }
+                            .help("Decline")
+                        case .delete:
+                            Button(role: .destructive) { confirmingDelete = true } label: {
+                                Label("Delete Event", systemImage: "trash")
+                            }
+                            .help("Delete Event")
+                        }
                     }
-                    .help("Delete Event")
                 }
                 .labelStyle(.iconOnly)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+
+            if let error {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(4)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: 320, alignment: .leading)
+            }
         }
         .padding()
         .frame(minWidth: 250)
+        .confirmationDialog(CalendarEventRemoval.deletePrompt(event), isPresented: $confirmingDelete) {
+            Button("Delete", role: .destructive) { remove(.delete) }
+        } message: {
+            Text(CalendarEventRemoval.deleteMessage)
+        }
+    }
+
+    private func remove(_ action: CalendarEventRemoval.Action) {
+        working = true
+        error = nil
+        Task {
+            defer { working = false }
+            do {
+                try await CalendarEventRemoval.write(action, to: event)
+                onAction(.removed)
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
     }
 
     private var timeRange: String {

@@ -40,11 +40,14 @@ The app and CLI have no network code of their own: no `URLSession`, no sockets, 
 | `/opt/homebrew/bin/gws` | `calendar +agenda --days D --format json` | `CalendarSync.syncAllDayEvents` |
 | `/opt/homebrew/bin/gws` | `calendar events list --params {timeMin, timeMax, singleEvents, ...}` | `CalendarSync` |
 | `/opt/homebrew/bin/gws` | `auth login --services calendar`, with the OAuth client in its environment | `GoogleLogin.run` |
+| `/opt/homebrew/bin/gws` | `calendar events get --params {calendarId: primary, eventId}`, before each write | `CalendarWrite` |
+| `/opt/homebrew/bin/gws` | `calendar events patch --params {..., sendUpdates: all} --json {attendees: [me, declined], attendeesOmitted: true}` | `CalendarWrite.decline` |
+| `/opt/homebrew/bin/gws` | `calendar events delete --params {..., sendUpdates: all}`, only on an event I organise | `CalendarWrite.delete` |
 | `/opt/homebrew/bin/age-keygen` | none, then `-y`: a new key and its public key | `Backup.createKey` |
 | `/usr/bin/script` | `-q /dev/null age -p -o identity.age <fifo>`, then `sh -c 'age -d identity.age \| age-keygen -y'` to check it | `Backup.createKey` |
 | `/usr/bin/tar`, `/opt/homebrew/bin/age` | `-cJf` and `-R recipient.txt -o`, to back up; `-d -i identity.age -o` and `-xJf`, to restore | `Backup.create`, `Backup.restore` |
 
-Every `gh` and `gws` call above reads; nothing in the code writes to GitHub or Calendar yet. Declining and deleting events will be the only writes, to Calendar, each added to this table.
+Every `gh` and `gws` call above reads, except two Calendar writes: declining an event and deleting one I organise, each only when the user clicks it. Nothing writes to GitHub.
 
 The only other outbound action is opening a URL in the default browser when the user clicks one (a PR, a document link, a link in their own notes), through `NSWorkspace.shared.open`.
 

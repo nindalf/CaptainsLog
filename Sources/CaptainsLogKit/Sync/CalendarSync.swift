@@ -168,6 +168,7 @@ public actor CalendarSync {
         cal.location = event.location?.isEmpty == true ? nil : event.location
         cal.isAllDay = false
         cal.isRecurring = event.recurringEventId != nil
+        cal.isOrganizedByMe = event.organizer?.isSelf == true
 
         if let meetingURL = event.hangoutLink.flatMap({ URL(string: $0) }) {
             cal.meetingURL = meetingURL

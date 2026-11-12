@@ -16,6 +16,8 @@ public final class CalendarEvent {
     /// Hidden by the user. Kept as a row rather than removed so sync can tell it apart from a
     /// new event and doesn't bring it back.
     public var isHidden: Bool = false
+    /// Mine to delete rather than decline. Set by sync, so false until an event's first sync after V3.
+    public var isOrganizedByMe: Bool = false
 
     #Unique<CalendarEvent>([\.externalID])
 

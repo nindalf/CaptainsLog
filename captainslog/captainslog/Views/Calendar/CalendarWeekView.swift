@@ -111,7 +111,7 @@ struct CalendarWeekView: View {
         case .hide:
             event.isHidden = true
             try? modelContext.save()
-        case .delete:
+        case .removed:
             event.deleteWithEmptyStubs(in: modelContext)
             try? modelContext.save()
         }

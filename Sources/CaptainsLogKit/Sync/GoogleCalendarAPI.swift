@@ -46,6 +46,7 @@ public struct GoogleCalendarEvent: Decodable, Sendable {
     public let end: GoogleCalendarTime?
     public let location: String?
     public let attendees: [GoogleCalendarAttendee]?
+    public let organizer: GoogleCalendarOrganizer?
     public let eventType: String?
     public let status: String?
     public let hangoutLink: String?
@@ -56,6 +57,16 @@ public struct GoogleCalendarEvent: Decodable, Sendable {
 
     public var isDeclinedByMe: Bool {
         attendees?.contains { $0.isSelf == true && $0.responseStatus == "declined" } == true
+    }
+}
+
+public struct GoogleCalendarOrganizer: Decodable, Sendable {
+    public let email: String?
+    public let isSelf: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case email
+        case isSelf = "self"
     }
 }
 
