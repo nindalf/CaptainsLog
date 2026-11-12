@@ -41,6 +41,11 @@ struct CalendarEventPopover: View {
             Divider()
 
             HStack {
+                Button { onAction(.createMeeting) } label: {
+                    Label("Add Notes", systemImage: "square.and.pencil")
+                }
+                .buttonStyle(.borderedProminent)
+
                 if let url = event.meetingURL {
                     Button {
                         openURL(url)
@@ -48,12 +53,7 @@ struct CalendarEventPopover: View {
                     } label: {
                         Label("Join", systemImage: "video")
                     }
-                    .buttonStyle(.borderedProminent)
                     .help(url.absoluteString)
-                }
-
-                Button { onAction(.createMeeting) } label: {
-                    Label("Add Notes", systemImage: "square.and.pencil")
                 }
 
                 Spacer()
