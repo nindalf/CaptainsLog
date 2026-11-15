@@ -7,25 +7,25 @@ struct GoogleCalendarAPITests {
         let id: String
     }
 
-    private func pages(_ lines: String...) -> Data {
-        Data(lines.joined(separator: "\n").utf8)
-    }
-
-    @Test func joinsEveryPage() throws {
-        let data = pages(
-            #"{"items":[{"id":"a"},{"id":"b"}],"nextPageToken":"t1"}"#,
-            #"{"nextPageToken":"t2"}"#,
-            #"{"items":[{"id":"c"}]}"#
-        )
-        let items: [Item] = try decodeGoogleCalendarPages(data)
+    /// Follows `nextPageToken` until a page has none, asking for each page by the last one's token.
+    @Test func joinsEveryPage() async throws {
+        let pages = [
+            nil: #"{"items":[{"id":"a"},{"id":"b"}],"nextPageToken":"t1"}"#,
+            "t1": #"{"nextPageToken":"t2"}"#,
+            "t2": #"{"items":[{"id":"c"}]}"#,
+        ]
+        var asked: [String?] = []
+        let items: [Item] = try await GoogleCalendarAPI.allPages { token in
+            asked.append(token)
+            return Data(try #require(pages[token]).utf8)
+        }
         #expect(items.map(\.id) == ["a", "b", "c"])
+        #expect(asked == [nil, "t1", "t2"])
     }
 
-    /// gws stops at its page limit with a token left over; a partial list would read as deletions.
-    @Test func throwsWhenTheLastPageHasMoreToCome() {
-        let data = pages(#"{"items":[{"id":"a"}],"nextPageToken":"t1"}"#)
-        #expect(throws: CalendarSyncError.self) {
-            let _: [Item] = try decodeGoogleCalendarPages(data)
+    @Test func stopsWhenGoogleRepeatsAPage() async {
+        await #expect(throws: GoogleAPIError.self) {
+            let _: [Item] = try await GoogleCalendarAPI.allPages { _ in Data(#"{"items":[],"nextPageToken":"t1"}"#.utf8) }
         }
     }
 

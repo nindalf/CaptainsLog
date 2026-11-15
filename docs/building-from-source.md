@@ -4,7 +4,7 @@ To build from source you'll need an Apple Silicon Mac on macOS 26.2 or later alo
 
 ```sh
 brew install just
-just check-tools        # gh, gws, age, claude, swift, xcodebuild; xcbeautify is only for tests
+just check-tools        # gh, age, claude, swift, xcodebuild; xcbeautify is only for tests
 just install-app        # builds the app and CLI, installs them to /Applications, links the CLI and skills
 ```
 
@@ -14,4 +14,4 @@ It uses `sudo` only to copy the app into `/Applications`, if your account can't 
 
 Rerun it after pulling or making changes. Then open the app: its tabs and Dashboard walk you through logging in to GitHub and Google Calendar, backups and the rest.
 
-The app logs in to Google Calendar itself with the company's OAuth client, which isn't in the repo. Put it in `captainslog/captainslog/GoogleClient.json`, which is gitignored, as `{"clientID": "...", "clientSecret": "..."}`; every build picks it up. Without it the Calendar tab gives a command to paste into Terminal instead. `just release-build` refuses to run without it, and `just verify-release` rebuilds with your copy, so it only matches a release built with the same client.
+The app logs in to Google Calendar itself with the company's OAuth client, which isn't in the repo. Put it in `captainslog/captainslog/GoogleClient.json`, which is gitignored, as `{"clientID": "...", "clientSecret": "..."}`; every build picks it up. Without it the app can't log in to Google Calendar: anyone outside the company needs a Desktop OAuth client of their own, in a Google Cloud project with the Calendar API enabled. `just release-build` refuses to run without it, and `just verify-release` rebuilds with your copy, so it only matches a release built with the same client.

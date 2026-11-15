@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.nindalf.captainslog", category: "set
 public enum SourceSetup: Int, Comparable, Sendable {
     case notInstalled
     case notLoggedIn
-    /// Logged in, but without the scope the source needs (gws logged in for other APIs, or only to read the calendar).
+    /// Logged in, but without the scope the source needs (calendar access unticked on Google's consent screen).
     case missingScope
     /// Nothing to sync yet: no repos added on the Pull Requests tab.
     case notConfigured
@@ -28,7 +28,7 @@ public enum SyncSetupError: Error, LocalizedError {
 
 /// The command-line tools sync shells out to, found on the PATH `runProcess` gives its children.
 public enum SyncTool: String, Sendable {
-    case gh, gws
+    case gh
 
     public var path: String? { findExecutable(rawValue) }
 
@@ -51,33 +51,21 @@ public enum SetupCheck {
         return repos.isEmpty ? .notConfigured : .ready
     }
 
-    /// Nil when the check itself fails (gws errors, times out, or prints something unreadable), which
-    /// says nothing about the login: only a status gws reports counts as logged out.
-    public static func calendar() async -> SourceSetup? {
-        guard let gws = SyncTool.gws.path else { return .notInstalled }
+    /// No network, and no prompt: reads the scopes the stored login was granted, not the token. A login
+    /// Google has since revoked passes, until a refresh finds out and deletes it. Nil when the Keychain
+    /// can't be read, which says nothing about the login.
+    public static func calendar() -> SourceSetup? {
         do {
-            let result = try await runProcess(gws, arguments: ["auth", "status"], timeout: .seconds(15))
-            return calendarSetup(authStatus: result.stdout)
+            return calendarSetup(scopes: try GoogleKeychain.grantedScopes())
         } catch {
-            logger.error("gws auth status failed: \(error)")
+            logger.error("Couldn't read the calendar login: \(error)")
             return nil
         }
     }
 
-    /// From `gws auth status`, which exits 0 logged in or not. Nil when unreadable.
-    public static func calendarSetup(authStatus: Data) -> SourceSetup? {
-        struct Status: Decodable {
-            let auth_method: String?
-            let scopes: [String]?
-        }
-        guard let status = try? JSONDecoder().decode(Status.self, from: authStatus) else {
-            logger.error("Unreadable gws auth status")
-            return nil
-        }
-        guard let method = status.auth_method, method != "none" else { return .notLoggedIn }
-        // Older gws doesn't list scopes; let sync find out.
-        guard let scopes = status.scopes else { return .ready }
-        // The full scope: the app declines and deletes events as well as reading them.
-        return scopes.contains("https://www.googleapis.com/auth/calendar") ? .ready : .missingScope
+    /// Nil scopes means logged out. A `calendar.readonly` login counts as missing its scope.
+    public static func calendarSetup(scopes: [String]?) -> SourceSetup {
+        guard let scopes else { return .notLoggedIn }
+        return scopes.contains(GoogleLogin.scope) ? .ready : .missingScope
     }
 }

@@ -148,56 +148,6 @@ public func runInteractiveProcess(_ executable: String, arguments: [String]) asy
     }
 }
 
-/// Runs `executable` until it exits, handing `onLine` each line of its stderr as it arrives, for a child
-/// that waits on the user (gws printing a login link). `environment` is added to the usual one.
-/// Cancelling terminates the child. Throws `nonZeroExit` with the stderr seen.
-public func runWatchingStderr(
-    _ executable: String,
-    arguments: [String],
-    environment: [String: String] = [:],
-    timeout: Duration,
-    onLine: @escaping @Sendable (String) -> Void
-) async throws {
-    let proc = Process()
-    proc.executableURL = URL(fileURLWithPath: executable)
-    proc.arguments = arguments
-    proc.environment = defaultEnvironment.merging(environment) { $1 }
-    proc.standardInput = FileHandle.nullDevice
-    proc.standardOutput = FileHandle.nullDevice
-    let errPipe = Pipe()
-    proc.standardError = errPipe
-    let exitContinuation = AsyncStream<Void>.makeStream()
-    proc.terminationHandler = { _ in exitContinuation.continuation.finish() }
-
-    try await withTaskCancellationHandler {
-        try Task.checkCancellation()
-        try proc.run()
-        let handle = errPipe.fileHandleForReading
-        async let stderrText = Task.detached(priority: .utility) {
-            var text = ""
-            for try await line in handle.bytes.lines {
-                onLine(line)
-                text += line + "\n"
-            }
-            return text
-        }.value
-        async let exit: Void = waitForExit(proc, stream: exitContinuation.stream, timeout: timeout)
-
-        try await exit
-        let err = try await stderrText
-        // Cancelling terminates the child, which isn't its failure.
-        try Task.checkCancellation()
-        guard proc.terminationStatus == 0 else {
-            logger.error("Process failed: \(executable) exit=\(proc.terminationStatus) stderr=\(err)")
-            throw ProcessError.nonZeroExit(code: proc.terminationStatus, stderr: err)
-        }
-    } onCancel: {
-        guard proc.isRunning else { return }
-        proc.terminate()
-        proc.waitUntilExit()
-    }
-}
-
 private func readToEnd(_ handle: FileHandle) async throws -> Data {
     try await Task.detached(priority: .utility) {
         try handle.readToEnd() ?? Data()

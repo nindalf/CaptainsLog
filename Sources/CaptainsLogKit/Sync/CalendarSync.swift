@@ -4,8 +4,6 @@ import os
 
 private let logger = Logger(subsystem: "com.nindalf.captainslog", category: "sync.calendar")
 
-private var gwsPath: String { get throws { try SyncTool.gws.requirePath() } }
-
 // MARK: - Sync Actor
 
 @ModelActor
@@ -22,7 +20,8 @@ public actor CalendarSync {
             start: Calendar.current.date(byAdding: .day, value: -1, to: window.start)!,
             end: Calendar.current.date(byAdding: .day, value: 1, to: window.end)!
         )
-        let calendars = try await fetchCalendars().filter {
+        let api = GoogleCalendarAPI.shared
+        let calendars = try await api.calendars().filter {
             $0.primary == true || Self.isAllowed($0, by: calendarAllowlist)
         }
 
@@ -31,7 +30,7 @@ public actor CalendarSync {
         for calendar in calendars {
             let keepsTimed = calendar.primary == true
             let keepsAllDay = Self.isAllowed(calendar, by: calendarAllowlist)
-            for event in try await fetchEvents(calendarID: calendar.id, in: fetched) {
+            for event in try await api.events(calendarID: calendar.id, in: fetched) {
                 try Task.checkCancellation()
                 // Declined counts as gone, so an event declined after it synced is removed.
                 guard event.status != "cancelled", !event.isDeclinedByMe else { continue }
@@ -67,39 +66,6 @@ public actor CalendarSync {
         guard !allowlist.isEmpty else { return true }
         let names = [calendar.id, calendar.summary?.trimmingCharacters(in: .whitespaces)].compactMap { $0 }
         return allowlist.contains { names.contains($0) }
-    }
-
-    // MARK: - Fetching
-
-    private func fetchCalendars() async throws -> [GoogleCalendarListEntry] {
-        let result = try await runProcess(
-            gwsPath,
-            arguments: ["calendar", "calendarList", "list", "--page-all"],
-            timeout: .seconds(30)
-        )
-        return try decodeGoogleCalendarPages(result.stdout)
-    }
-
-    private func fetchEvents(calendarID: String, in range: DateInterval) async throws -> [GoogleCalendarEvent] {
-        let params: [String: Any] = [
-            "calendarId": calendarID,
-            "timeMin": iso8601String(range.start),
-            "timeMax": iso8601String(range.end),
-            "singleEvents": true,
-            "maxResults": 2500,
-        ]
-        let paramsJSON = try JSONSerialization.data(withJSONObject: params)
-        let result = try await runProcess(
-            gwsPath,
-            arguments: [
-                "calendar", "events", "list", "--params", String(decoding: paramsJSON, as: UTF8.self),
-                "--page-all", "--page-limit", "20",
-            ],
-            timeout: .seconds(60)
-        )
-        let events: [GoogleCalendarEvent] = try decodeGoogleCalendarPages(result.stdout)
-        logger.debug("Fetched \(events.count) events from \(calendarID)")
-        return events
     }
 
     // MARK: - Upserting
@@ -276,11 +242,5 @@ public actor CalendarSync {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: string)
-    }
-
-    private func iso8601String(_ date: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.string(from: date)
     }
 }

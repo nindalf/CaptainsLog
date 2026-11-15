@@ -38,11 +38,6 @@ struct SetupInstruction {
 
     static func calendar(_ setup: SourceSetup?, canLogIn: Bool) -> SetupInstruction? {
         switch setup {
-        case .notInstalled:
-            SetupInstruction(
-                title: "Install the Google Workspace CLI",
-                message: "Your calendar syncs through gws. Install it with Homebrew; `brew install gws` is an unrelated tool.",
-                command: "brew install googleworkspace-cli")
         case .notLoggedIn where canLogIn:
             SetupInstruction(
                 title: "Log in to Google Calendar",
@@ -50,31 +45,17 @@ struct SetupInstruction {
                 logsInToCalendar: true)
         case .missingScope where canLogIn:
             SetupInstruction(
-                title: "Give gws full calendar access",
-                message: "gws is logged in without access to change your calendar, which declining and deleting events need. Logging in again with your work account replaces gws's current login.",
+                title: "Allow access to your calendar",
+                message: "The login doesn't allow changes to your calendar, which declining and deleting events need. Log in again with your work account and leave calendar access ticked.",
                 logsInToCalendar: true)
-        case .notLoggedIn:
+        case .notLoggedIn, .missingScope:
             SetupInstruction(
                 title: "Log in to Google Calendar",
-                message: "Fill in your company's client ID and secret, then run this in Terminal. A browser opens: pick your work account. \"Access blocked\" means you picked a personal one.",
-                command: calendarLogin)
-        case .missingScope:
-            SetupInstruction(
-                title: "Give gws full calendar access",
-                message: "gws is logged in without access to change your calendar, which declining and deleting events need. Log in again with your company's client ID and secret; this replaces gws's current login.",
-                command: calendarLogin)
-        case .notConfigured, .ready, nil:
+                message: "This build doesn't carry your company's Google OAuth client, so it can't log in. Put it in GoogleClient.json and rebuild, as docs/building-from-source.md says.")
+        case .notInstalled, .notConfigured, .ready, nil:
             nil
         }
     }
-
-    /// For a build without `GoogleClient.json`: the login the app would run. gws saves the client with
-    /// the token, so it's passed only this once.
-    private static let calendarLogin = """
-        GOOGLE_WORKSPACE_CLI_CLIENT_ID=<client-id> \\
-        GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=<client-secret> \\
-        gws auth login --services calendar
-        """
 }
 
 /// A setup step: centered in an empty tab, as a banner over a tab that still has older data,
@@ -117,8 +98,8 @@ struct SetupInstructionView: View {
     }
 }
 
-/// Runs gws's login, then offers the link it prints. The link opens in the default browser, or can be
-/// copied into the browser profile signed in to the work account.
+/// Starts the login, then offers Google's link. It opens in the default browser, or can be copied into
+/// the browser profile signed in to the work account.
 struct CalendarLoginControl: View {
     let centered: Bool
     @Environment(SyncCoordinator.self) private var sync

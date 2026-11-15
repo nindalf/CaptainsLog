@@ -24,12 +24,6 @@ struct CaptainsLogApp: App {
         let syncCoordinator = SyncCoordinator(
             container: container, settings: settings, googleClient: GoogleClient.bundled())
         _syncCoordinator = State(initialValue: syncCoordinator)
-        // A login left running would keep gws listening after the app has gone.
-        NotificationCenter.default.addObserver(
-            forName: NSApplication.willTerminateNotification, object: nil, queue: .main
-        ) { _ in
-            MainActor.assumeIsolated { syncCoordinator.cancelCalendarLogin() }
-        }
         _quickEntry = State(initialValue: QuickEntryController(container: container, settings: settings))
     }
 
@@ -44,7 +38,11 @@ struct CaptainsLogApp: App {
         .modelContainer(container)
         .environment(settings)
         .environment(syncCoordinator)
-        .commands { AboutCommands() }
+        .environment(\.quickEntry, quickEntry)
+        .commands {
+            AboutCommands()
+            AppMenuCommands(settings: settings)
+        }
 
         Window("About Captain's Log", id: "about") {
             AboutView()

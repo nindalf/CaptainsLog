@@ -253,7 +253,7 @@ check-tools:
     #!/usr/bin/env bash
     set -euo pipefail
     ok=true
-    for tool in gh gws age claude swift xcodebuild xcbeautify; do
+    for tool in gh age claude swift xcodebuild xcbeautify; do
         if command -v "$tool" &>/dev/null; then
             printf "%-12s %s\n" "$tool" "$(command -v $tool)"
         else

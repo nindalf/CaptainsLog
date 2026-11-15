@@ -103,10 +103,8 @@ public final class SyncCoordinator {
         let wasGitHub = githubSetup
         let wasCalendar = calendarSetup
         async let github = SetupCheck.github(repos: settings.repos)
-        async let calendar = SetupCheck.calendar()
-        let calendarCheck: SourceSetup?
-        (githubSetup, calendarCheck) = await (github, calendar)
-        if let calendarCheck { calendarSetup = calendarCheck }
+        if let calendar = SetupCheck.calendar() { calendarSetup = calendar }
+        githubSetup = await github
         backupStage = Backup.status().stage
         history = SyncHistory.load()
         guard !Store.isScratch else { return }
@@ -122,25 +120,15 @@ public final class SyncCoordinator {
 
     // MARK: - Calendar login
 
-    /// The app can log gws in itself only when the build carries the OAuth client.
+    /// Only a build that carries the OAuth client can log in.
     public var canLogInToCalendar: Bool { googleClient != nil }
 
-    /// Runs `gws auth login` until the user finishes in the browser, rechecking the login meanwhile so
-    /// the Calendar tab moves on as soon as gws has saved the token.
+    /// Waits for the user to finish in the browser, then rechecks, which syncs once the login is ready.
     public func startCalendarLogin() {
         guard let googleClient, loginTask == nil else { return }
         calendarLogin = .starting
         loginTask = Task {
-            let polling = Task {
-                // Cancelled once gws exits; a check started after that would run gws in a cancelled task.
-                while (try? await Task.sleep(for: .seconds(2))) != nil {
-                    await refreshCalendarSetup()
-                }
-            }
-            defer {
-                polling.cancel()
-                loginTask = nil
-            }
+            defer { loginTask = nil }
             do {
                 try await GoogleLogin.run(client: googleClient, timeout: .seconds(15 * 60)) { url in
                     Task { @MainActor in
@@ -150,29 +138,25 @@ public final class SyncCoordinator {
                 calendarLogin = .idle
             } catch is CancellationError {
                 calendarLogin = .idle
-            } catch ProcessError.timedOut {
-                calendarLogin = .failed("The login timed out. Try again.")
-            } catch ProcessError.nonZeroExit(_, let stderr) {
-                calendarLogin = .failed(GoogleLogin.failureReason(stderr))
             } catch {
                 calendarLogin = .failed(error.localizedDescription)
             }
-            await refreshCalendarSetup()
+            refreshCalendarSetup()
         }
     }
 
-    /// Stops gws, which would otherwise keep listening for Google's redirect.
+    /// Closes the port Google would redirect to.
     public func cancelCalendarLogin() {
         loginTask?.cancel()
     }
 
-    private func checkCalendarSetup() async {
-        if let setup = await SetupCheck.calendar() { calendarSetup = setup }
+    private func checkCalendarSetup() {
+        if let setup = SetupCheck.calendar() { calendarSetup = setup }
     }
 
-    private func refreshCalendarSetup() async {
+    private func refreshCalendarSetup() {
         let was = calendarSetup
-        await checkCalendarSetup()
+        checkCalendarSetup()
         if calendarSetup == .ready, was != .ready, !Store.isScratch { syncCalendarNow() }
     }
 
@@ -202,9 +186,9 @@ public final class SyncCoordinator {
         }
     }
 
-    /// After a failed check, syncs if the calendar was last seen ready, so a broken gws shows as a sync error.
+    /// After a failed check, syncs if the calendar was last seen ready, so a broken Keychain shows as a sync error.
     private func syncCalendar() async {
-        await checkCalendarSetup()
+        checkCalendarSetup()
         guard calendarSetup == .ready else { return }
         isSyncing = true
         defer {
@@ -222,6 +206,9 @@ public final class SyncCoordinator {
             logger.info("Calendar sync succeeded")
         } catch is CancellationError {
             logger.debug("Calendar sync cancelled")
+        } catch GoogleAuthError.loggedOut {
+            // Google revoked the login, which is gone now: the tab asks to log in again.
+            checkCalendarSetup()
         } catch {
             SyncHistory.update { $0.recordFailure(.calendar, error: error.localizedDescription) }
             logger.error("Calendar sync failed: \(error)")

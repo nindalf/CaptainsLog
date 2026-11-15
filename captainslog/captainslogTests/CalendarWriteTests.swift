@@ -9,8 +9,8 @@ struct CalendarWriteTests {
     }
 
     private func body(_ json: String) throws -> [String: Any] {
-        let text = try CalendarWrite.declineBody(for: try event(json))
-        return try #require(try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+        let data = try CalendarWrite.declineBody(for: try event(json))
+        return try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
     @Test func declinesOnlyMyOwnResponse() throws {

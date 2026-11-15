@@ -4,7 +4,7 @@ A personal work log for macOS: a SwiftUI app, a `captains-log` CLI and skills fo
 
 It reads your calendar and your GitHub activity, and you'll keep sensitive notes in it. So it promises little, and the promises are easy to check:
 
-1. **It changes nothing you didn't ask it to.** It fetches from GitHub (through `gh`) and Google Calendar (through `gws`). It never writes to GitHub. On Calendar it declines or deletes an event only when you tell it to, and writes nothing else.
+1. **It changes nothing you didn't ask it to.** It fetches from GitHub (through `gh`) and Google Calendar (through Google's API). It never writes to GitHub. On Calendar it declines or deletes an event only when you tell it to, and writes nothing else.
 2. **The app calls no AI.** No LLM calls and no API spend. Claude sees your data only when you ask it something in Claude Code, which reads the store through the CLI.
 3. **Your data stays on company hardware.** Everything lives in one SQLite file on your laptop. Backups go to your work Google Drive, encrypted so nobody else can read them. Nothing goes to iCloud.
 
@@ -12,7 +12,7 @@ It reads your calendar and your GitHub activity, and you'll keep sensitive notes
 
 | Data | Source | Stored |
 |---|---|---|
-| Calendar events: title, start and end, location, Meet link, attendee names and emails | Google Calendar, via `gws` | Yes. Event descriptions are not decoded or stored (`GCalEvent` in `Sources/CaptainsLogKit/Sync/CalendarSync.swift`). |
+| Calendar events: title, start and end, location, Meet link, attendee names and emails | Google Calendar API | Yes. Event descriptions are not decoded or stored (`GCalEvent` in `Sources/CaptainsLogKit/Sync/CalendarSync.swift`). |
 | Pull requests: number, title, body, state, author, reviewers, size, URL | GitHub, via `gh` | Yes, for the repos the user configures (`prFields` in `Sources/CaptainsLogKit/Sync/GitHubSync.swift`). |
 | Meeting notes, transcripts, todos, projects, log entries | The user | Yes. |
 | **Interview notes and scorecards** about candidates | The user | Yes. Personal data about non-employees. |
@@ -23,6 +23,7 @@ The last two rows are the sensitive ones. They're the same notes people already 
 ## Where it lives
 
 - **The store:** `~/Library/Application Support/CaptainsLog/CaptainsLog.store` (SQLite, through SwiftData), plus `sync-history.json` beside it (sync timestamps and error messages). `Store.directory` in `Sources/CaptainsLogKit/Store.swift`. The app doesn't encrypt the store itself; it relies on FileVault. macOS doesn't sync this folder to iCloud.
+- **The Google login:** a login keychain item. See [Credentials](#credentials).
 - **Settings:** UserDefaults, the app's `com.nindalf.captainslog` domain (`Sources/CaptainsLogKit/Settings.swift`; the CLI opens it as a suite). Repo names, calendar names, intervals. No credentials.
 - **Backups:** `~/Google Drive/My Drive/CaptainsLog backups/`, in the user's work Google Drive. See [Backups](#backups).
 - **Skill links:** `captains-log skills install` symlinks the bundled skills into `~/.claude/skills` (or `$CLAUDE_CONFIG_DIR/skills`) and, for Codex, `~/.agents/skills`, for whichever agents are set up (`Sources/CaptainsLogKit/Skills.swift`). It only ever replaces or removes links that point into a Captain's Log app; a checkout's links and real folders are left alone. The Homebrew cask runs it on install and `skills uninstall` on uninstall, inside Homebrew's sandbox with only `~/.claude/skills` and `~/.agents/skills` writable, so it can't create a missing `~/.claude` or `~/.agents`.
@@ -30,34 +31,42 @@ The last two rows are the sensitive ones. They're the same notes people already 
 
 ## External access
 
-The app and CLI have no network code of their own: no `URLSession`, no sockets, no web views, no LLM calls. Everything external goes through two helpers in `Sources/CaptainsLogKit/Process/RunProcess.swift`, `runProcess` and, for the calendar login, `runWatchingStderr`, which run a binary at a fixed path with arguments as an array (no shell, no string interpolation into commands). These are all their call sites:
+The only network code of the app and CLI is the Google Calendar client in `Sources/CaptainsLogKit/Sync/` (`GoogleCalendarAPI`, `GoogleAuth`, `GoogleLogin`), over `URLSession` to two Google hosts, and the login's listener on `127.0.0.1`. No web views, no LLM calls. These are all its requests:
+
+| Request | Call site |
+|---|---|
+| `GET https://www.googleapis.com/calendar/v3/users/me/calendarList`, every page | `CalendarSync` |
+| `GET .../calendars/{id}/events?timeMin&timeMax&singleEvents=true`, every page | `CalendarSync` |
+| `GET .../calendars/primary/events/{eventId}`, before each write | `CalendarWrite` |
+| `PATCH .../calendars/primary/events/{eventId}?sendUpdates=all` with `{attendees: [me, declined], attendeesOmitted: true}` | `CalendarWrite.decline` |
+| `DELETE .../calendars/primary/events/{eventId}?sendUpdates=all`, only on an event I organise | `CalendarWrite.delete` |
+| `POST https://oauth2.googleapis.com/token`: a login's code for a token, or a refresh | `GoogleLogin.run`, `GoogleAuth` |
+
+The login opens Google's consent page in the browser (`accounts.google.com`, when the user clicks) and listens on `127.0.0.1`, on a free port, only until Google redirects back with a code, or the user cancels, or 15 minutes pass. It's bound to the loopback address, so nothing off the laptop can reach it, and it checks a random `state` and uses PKCE, so another local process can't swap in its own code.
+
+Everything else external goes through `runProcess` in `Sources/CaptainsLogKit/Process/RunProcess.swift`, which runs a binary at a fixed path with arguments as an array (no shell, no string interpolation into commands). These are all its call sites:
 
 | Binary | Arguments | Call site |
 |---|---|---|
 | `/opt/homebrew/bin/gh` | `pr list --repo R --author A --state S --limit 50 --json F` | `GitHubSync.fetchPRs` |
 | `/opt/homebrew/bin/gh` | `pr list --repo R --search user-review-requested:@me --state open --limit 50 --json F` | `GitHubSync.syncReviewRequests` |
 | `/opt/homebrew/bin/gh` | `pr view N --repo R --json F` | `GitHubSync.fetchPR` |
-| `/opt/homebrew/bin/gws` | `calendar +agenda --days D --format json` | `CalendarSync.syncAllDayEvents` |
-| `/opt/homebrew/bin/gws` | `calendar events list --params {timeMin, timeMax, singleEvents, ...}` | `CalendarSync` |
-| `/opt/homebrew/bin/gws` | `auth login --services calendar`, with the OAuth client in its environment | `GoogleLogin.run` |
-| `/opt/homebrew/bin/gws` | `calendar events get --params {calendarId: primary, eventId}`, before each write | `CalendarWrite` |
-| `/opt/homebrew/bin/gws` | `calendar events patch --params {..., sendUpdates: all} --json {attendees: [me, declined], attendeesOmitted: true}` | `CalendarWrite.decline` |
-| `/opt/homebrew/bin/gws` | `calendar events delete --params {..., sendUpdates: all}`, only on an event I organise | `CalendarWrite.delete` |
 | `/opt/homebrew/bin/age-keygen` | none, then `-y`: a new key and its public key | `Backup.createKey` |
 | `/usr/bin/script` | `-q /dev/null age -p -o identity.age <fifo>`, then `sh -c 'age -d identity.age \| age-keygen -y'` to check it | `Backup.createKey` |
 | `/usr/bin/tar`, `/opt/homebrew/bin/age` | `-cJf` and `-R recipient.txt -o`, to back up; `-d -i identity.age -o` and `-xJf`, to restore | `Backup.create`, `Backup.restore` |
 
-Every `gh` and `gws` call above reads, except two Calendar writes: declining an event and deleting one I organise, each only when the user clicks it. Nothing writes to GitHub.
+Every call above reads, except two Calendar writes: declining an event and deleting one I organise, each only when the user clicks it. Nothing writes to GitHub.
 
 The only other outbound action is opening a URL in the default browser when the user clicks one (a PR, a document link, a link in their own notes), through `NSWorkspace.shared.open`.
 
 ## Credentials
 
-The app never reads or stores a user's credential. `gh` and `gws` keep their own tokens and are called as subprocesses. The one secret the app carries is the OAuth client's, below. So the token's scopes, not the app's code, bound what a compromise of the app could do:
+The app holds one credential, the Google login. `gh` keeps its own token and is called as a subprocess. The tokens' scopes, not the app's code, bound what a compromise of the app could do:
 
 - **GitHub.** `gh auth login` grants `repo`, `read:org` and `gist` by default, which can write. The app only runs the read commands above. A fine-grained, read-only token through `GH_TOKEN` would cap this at the token level; it isn't tested or documented yet.
-- **Google Calendar.** The Calendar tab's Log In button runs `gws auth login --services calendar`, which grants the full `calendar` scope, read and write, so the app can decline and delete events. `gws` encrypts the token at rest, with the key in the macOS keychain. Check what a token actually holds with `gws auth status`: someone who logged in to `gws` for other reasons may already have broader scopes (`gmail.modify`, `cloud-platform`), and the app would run with those.
-- **The OAuth client is the company's.** Everyone logs in through one Desktop OAuth client in a company-owned Google Cloud project, internal to the company's Workspace, so only company accounts can sign in. The client only identifies the app to Google: tokens and calendar data stay on each laptop, and the project's owners can't see them. Google treats a Desktop client's secret as not confidential, so anyone with the app can read it and that exposes nothing. Releases carry it as `GoogleClient.json` in the app's Resources, gitignored so it stays out of the public repo. The app passes it to `gws auth login` as `GOOGLE_WORKSPACE_CLI_CLIENT_ID` / `GOOGLE_WORKSPACE_CLI_CLIENT_SECRET`, and `gws` saves it with the token.
+- **Google Calendar.** The Calendar tab's Log In button asks for the `calendar` scope alone, read and write, so the app can decline and delete events. It keeps a **refresh token**, which lasts until revoked, and with it the OAuth client's ID and secret, which a refresh needs. Anyone holding the three can read and change the user's calendar. Revoke it at myaccount.google.com, under Security › Third-party connections; the app then asks to log in again. Access tokens, which last an hour, are only ever in memory.
+- **Where the refresh token lives.** In the login keychain, as a generic password, service `com.nindalf.captainslog.google` (`GoogleKeychain`). Its access list names the app and the CLI in `Contents/Helpers` by code signature, so those two read it without a prompt, across upgrades, as long as both are signed with the same Developer ID; any other program gets the Keychain's prompt. It's a legacy keychain item because sharing a data-protection keychain item needs entitlements a bare CLI binary can't carry. The granted scopes sit in the item's attributes, which aren't encrypted or access-controlled, so the setup check reads them without touching the token. A build signed ad hoc gets a prompt after each rebuild. The token is never written anywhere outside the keychain: not a file, the store or a backup.
+- **The OAuth client is the company's.** Everyone logs in through one Desktop OAuth client in a company-owned Google Cloud project, internal to the company's Workspace, so only company accounts can sign in. The client only identifies the app to Google: tokens and calendar data stay on each laptop, and the project's owners can't see them. Google treats a Desktop client's secret as not confidential, so anyone with the app can read it and that exposes nothing. Releases carry it as `GoogleClient.json` in the app's Resources, gitignored so it stays out of the public repo. The login saves it in the keychain item with the refresh token, so the CLI can refresh without the app's bundle.
 
 ## Backups
 
@@ -86,15 +95,15 @@ The skills in `skills/` let Claude Code or Codex read and write the store throug
 - **The release.** `just release` (`justfile`) builds one zip from a tagged commit on the maintainer's Mac and publishes it as a GitHub release. The zip holds the app, with the CLI at `Contents/Helpers/captains-log` and the committed skills in `Contents/Resources/skills/`. The app and the CLI are signed with the maintainer's Developer ID (team `78T545JWUD`) with hardened runtime and no entitlements, then notarised by Apple, with the ticket stapled to the app. Check an installed copy with `spctl --assess -vv "/Applications/Captain's Log.app"`, and `codesign -dv --verbose=2` on the app and on `Contents/Helpers/captains-log`.
 - **Homebrew.** `brew install --cask nindalf/tap/captains-log`. The cask's source is `homebrew/captains-log.rb` in this repo; `just release` sets its version and SHA-256 in the release commit and copies it to `github.com/nindalf/homebrew-tap`. It downloads the release zip, checks the SHA-256, installs the app to `/Applications`, links the CLI into Homebrew's `bin`, and runs `captains-log skills install` (see [Where it lives](#where-it-lives)). It has no `zap`, so uninstalling never removes the store. No install scripts are fetched from the network.
 - **Checking a release against its source.** Notarisation is Apple's automated malware scan, not a review of what the code does. What ties a release to the code is that it's reproducible: `just verify-release 1.2.3` downloads the release, rebuilds the tag with the tag's own build step (`_release-assemble`, which `release-build` uses too) and diffs the two. Both builds run at the same path, `/tmp/captainslog-release`, because the linker hashes build paths into each binary's UUID. The diff sets aside only what can't match: every binary's signature is replaced with the same ad hoc one, the stapled ticket is dropped, and `BuildMachineOSBuild` is removed from the `Info.plist` files. It needs the Xcode build the release names (`DTXcodeBuild` in its `Info.plist`). An empty diff means the release is exactly the tagged code, so review at the tag (`git checkout v1.2.3`). Releases before reproducible builds (v0.4.0 and earlier) can't be verified. Building from source (`docs/building-from-source.md`) also runs exactly what you reviewed; that build is signed with your own development certificate, without hardened runtime, and isn't notarised.
-- All the code it runs is the repo's own, Apple's system frameworks and three Apple-maintained open-source packages. The frameworks: Foundation, SwiftUI, AppKit, SwiftData, `os` for logging, and Carbon for the global quick-entry hotkey (`GlobalHotKey.swift`).
+- All the code it runs is the repo's own, Apple's system frameworks and three Apple-maintained open-source packages. The frameworks: Foundation, SwiftUI, AppKit, SwiftData, `os` for logging, Security for the keychain, Network for the login's listener, CryptoKit for its PKCE hash, and Carbon for the global quick-entry hotkey (`GlobalHotKey.swift`).
 - The packages, all on tagged releases (`Package.swift`): `apple/swift-argument-parser` from 1.5.0, for the CLI's arguments only; `apple/swift-markdown` from 0.9.0, to parse notes; and `swiftlang/swift-cmark` 0.9.0, the C parser swift-markdown is built on. Both lockfiles are committed (`Package.resolved`, and Xcode's in `captainslog/captainslog.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/`), so a build uses the reviewed versions; release builds refuse to resolve anything else. Updating a dependency is a commit.
 - No iCloud or CloudKit. The app has no entitlements file, and SwiftData only syncs through CloudKit when the app has the iCloud entitlement (`ModelConfiguration` in `Store.swift`).
-- Homebrew tools it relies on: `gh`, `googleworkspace-cli` (the `gws` binary; not Homebrew's unrelated `gws` formula), `age`, `just`.
-- The app has no App Sandbox (`ENABLE_APP_SANDBOX = NO`): it has to run `gh`, `gws` and the backup scripts.
+- Homebrew tools it relies on: `gh`, `age`, `just`.
+- The app has no App Sandbox (`ENABLE_APP_SANDBOX = NO`): it has to run `gh` and the backup scripts.
 
 ## Open items
 
-[Issue #3](https://github.com/nindalf/CaptainsLog/issues/3) (find `gh` and `gws` on `PATH`) and [#6](https://github.com/nindalf/CaptainsLog/issues/6) (a read-only `gh` token).
+[Issue #3](https://github.com/nindalf/CaptainsLog/issues/3) (find `gh` on `PATH`) and [#6](https://github.com/nindalf/CaptainsLog/issues/6) (a read-only `gh` token).
 
 ## Checking it yourself
 
@@ -102,8 +111,10 @@ A prompt to paste into Claude Code from the repo root:
 
 ```
 Security-review this repo before I install and run it. It claims to only read
-from GitHub (via gh) and Google Calendar (via gws), never write to any external
-system, make no network calls of its own, call no LLMs, and write only to
+from GitHub (via gh) and Google Calendar (via Google's API, the only network
+code), write to Calendar only to decline or delete an event when asked, never
+write to GitHub, call no LLMs, keep only a Google refresh token in the Keychain,
+and write only to
 ~/Library/Application Support/CaptainsLog, its own UserDefaults, age-encrypted
 backups in ~/Google Drive/My Drive/CaptainsLog backups, and skill symlinks in
 ~/.claude/skills and ~/.agents/skills.
@@ -117,6 +128,7 @@ To spot-check by hand:
 
 ```sh
 grep -rn 'runProcess(\|Process()' Sources captainslog
-grep -rn 'URLSession\|URLRequest\|WKWebView\|import Network' Sources captainslog
+grep -rn 'URLSession\|URLRequest\|WKWebView\|import Network' Sources captainslog   # only Sources/CaptainsLogKit/Sync/Google*.swift and their tests
+grep -rn 'SecItem' Sources captainslog                                            # only GoogleKeychain.swift
 grep -rn 'NSWorkspace' captainslog
 ```
