@@ -4,13 +4,19 @@ import SwiftUI
 import SwiftData
 import CaptainsLogKit
 
-/// Owns the Control-Space hotkey while `AppSettings.quickEntryEnabled` is on, and the panel it opens.
+enum QuickEntryKind {
+    case todo, log
+}
+
+/// Owns the Control-Space hotkey while `AppSettings.quickEntryEnabled` is on, and the panel it
+/// opens. New Todo and New Log Entry open the same panel in the app, whatever the setting.
 @MainActor
 final class QuickEntryController {
     private let container: ModelContainer
     private let settings: AppSettings
     private var hotKey: GlobalHotKey?
     private var panel: QuickEntryPanel?
+    private var shownKind: QuickEntryKind?
 
     init(container: ModelContainer, settings: AppSettings) {
         self.container = container
@@ -26,7 +32,7 @@ final class QuickEntryController {
             Task { @MainActor [weak self] in self?.followSetting() }
         }
         if enabled, hotKey == nil {
-            hotKey = GlobalHotKey(keyCode: kVK_Space, modifiers: controlKey) { [weak self] in self?.show() }
+            hotKey = GlobalHotKey(keyCode: kVK_Space, modifiers: controlKey) { [weak self] in self?.show(.todo) }
         } else if !enabled, let hotKey {
             hotKey.unregister()
             self.hotKey = nil
@@ -34,22 +40,28 @@ final class QuickEntryController {
         }
     }
 
-    /// Opens a blank entry, or brings back the one already open.
-    func show() {
-        if let panel, panel.isVisible {
+    /// Opens a blank entry, or brings back the one already open if it's the same kind. One of the
+    /// other kind is replaced.
+    func show(_ kind: QuickEntryKind) {
+        if let panel, panel.isVisible, shownKind == kind {
             panel.makeKeyAndOrderFront(nil)
             return
         }
+        shownKind = kind
         let panel = self.panel ?? QuickEntryPanel()
         self.panel = panel
         panel.onCancel = { [weak self] in self?.close() }
-        let root = QuickEntryView(
-            onClose: { [weak self] in self?.close() },
-            onHeightChange: { [weak panel] height in
-                // After the layout pass that measured it: resizing mid-layout throws.
-                Task { @MainActor in panel?.fit(height: height) }
+        let close = { [weak self] () -> Void in self?.close() }
+        let fit = { [weak panel] (height: CGFloat) -> Void in
+            // After the layout pass that measured it: resizing mid-layout throws.
+            Task { @MainActor in panel?.fit(height: height) }
+        }
+        let root = Group {
+            switch kind {
+            case .todo: QuickEntryView(onClose: close, onHeightChange: fit)
+            case .log: LogQuickEntryView(onClose: close, onHeightChange: fit)
             }
-        )
+        }
         .modelContainer(container)
         .environment(settings)
         let hosting = NSHostingView(rootView: root)
@@ -70,9 +82,15 @@ final class QuickEntryController {
     func close() {
         guard let panel else { return }
         panel.orderOut(nil)
+        shownKind = nil
         // Dropping the view drops its draft, so the next open starts blank.
         panel.contentView = nil
     }
+}
+
+extension EnvironmentValues {
+    /// The app's Quick Entry, for New Log Entry and New Todo to open in the app.
+    @Entry var quickEntry: QuickEntryController?
 }
 
 /// A floating panel that takes typing without activating the app, so the main window stays put

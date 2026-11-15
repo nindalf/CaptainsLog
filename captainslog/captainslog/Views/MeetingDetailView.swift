@@ -104,7 +104,7 @@ struct MeetingDetailView: View {
                 Button { todoAddTick += 1 } label: {
                     Label("Add Todo", systemImage: "plus")
                 }
-                .keyboardShortcut("n", modifiers: .command)
+                .help(AppCommand.newTodo.help("Add Todo"))
             }
             // The eye, as at the bottom right of every card, then the trash.
             ToolbarItem {
@@ -118,6 +118,7 @@ struct MeetingDetailView: View {
             }
         }
         .deleteConfirmation($pendingDelete) { _ in dismiss() }
+        .pageCommands(pageCommands)
         .confirmationDialog(
             "Add the whole series to \(seriesOffer?.project.name ?? "the project")?",
             isPresented: Binding(get: { seriesOffer != nil }, set: { if !$0 { seriesOffer = nil } }),
@@ -130,6 +131,17 @@ struct MeetingDetailView: View {
         } message: { offer in
             Text(seriesMessage(offer))
         }
+    }
+
+    /// New Todo files one here; Join opens this meeting's link.
+    private var pageCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        handlers[.newTodo] = { todoAddTick += 1 }
+        handlers[.delete] = { pendingDelete = .meeting(meeting) }
+        if let url = meeting.calendarEvent?.meetingURL {
+            handlers[.join] = { NSWorkspace.shared.open(url) }
+        }
+        return handlers
     }
 
     /// Puts the meeting in `project`, then offers to do the same for the rest of its series.

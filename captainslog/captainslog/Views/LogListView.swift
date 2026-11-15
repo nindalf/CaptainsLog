@@ -9,6 +9,13 @@ struct LogListView: View {
         LogListContent(typeFilter: $typeFilter, addTick: addTick)
             .navigationTitle("Log")
             .toolbar { toolbarContent }
+            .focusedSceneValue(\.tabCommands, tabCommands)
+    }
+
+    private var tabCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        handlers[.newLogEntry] = { addTick += 1 }
+        return handlers
     }
 
     @ToolbarContentBuilder
@@ -26,7 +33,7 @@ struct LogListView: View {
             Button { addTick += 1 } label: {
                 Label("Add Entry", systemImage: "plus")
             }
-            .keyboardShortcut("n", modifiers: .command)
+            .help(AppCommand.newLogEntry.help("Add Entry"))
         }
     }
 }

@@ -66,6 +66,9 @@ struct SearchView: View {
         .onKeyPress(.escape) { handleEscape() }
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1); return .handled }
         .onKeyPress(.downArrow, phases: [.down, .repeat]) { _ in moveSelection(by: 1); return .handled }
+        .selectionCommands(selectionCommands, claimsOnAppear: true, selection: [selectedID, expandedID]) {
+            focusedField = .list
+        }
         .navigationTitle("Search")
         .searchable(text: $navigator.searchQuery, placement: .toolbar, prompt: "Search everything")
         .searchFocused($isSearchFocused)
@@ -76,11 +79,30 @@ struct SearchView: View {
         .onAppear { isSearchFocused = true }
         .task(id: query) { await search(query) }
         .toolbar { toolbarContent }
+        .focusedSceneValue(\.tabCommands, tabCommands)
         .deleteConfirmation($pendingDelete) { record in
             rows.removeAll { $0.id == record.id }
             expandedID = nil
             focusedField = .list
         }
+    }
+
+    /// Delete for a selected log entry, as its context menu offers; Open in GitHub for a PR.
+    private var selectionCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        switch visibleRows.first(where: { $0.id == selectedID })?.result {
+        case .log(let entry): handlers[.delete] = { pendingDelete = .log(entry) }
+        case .pr(let pr): handlers[.openInGitHub] = { NSWorkspace.shared.open(pr.url) }
+        default: break
+        }
+        return handlers
+    }
+
+    /// Find in This Tab goes to this tab's own field.
+    private var tabCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        handlers[.findInTab] = { isSearchFocused = true }
+        return handlers
     }
 
     @ViewBuilder
@@ -225,7 +247,7 @@ struct SearchView: View {
         guard !Task.isCancelled else { return }
         let hits = (try? await Searcher(modelContainer: modelContext.container).search(query)) ?? []
         guard !Task.isCancelled else { return }
-        rows = resolve(hits)
+        rows = SearchRow.resolve(hits, in: modelContext)
         searchedQuery = query
         expandedID = nil
         selectedID = nil
@@ -233,9 +255,11 @@ struct SearchView: View {
             self.kindFilter = nil
         }
     }
+}
 
+extension SearchRow {
     /// Fetches each kind's models in one query. Hits whose record has since been deleted drop out.
-    private func resolve(_ hits: [SearchHit]) -> [SearchRow] {
+    static func resolve(_ hits: [SearchHit], in modelContext: ModelContext) -> [SearchRow] {
         let ids = Dictionary(grouping: hits, by: \.kind).mapValues { $0.map(\.id) }
         var results: [UUID: SearchResult] = [:]
         func load<M: PersistentModel>(_ kind: SearchKind, _ descriptor: ([UUID]) -> FetchDescriptor<M>, _ wrap: (M) -> (UUID, SearchResult)) {
@@ -255,9 +279,7 @@ struct SearchView: View {
         load(.feedback, { ids in FetchDescriptor<Feedback>(predicate: #Predicate { ids.contains($0.id) }) }) { ($0.id, .feedback($0)) }
         return hits.compactMap { hit in results[hit.id].map { SearchRow(hit: hit, result: $0) } }
     }
-}
 
-extension SearchRow {
     var isExpandable: Bool {
         switch result {
         case .log, .pr: true

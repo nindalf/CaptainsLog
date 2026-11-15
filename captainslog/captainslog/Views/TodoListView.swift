@@ -40,6 +40,16 @@ struct TodoListView: View {
         }
         .navigationTitle(title)
         .toolbar { toolbarContent }
+        .focusedSceneValue(\.tabCommands, tabCommands)
+    }
+
+    /// New Todo drafts in the list shown. Lists that take none leave it to Quick Entry.
+    private var tabCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        if selection.acceptsTodos {
+            handlers[.newTodo] = { addTick += 1 }
+        }
+        return handlers
     }
 
     @ToolbarContentBuilder
@@ -48,7 +58,7 @@ struct TodoListView: View {
             Button { addTick += 1 } label: {
                 Label("Add Todo", systemImage: "plus")
             }
-            .keyboardShortcut("n", modifiers: .command)
+            .help(AppCommand.newTodo.help("Add Todo"))
             .disabled(!selection.acceptsTodos)
         }
     }

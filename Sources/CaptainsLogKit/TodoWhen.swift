@@ -20,6 +20,21 @@ public enum TodoWhen: Hashable, Sendable {
         }
     }
 
+    /// A day later or earlier, counting from today at the earliest and never landing before it.
+    /// Undated and Someday count as today going later, and stay put going earlier.
+    public func shifted(byDays days: Int, today: Date, calendar: Calendar = .current) -> TodoWhen {
+        let today = calendar.startOfDay(for: today)
+        let from: Date
+        switch self {
+        case .day(let date): from = date
+        case .someday, .unset:
+            guard days > 0 else { return self }
+            from = today
+        }
+        let shifted = calendar.date(byAdding: .day, value: days, to: max(from, today)) ?? from
+        return .day(max(shifted, today))
+    }
+
     /// The When shared by every todo, or nil when they differ.
     public static func common(to todos: [Todo], calendar: Calendar = .current) -> TodoWhen? {
         let whens = Set(todos.map { of($0, calendar: calendar) })

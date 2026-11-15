@@ -108,7 +108,7 @@ struct InterviewDetailView: View {
                 Button { todoAddTick += 1 } label: {
                     Label("Add Todo", systemImage: "plus")
                 }
-                .keyboardShortcut("n", modifiers: .command)
+                .help(AppCommand.newTodo.help("Add Todo"))
             }
             // The eye, as at the bottom right of every card, then the trash.
             ToolbarItem {
@@ -122,7 +122,19 @@ struct InterviewDetailView: View {
             }
         }
         .deleteConfirmation($pendingDelete) { _ in dismiss() }
+        .pageCommands(pageCommands)
         .onChange(of: interview.hasWrittenText) { hadText, _ in addScorecardTodoIfDue(hadText: hadText) }
+    }
+
+    /// New Todo files one here; Join opens the interview's link.
+    private var pageCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        handlers[.newTodo] = { todoAddTick += 1 }
+        handlers[.delete] = { pendingDelete = .interview(interview) }
+        if let url = interview.calendarEvent?.meetingURL {
+            handlers[.join] = { NSWorkspace.shared.open(url) }
+        }
+        return handlers
     }
 
     private var rawNotesSection: some View {

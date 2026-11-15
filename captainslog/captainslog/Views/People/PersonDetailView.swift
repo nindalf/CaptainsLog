@@ -126,12 +126,20 @@ struct PersonDetailView: View {
         .onDisappear {
             if !person.isDeleted { person.trimWhitespace() }
         }
+        .pageCommands(pageCommands)
         .sheet(isPresented: $showMergeSheet) {
             PersonMergePicker(keep: person) { other in
                 person.absorb(other, in: modelContext)
                 showMergeSheet = false
             }
         }
+    }
+
+    private var pageCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        handlers[.addFeedback] = { addFeedback() }
+        handlers[.mergePerson] = { showMergeSheet = true }
+        return handlers
     }
 
     // MARK: - Feedback

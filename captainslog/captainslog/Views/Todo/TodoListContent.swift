@@ -245,8 +245,10 @@ struct TodoListContent: View {
         .onKeyPress(phases: .down) { press in
             press.characters == "\u{7F}" || press.key == .deleteForward ? handleDelete() : .ignored
         }
-        .onKeyPress("k", phases: .down) { handleK($0) }
         .onKeyPress("a", phases: .down) { handleA($0) }
+        .selectionCommands(selectionCommands, claimsOnAppear: focusesOnAppear, selection: [selectedID, expandedID]) {
+            focusedField = .list
+        }
     }
 
     private var todoListContent: some View {
@@ -884,6 +886,65 @@ struct TodoListContent: View {
         }
     }
 
+    // MARK: - Commands
+
+    /// The open card's todo, else the selected ones. Not a draft: it isn't saved yet.
+    private var commandTargets: [Todo] {
+        guard draft == nil else { return [] }
+        if let expandedID {
+            return displayedTodos.filter { $0.id == expandedID }
+        }
+        return selectedTodos
+    }
+
+    /// Each action works out its targets when it runs, so it never acts on an earlier render's.
+    private var selectionCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        if scope == .smart(.trash), !activeTodos.isEmpty {
+            handlers[.emptyTrash] = { pendingPermanentDeleteIDs = activeTodos.map(\.id) }
+        }
+        let targets = commandTargets
+        guard !targets.isEmpty else { return handlers }
+        if scope == .smart(.trash) {
+            handlers[.delete] = { pendingPermanentDeleteIDs = commandTargets.map(\.id) }
+            return handlers
+        }
+        handlers[.complete] = {
+            let todos = commandTargets
+            setCompleted(todos, !todos.allSatisfy(\.isCompleted))
+        }
+        handlers[.delete] = { trash(commandTargets) }
+        handlers[.moveToProject] = { [navigator] in
+            let ids = commandTargets.map(\.id)
+            navigator.chooseProject { project in
+                apply(to: allTodos.filter { ids.contains($0.id) }) { $0.project = project }
+            }
+        }
+        // Scheduling is for open todos.
+        guard targets.allSatisfy({ !$0.isCompleted }) else { return handlers }
+        handlers[.today] = { schedule { _ in .day(Calendar.current.startOfDay(for: .now)) } }
+        handlers[.someday] = { schedule { _ in .someday } }
+        handlers[.dayLater] = { schedule { $0.shifted(byDays: 1, today: .now) } }
+        handlers[.dayEarlier] = { schedule { $0.shifted(byDays: -1, today: .now) } }
+        handlers[.when] = {
+            let todos = commandTargets
+            guard let anchor = todos.first(where: { $0.id == selectedID }) ?? todos.first else { return }
+            datePickerTargetIDs = todos.map(\.id)
+            datePickerRowID = anchor.id
+        }
+        return handlers
+    }
+
+    /// Gives each target the When `change` makes of its current one, leaving alone a todo whose When
+    /// stays: reapplying one still rewrites its stored schedule.
+    private func schedule(_ change: (TodoWhen) -> TodoWhen) {
+        apply(to: commandTargets) { todo in
+            let current = TodoWhen.of(todo)
+            let new = change(current)
+            if new != current { new.apply(to: todo) }
+        }
+    }
+
     // MARK: - Key handlers
 
     private func handleReturnKey(_ keyPress: KeyPress) -> KeyPress.Result {
@@ -956,15 +1017,6 @@ struct TodoListContent: View {
         let todos = selectedTodos
         guard scope != .smart(.trash), expandedID == nil, draft == nil, !todos.isEmpty else { return .ignored }
         trash(todos)
-        return .handled
-    }
-
-    /// Completes the selection, or reopens it when every selected todo is already complete.
-    private func handleK(_ keyPress: KeyPress) -> KeyPress.Result {
-        guard keyPress.modifiers.contains(.command) else { return .ignored }
-        let todos = selectedTodos
-        guard !todos.isEmpty else { return .ignored }
-        setCompleted(todos, !todos.allSatisfy(\.isCompleted))
         return .handled
     }
 

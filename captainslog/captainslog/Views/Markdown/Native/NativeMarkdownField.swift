@@ -347,7 +347,9 @@ final class MarkdownEditorController: NSObject, NSTextViewDelegate {
         case #selector(NSResponder.insertTab(_:)):
             return textView.indentLines(outdent: false)
         case #selector(NSResponder.insertBacktab(_:)):
-            return textView.indentLines(outdent: true)
+            // Off a list line, back to the field before, as in a text field.
+            if !textView.indentLines(outdent: true) { textView.window?.selectPreviousKeyView(nil) }
+            return true
         case #selector(NSResponder.cancelOperation(_:)):
             // Not NSTextView's own word-completion popup, which is what Escape opens by default.
             return true

@@ -191,6 +191,17 @@ struct PRListView: View {
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1); return .handled }
         .onKeyPress(.downArrow, phases: [.down, .repeat]) { _ in moveSelection(by: 1); return .handled }
         .animation(.snappy(duration: 0.18), value: expandedID)
+        .selectionCommands(selectionCommands, claimsOnAppear: true, selection: [selectedID, expandedID]) {
+            focusedField = .list
+        }
+    }
+
+    private var selectionCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        if let pr = visiblePRs.first(where: { $0.id == selectedID }) {
+            handlers[.openInGitHub] = { NSWorkspace.shared.open(pr.url) }
+        }
+        return handlers
     }
 
     // MARK: - Sections

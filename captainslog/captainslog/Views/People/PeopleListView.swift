@@ -68,6 +68,7 @@ struct PeopleListView: View {
         }
         .sheet(item: $rosterImport) { RosterImportSheet(preview: $0) }
         .sheet(isPresented: $showRosterExport) { RosterExportSheet() }
+        .focusedSceneValue(\.tabCommands, tabCommands)
         .alert("Couldn't Read Roster", isPresented: Binding(
             get: { rosterError != nil },
             set: { if !$0 { rosterError = nil } }
@@ -76,6 +77,13 @@ struct PeopleListView: View {
         } message: {
             Text(rosterError ?? "")
         }
+    }
+
+    private var tabCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        handlers[.importRoster] = { chooseRoster() }
+        handlers[.exportRoster] = { showRosterExport = true }
+        return handlers
     }
 
     private func chooseRoster() {

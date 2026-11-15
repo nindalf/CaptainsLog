@@ -6,8 +6,15 @@ import CaptainsLogKit
 struct LogEntryControls: View {
     @Bindable var entry: LogEntry
     let projects: [Project]
+    /// Quick Entry keeps its project here until Save, since relating a draft inserts it.
+    var pendingProject: Binding<UUID?>? = nil
 
     @State private var showTags = false
+
+    private var project: Project? {
+        guard let pendingProject else { return entry.project }
+        return projects.first { $0.id == pendingProject.wrappedValue }
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -40,7 +47,13 @@ struct LogEntryControls: View {
     }
 
     private var projectControl: some View {
-        ProjectControl(current: entry.project, projects: projects) { entry.project = $0 }
+        ProjectControl(current: project, projects: projects) { picked in
+            if let pendingProject {
+                pendingProject.wrappedValue = picked?.id
+            } else {
+                entry.project = picked
+            }
+        }
     }
 }
 

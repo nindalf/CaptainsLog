@@ -86,6 +86,12 @@ struct CalendarWeekView: View {
             shiftWeek(by: 1)
             return .handled
         }
+        // T for this week, as in Google Calendar.
+        .onKeyPress("t", phases: .down) { press in
+            guard press.modifiers.isEmpty else { return .ignored }
+            displayedWeekStart = Self.mondayOfCurrentWeek()
+            return .handled
+        }
     }
 
     private func handleEventTap(_ event: CalendarEvent) {

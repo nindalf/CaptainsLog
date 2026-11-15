@@ -16,6 +16,19 @@ final class Navigator {
     var revealTodoID: UUID?
     /// The Search tab's query. Lives here so a search survives opening a todo or project in another tab.
     var searchQuery = ""
+    /// The list whose selection commands act on: the one last selected in, or shown. The Dashboard
+    /// shows two.
+    var commandListID: UUID?
+    /// The command palette, while it's open.
+    var palette: PaletteRequest?
+    /// Bumped when the palette closes without handing focus back to a text field, for the list
+    /// commands act on to take it.
+    var paletteReturnTick = 0
+
+    /// Opens the palette on the open projects, for `apply` to put the chosen one, or none, on its todos.
+    func chooseProject(_ apply: @escaping (Project?) -> Void) {
+        palette = PaletteRequest(mode: .project, chooseProject: apply)
+    }
 
     /// Switching tabs starts a fresh stack -- the old path belongs to the tab we left.
     func select(_ item: SidebarItem?) {

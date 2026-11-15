@@ -103,6 +103,24 @@ struct LogListContent: View {
         .onKeyPress(phases: .down) { press in
             press.characters == "\u{7F}" || press.key == .deleteForward ? handleDelete() : .ignored
         }
+        .selectionCommands(selectionCommands, claimsOnAppear: focusesOnAppear, selection: [selectedID, expandedID]) {
+            focusedField = .list
+        }
+    }
+
+    /// Delete on the selected item, as the Delete key does, open or not; a PR opens in GitHub instead.
+    private var selectionCommands: CommandHandlers {
+        var handlers = CommandHandlers()
+        guard draft == nil, let selectedID, let item = feedItem(for: selectedID) else { return handlers }
+        if case .pullRequest(let pr) = item {
+            handlers[.openInGitHub] = { NSWorkspace.shared.open(pr.url) }
+        } else {
+            handlers[.delete] = {
+                guard let id = self.selectedID, let item = feedItem(for: id) else { return }
+                _ = requestDelete(item)
+            }
+        }
+        return handlers
     }
 
     private var feedListContent: some View {
@@ -123,7 +141,7 @@ struct LogListContent: View {
                 ContentUnavailableView(
                     "No Entries",
                     systemImage: "book",
-                    description: Text("Press Cmd+N to add a log entry")
+                    description: Text(AppCommand.newLogEntry.help("Add a log entry"))
                 )
                 .padding(.top, 40)
             }

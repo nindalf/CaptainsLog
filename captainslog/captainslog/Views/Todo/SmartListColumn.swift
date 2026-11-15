@@ -153,11 +153,7 @@ struct SmartListColumn: View {
     // MARK: - Actions
 
     private func createProject() {
-        // The name is checked against every project first: a duplicate would upsert over one.
-        let project = Project(name: ProjectNaming.uniqueName(existing: projects.map(\.name)))
-        project.sortOrder = (projects.map(\.sortOrder).max() ?? -1) + 1
-        modelContext.insert(project)
-        save()
+        guard let project = try? Project.insertUntitled(in: modelContext) else { return }
         selection = .project(project.id)
         navigator.renamingProjectID = project.id
     }

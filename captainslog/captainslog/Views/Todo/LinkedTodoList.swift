@@ -4,7 +4,7 @@ import CaptainsLogKit
 
 /// The todos filed against one meeting or interview, as a section of its detail page, plus the
 /// open todos that tag its people: a meeting's attendees, or the person a person page shows. A
-/// meeting also keeps the todos checked off in it. Open todos come first, then completed ones. The host's Cmd+N bumps `addTick` to open a draft card on top.
+/// meeting also keeps the todos checked off in it. Open todos come first, then completed ones. The host's New Todo bumps `addTick` to open a draft card on top.
 struct LinkedTodoList: View {
     var addTick: Int
     private let title: String
@@ -128,7 +128,7 @@ struct LinkedTodoList: View {
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
-                .help("Add Todo (⌘N)")
+                .help(AppCommand.newTodo.help("Add Todo"))
             }
         } content: {
             VStack(alignment: .leading, spacing: 2) {

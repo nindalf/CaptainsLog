@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Project names are unique (`#Unique` on `Project.name`), and a clash silently upserts over the
 /// existing project. Every create and rename goes through these checks.
@@ -20,5 +21,17 @@ public enum ProjectNaming {
             $0.id != project.id && $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
         }
         return clash ? nil : trimmed
+    }
+}
+
+extension Project {
+    /// Inserts and saves a project with a name no other has.
+    public static func insertUntitled(in context: ModelContext) throws -> Project {
+        let projects = try context.fetch(FetchDescriptor<Project>())
+        let project = Project(name: ProjectNaming.uniqueName(existing: projects.map(\.name)))
+        project.sortOrder = (projects.map(\.sortOrder).max() ?? -1) + 1
+        context.insert(project)
+        try context.save()
+        return project
     }
 }
