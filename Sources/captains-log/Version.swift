@@ -1,2 +1,2 @@
 // Bumped by `just release`, together with the app's MARKETING_VERSION
-let cliVersion = "0.12.1"
+let cliVersion = "0.13.0"
