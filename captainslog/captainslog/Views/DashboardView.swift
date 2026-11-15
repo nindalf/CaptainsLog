@@ -283,13 +283,14 @@ struct DashboardView: View {
         }
     }
 
-    /// Year, day of the year, hour: "2026.298.08".
+    /// ISO week-year, week, weekday (Monday is 1): "2026.46.7".
     private static func stardate(_ date: Date) -> String {
-        let cal = Calendar.current
-        let year = cal.component(.year, from: date)
-        let dayOfYear = cal.ordinality(of: .day, in: .year, for: date) ?? 1
-        let hour = cal.component(.hour, from: date)
-        return "\(year).\(String(format: "%03d", dayOfYear)).\(String(format: "%02d", hour))"
+        var cal = Calendar(identifier: .iso8601)
+        cal.timeZone = .current
+        let year = cal.component(.yearForWeekOfYear, from: date)
+        let week = cal.component(.weekOfYear, from: date)
+        let day = (cal.component(.weekday, from: date) + 5) % 7 + 1
+        return "\(year).\(String(format: "%02d", week)).\(day)"
     }
 
     private func handleEventTap(_ event: CalendarEvent) {
