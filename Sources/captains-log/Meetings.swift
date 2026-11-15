@@ -155,6 +155,9 @@ struct Meetings: AsyncParsableCommand {
         @Flag(name: .long, help: "Take it out of its project")
         var noProject: Bool = false
 
+        @Flag(name: .long, help: "With --project, move the other meetings in its recurring series too")
+        var series: Bool = false
+
         @Flag(name: .customLong("private"), inversion: .prefixedNo, help: "Make it private, or not, as the app's lock does")
         var isPrivate: Bool?
 
@@ -188,6 +191,9 @@ struct Meetings: AsyncParsableCommand {
             if project != nil && noProject {
                 throw ValidationError("--project and --no-project can't be combined")
             }
+            if series && project == nil {
+                throw ValidationError("--series needs --project")
+            }
             let changes: [Bool] = [title != nil, date != nil, project != nil, noProject, isPrivate != nil, prepNotes != nil, notes != nil, summary != nil, transcript != nil, slackURL != nil]
             if !changes.contains(true) {
                 throw ValidationError("Nothing to change")
@@ -202,7 +208,12 @@ struct Meetings: AsyncParsableCommand {
 
             if let title { meeting.title = title.trimmingCharacters(in: .whitespacesAndNewlines) }
             if let date { meeting.date = try CLIDate.dateTime(date, keepingTimeOf: meeting.date) }
-            if let newProject { meeting.project = newProject }
+            if let newProject {
+                meeting.project = newProject
+                if series {
+                    try meeting.seriesMeetings(in: context).forEach { $0.project = newProject }
+                }
+            }
             if noProject { meeting.project = nil }
             if let isPrivate { meeting.isPrivate = isPrivate }
             if let text = texts[0] { meeting.prepNotes = TextInput.field(text) }

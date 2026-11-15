@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 extension CalendarEvent {
     /// The recurring series this event is an instance of, read from its Google id: an instance's id
@@ -30,6 +31,32 @@ extension Meeting {
         case series
         /// Mostly the same people.
         case attendees
+    }
+
+    /// The other meetings in this one's recurring series, earlier or later, oldest first. Empty for
+    /// a one-off meeting.
+    public func seriesMeetings(among candidates: [Meeting]) -> [Meeting] {
+        guard let series = calendarEvent?.seriesID else { return [] }
+        return Meeting.inSeries(series, among: candidates).filter { $0.id != id }
+    }
+
+    /// `seriesMeetings` over the whole store.
+    public func seriesMeetings(in context: ModelContext) throws -> [Meeting] {
+        guard calendarEvent?.seriesID != nil else { return [] }
+        return seriesMeetings(among: try context.fetch(FetchDescriptor<Meeting>()))
+    }
+
+    /// The meetings of `series` among `candidates`, oldest first.
+    public static func inSeries(_ series: String, among candidates: [Meeting]) -> [Meeting] {
+        candidates.filter { $0.calendarEvent?.seriesID == series }.sorted { $0.date < $1.date }
+    }
+
+    /// The project every one of `meetings` is in, if they share one and it's still open: the
+    /// project a new meeting in their series starts in.
+    public static func sharedProject(of meetings: [Meeting]) -> Project? {
+        guard let project = meetings.first?.project, !project.isCompleted,
+              meetings.allSatisfy({ $0.project?.id == project.id }) else { return nil }
+        return project
     }
 
     /// Earlier meetings with the same people, newest first: instances of the same recurring event,

@@ -76,6 +76,7 @@ EOF
 | A todo | `todos add "Title" [--due-date D] [--project NAME] [--notes -]` |
 | A record's project | `edit <id> --project NAME` (or `--no-project`) on `todos`, `log`, `meetings` or `prs` |
 | A project's icon | `projects edit <id> --icon NAME`; `projects edit --help` lists the icons |
+| A recurring meeting's project | `meetings edit <id> --project NAME`, then, if its `isRecurring`, ask whether the rest of the series goes in too; on yes, rerun with `--series` |
 | Feedback | `people feedback add <person id> -`. Feedback to me goes on my own person, starting `From <name>:` |
 | Interview write-up | `interviews edit <id> --raw-notes -` (and `--upsides`, `--risk-factors`, `--conclusion`, `--recommendation`) |
 | People from a roster file | `people import roster.json` previews the changes; `--yes` applies them. `people export` prints a roster |

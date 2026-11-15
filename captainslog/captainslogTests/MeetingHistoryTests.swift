@@ -36,6 +36,32 @@ struct MeetingHistoryTests {
         #expect(found.first?.match == .series)
     }
 
+    @Test func seriesMeetingsAreEveryOtherInstanceOldestFirst() {
+        let now = meeting(0, [me, tom], event: "abc_20261105T100000Z")
+        let next = meeting(-7, [me], event: "abc_20261112T100000Z")
+        let last = meeting(7, [me, raj], event: "abc_20261029T100000Z")
+        let other = meeting(3, [me, tom], event: "xyz_20261102T100000Z")
+        let oneOff = meeting(1, [me, tom], event: "abc")
+        #expect(now.seriesMeetings(among: [now, next, other, last, oneOff]).map(\.title) == ["m7", "m-7"])
+        #expect(oneOff.seriesMeetings(among: [now, next, last]).isEmpty)
+        #expect(meeting(2, [me]).seriesMeetings(among: [now]).isEmpty)
+    }
+
+    @Test func aNewSeriesMeetingJoinsAProjectOnlyIfTheWholeSeriesIsInIt() {
+        let launch = Project(name: "Launch")
+        let other = Project(name: "Other")
+        let a = meeting(14, [me]), b = meeting(7, [me])
+        a.project = launch; b.project = launch
+        #expect(Meeting.sharedProject(of: [a, b]) === launch)
+        b.project = nil
+        #expect(Meeting.sharedProject(of: [a, b]) == nil)
+        b.project = other
+        #expect(Meeting.sharedProject(of: [a, b]) == nil)
+        b.project = launch; launch.completedDate = .now
+        #expect(Meeting.sharedProject(of: [a, b]) == nil)
+        #expect(Meeting.sharedProject(of: []) == nil)
+    }
+
     @Test func otherMeetingsMatchOnMostlyTheSamePeopleLeavingMeOut() {
         let now = meeting(0, [me, tom])
         let oneOnOne = meeting(2, [me, tom])

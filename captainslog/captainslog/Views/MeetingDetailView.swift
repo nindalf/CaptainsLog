@@ -5,6 +5,7 @@ import CaptainsLogKit
 struct MeetingDetailView: View {
     @Bindable var meeting: Meeting
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Project.sortOrder) private var projects: [Project]
     @State private var todoAddTick = 0
     @State private var pendingDelete: DeletableRecord?
@@ -12,6 +13,13 @@ struct MeetingDetailView: View {
     /// stays shown once it is, so clearing it while typing doesn't hide it.
     @State private var shownNotes: Set<NotesField> = []
     @FocusState private var focusedNotes: NotesField?
+    /// After the meeting goes into a project, the rest of its series that could follow it.
+    @State private var seriesOffer: SeriesOffer?
+
+    private struct SeriesOffer {
+        let project: Project
+        let meetings: [Meeting]
+    }
 
     private enum NotesField: Hashable, CaseIterable {
         case prepNotes, notes, summary
@@ -48,7 +56,7 @@ struct MeetingDetailView: View {
                         .help(url.absoluteString)
                 }
                 LinkMetadataItem(title: "Slack", prompt: "Link to the shared notes", urlString: slackURL)
-                ProjectMetadataItem(current: meeting.project, projects: projects) { meeting.project = $0 }
+                ProjectMetadataItem(current: meeting.project, projects: projects) { pickProject($0) }
             }
             if !meeting.attendees.isEmpty {
                 PersonLinks(people: meeting.attendees.sorted { $0.name < $1.name })
@@ -110,6 +118,38 @@ struct MeetingDetailView: View {
             }
         }
         .deleteConfirmation($pendingDelete) { _ in dismiss() }
+        .confirmationDialog(
+            "Add the whole series to \(seriesOffer?.project.name ?? "the project")?",
+            isPresented: Binding(get: { seriesOffer != nil }, set: { if !$0 { seriesOffer = nil } }),
+            presenting: seriesOffer
+        ) { offer in
+            Button("Add All \(offer.meetings.count + 1) Meetings") {
+                offer.meetings.forEach { $0.project = offer.project }
+            }
+            Button("Only This Meeting", role: .cancel) {}
+        } message: { offer in
+            Text(seriesMessage(offer))
+        }
+    }
+
+    /// Puts the meeting in `project`, then offers to do the same for the rest of its series.
+    private func pickProject(_ project: Project?) {
+        meeting.project = project
+        guard let project, let others = try? meeting.seriesMeetings(in: modelContext) else { return }
+        let moving = others.filter { $0.project?.id != project.id }
+        guard !moving.isEmpty else { return }
+        // After the popover has closed, or the dialog can be lost with it.
+        Task { seriesOffer = SeriesOffer(project: project, meetings: moving) }
+    }
+
+    private func seriesMessage(_ offer: SeriesOffer) -> String {
+        let count = offer.meetings.count
+        var text = "\(count) other meeting\(count == 1 ? "" : "s") in this recurring series \(count == 1 ? "isn't" : "aren't") in \(offer.project.name)."
+        let elsewhere = offer.meetings.filter { $0.project != nil }.count
+        if elsewhere > 0 {
+            text += elsewhere == 1 ? " One is in another project, and would move." : " \(elsewhere) are in other projects, and would move."
+        }
+        return text
     }
 
     private var slackURL: Binding<String?> {
