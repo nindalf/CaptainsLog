@@ -1,21 +1,7 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// The SF Symbols a project can use. A folder by default: circles read as checkboxes.
-enum ProjectIcon {
-    static let defaultName = "folder"
-
-    static let choices = [
-        "folder", "briefcase", "doc.text", "book", "chart.bar", "target",
-        "flag", "lightbulb", "hammer", "wrench.and.screwdriver", "gearshape", "shield",
-        "lock", "magnifyingglass", "person.2", "bubble.left.and.bubble.right", "calendar", "airplane",
-        "graduationcap", "building.2", "cart", "leaf", "heart", "star",
-    ]
-}
-
 extension Project {
-    var icon: String { iconName ?? ProjectIcon.defaultName }
-
     /// What a delete would unlink, for the confirmation. Everything is kept: the relationships nullify.
     var deletionSummary: String {
         let linked: [(Int, String, String)] = [
@@ -41,7 +27,7 @@ struct ProjectIconPicker: View {
         LazyVGrid(columns: Array(repeating: GridItem(.fixed(30), spacing: 4), count: 6), spacing: 4) {
             ForEach(ProjectIcon.choices, id: \.self) { name in
                 Button {
-                    project.iconName = name == ProjectIcon.defaultName ? nil : name
+                    project.setIcon(name)
                     onPick()
                     dismiss()
                 } label: {

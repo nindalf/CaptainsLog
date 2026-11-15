@@ -75,11 +75,13 @@ EOF
 | A note, reflection or write-up | `log add "Title" --content - --tags a,b [--project NAME]` (`--private` for reflections) |
 | A todo | `todos add "Title" [--due-date D] [--project NAME] [--notes -]` |
 | A record's project | `edit <id> --project NAME` (or `--no-project`) on `todos`, `log`, `meetings` or `prs` |
+| A project's icon | `projects edit <id> --icon NAME`; `projects edit --help` lists the icons |
 | Feedback | `people feedback add <person id> -`. Feedback to me goes on my own person, starting `From <name>:` |
 | Interview write-up | `interviews edit <id> --raw-notes -` (and `--upsides`, `--risk-factors`, `--conclusion`, `--recommendation`) |
 | People from a roster file | `people import roster.json` previews the changes; `--yes` applies them. `people export` prints a roster |
 
 - `edit` changes only the fields you pass; an empty value clears one.
+- One write needs no asking: when `projects list` shows an open project without an `iconName`, give it the icon that best fits its name and notes, and tell me which you picked.
 - Run these only when I've asked for that exact action: `delete --permanently`, `prune --permanently`, `empty-trash`, `people merge --yes`, `people import --yes`, `projects complete --complete-todos`. Prefer `todos trash`, which can be undone.
 - Never run `seed-*` commands or set `CAPTAINSLOG_STORE_DIR` (it switches stores) unless I ask.
 

@@ -47,8 +47,15 @@ struct Projects: AsyncParsableCommand {
         @Option(name: .long, help: "Project notes (markdown), or - to read them from stdin")
         var notes: String?
 
+        @Option(name: .long, help: Projects.iconHelp)
+        var icon: String?
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
+
+        func validate() throws {
+            try Projects.validate(icon: icon)
+        }
 
         mutating func run() async throws {
             let notes = try TextInput.resolve([notes])[0]
@@ -63,6 +70,7 @@ struct Projects: AsyncParsableCommand {
             }
             project.name = validName
             project.notes = notes
+            if let icon { project.setIcon(icon) }
             project.sortOrder = (projects.map(\.sortOrder).max() ?? -1) + 1
             context.insert(project)
             try context.save()
@@ -73,7 +81,7 @@ struct Projects: AsyncParsableCommand {
 
     struct Edit: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Rename a project or change its notes"
+            abstract: "Rename a project or change its notes or icon"
         )
 
         @Argument(help: "Project name or UUID")
@@ -88,6 +96,9 @@ struct Projects: AsyncParsableCommand {
         @Flag(name: .long, help: "Remove the notes")
         var clearNotes: Bool = false
 
+        @Option(name: .long, help: Projects.iconHelp)
+        var icon: String?
+
         @Flag(name: .long, help: "Pretty-print JSON output")
         var pretty: Bool = false
 
@@ -95,9 +106,10 @@ struct Projects: AsyncParsableCommand {
             if notes != nil && clearNotes {
                 throw ValidationError("--notes and --clear-notes can't be combined")
             }
-            if name == nil && notes == nil && !clearNotes {
-                throw ValidationError("Nothing to change; pass --name, --notes or --clear-notes")
+            if name == nil && notes == nil && !clearNotes && icon == nil {
+                throw ValidationError("Nothing to change; pass --name, --notes, --clear-notes or --icon")
             }
+            try Projects.validate(icon: icon)
         }
 
         mutating func run() async throws {
@@ -115,6 +127,7 @@ struct Projects: AsyncParsableCommand {
             }
             if let notes { project.notes = notes }
             if clearNotes { project.notes = nil }
+            if let icon { project.setIcon(icon) }
             try context.save()
 
             try printJSON(ProjectDTO.from(project), pretty: pretty)
@@ -209,6 +222,16 @@ struct Projects: AsyncParsableCommand {
             try context.save()
 
             try printJSON(["deleted": [dto]], pretty: pretty)
+        }
+    }
+
+    static let iconHelp = ArgumentHelp(
+        "The project's icon, an SF Symbol: \(ProjectIcon.choices.joined(separator: ", ")). \(ProjectIcon.defaultName) is the default"
+    )
+
+    static func validate(icon: String?) throws {
+        if let icon, !ProjectIcon.choices.contains(icon) {
+            throw ValidationError("Unknown icon \"\(icon)\"; choose one of \(ProjectIcon.choices.joined(separator: ", "))")
         }
     }
 
