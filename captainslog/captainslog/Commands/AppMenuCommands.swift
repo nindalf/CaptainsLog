@@ -18,7 +18,6 @@ struct AppMenuCommands: Commands {
         CommandGroup(replacing: .newItem) {
             item(.newLogEntry, handlers)
             item(.newTodo, handlers)
-            item(.newProject, handlers)
             Divider()
             item(.delete, handlers)
         }
@@ -41,6 +40,7 @@ struct AppMenuCommands: Commands {
             }
             Divider()
             item(.back, handlers)
+            item(.openMeeting, handlers)
             item(.join, handlers)
         }
         CommandMenu("Todo") {

@@ -120,7 +120,7 @@ struct CommandRunner {
             if let open = navigator.palette {
                 switch open.mode {
                 case .commands, .search: request.handlers = open.handlers
-                case .project, .join: break
+                case .project, .meetings: break
                 }
                 request.returnFocus = open.returnFocus
             }
@@ -138,11 +138,6 @@ struct CommandRunner {
         let navigator = navigator
         handlers[.newLogEntry] = { [quickEntry] in quickEntry?.show(.log) }
         handlers[.newTodo] = { [quickEntry] in quickEntry?.show(.todo) }
-        handlers[.newProject] = { [modelContext] in
-            guard let project = try? Project.insertUntitled(in: modelContext) else { return }
-            navigator.openProject(project)
-            navigator.renamingProjectID = project.id
-        }
         for item in settings.visibleSidebarItems {
             handlers[.goTo(item)] = { navigator.select(item) }
         }
@@ -164,11 +159,9 @@ struct CommandRunner {
                 if !syncCoordinator.isSyncing { syncCoordinator.syncNow() }
             }
         }
-        // Looked up when pressed, since which meetings are left changes as time passes.
-        handlers[.join] = { [modelContext] in
-            guard !CalendarEvent.joinableToday(in: modelContext).isEmpty else { return NSSound.beep() }
-            navigator.palette = PaletteRequest(mode: .join)
-        }
+        // The palette looks the meetings up when it opens, since the selected one moves with the time.
+        handlers[.join] = { navigator.palette = PaletteRequest(mode: .meetings(.join)) }
+        handlers[.openMeeting] = { navigator.palette = PaletteRequest(mode: .meetings(.notes)) }
         return handlers
     }
 
@@ -194,8 +187,8 @@ struct PaletteRequest {
         case search(SearchKind?)
         /// A project for `chooseProject`, or none.
         case project
-        /// One of today's meetings, to join.
-        case join
+        /// One of today's meetings, to join or to open.
+        case meetings(TodaysMeetings.Purpose)
     }
 
     var mode: Mode
@@ -205,9 +198,10 @@ struct PaletteRequest {
     weak var returnFocus: NSResponder? = NSApp.keyWindow?.firstResponder
 }
 
-extension CalendarEvent {
-    static func joinableToday(in context: ModelContext, now: Date = .now) -> [CalendarEvent] {
-        let events = (try? context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.endTime > now }))) ?? []
-        return joinable(among: events, now: now)
+extension TodaysMeetings {
+    init(in context: ModelContext, for purpose: Purpose, now: Date = .now) {
+        let startOfToday = Calendar.current.startOfDay(for: now)
+        let events = (try? context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.endTime > startOfToday }))) ?? []
+        self.init(among: events, for: purpose, now: now)
     }
 }

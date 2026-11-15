@@ -5,9 +5,9 @@ import CaptainsLogKit
 /// Settings (#70) will key on it, so never rename one.
 enum AppCommand: Hashable, Identifiable {
     case palette, findInTab, findEverywhere
-    case newLogEntry, newTodo, newProject
+    case newLogEntry, newTodo
     case goTo(SidebarItem), todoList(SmartList), back, toggleSidebar, settings
-    case sync, join, delete
+    case sync, join, openMeeting, delete
     case complete, today, someday, when, dayLater, dayEarlier, moveToProject
     // Palette only.
     case openInGitHub, addFeedback, mergePerson, importRoster, exportRoster, emptyTrash
@@ -19,7 +19,6 @@ enum AppCommand: Hashable, Identifiable {
         case .findEverywhere: "findEverywhere"
         case .newLogEntry: "newLogEntry"
         case .newTodo: "newTodo"
-        case .newProject: "newProject"
         case .goTo(let item): "goTo.\(item.rawValue)"
         case .todoList(let list): "todoList.\(list.rawValue)"
         case .back: "back"
@@ -27,6 +26,7 @@ enum AppCommand: Hashable, Identifiable {
         case .settings: "settings"
         case .sync: "sync"
         case .join: "join"
+        case .openMeeting: "openMeeting"
         case .delete: "delete"
         case .complete: "complete"
         case .today: "today"
@@ -52,7 +52,6 @@ enum AppCommand: Hashable, Identifiable {
         case .findEverywhere: "Find Everywhere…"
         case .newLogEntry: "New Log Entry"
         case .newTodo: "New Todo"
-        case .newProject: "New Project"
         case .goTo(let item): "Go to \(item.label)"
         case .todoList(let list): "Todos: \(list.title.capitalized)"
         case .back: "Back"
@@ -60,6 +59,7 @@ enum AppCommand: Hashable, Identifiable {
         case .settings: "Settings"
         case .sync: "Sync Now"
         case .join: "Join Meeting"
+        case .openMeeting: "Open Meeting"
         case .delete: "Delete"
         case .complete: "Complete Todo"
         case .today: "Schedule for Today"
@@ -97,7 +97,6 @@ enum AppCommand: Hashable, Identifiable {
         case .findInTab, .findEverywhere: "magnifyingglass"
         case .newLogEntry: "book"
         case .newTodo: "checklist"
-        case .newProject: "list.bullet"
         case .goTo(let item): item.icon
         case .todoList(let list): list.systemImage
         case .back: "chevron.left"
@@ -105,6 +104,7 @@ enum AppCommand: Hashable, Identifiable {
         case .settings: "gear"
         case .sync: "arrow.clockwise"
         case .join: "video"
+        case .openMeeting: "square.and.pencil"
         case .delete: "trash"
         case .complete: "checkmark.square"
         case .today: "star"
@@ -130,7 +130,6 @@ enum AppCommand: Hashable, Identifiable {
         case .findEverywhere: KeyboardShortcut("f", modifiers: [.command, .shift])
         case .newLogEntry: KeyboardShortcut("l", modifiers: .command)
         case .newTodo: KeyboardShortcut("t", modifiers: .command)
-        case .newProject: KeyboardShortcut("n", modifiers: [.command, .option])
         case .goTo(let item):
             visibleTabs.firstIndex(of: item).flatMap { Self.digit($0) }.map { KeyboardShortcut($0, modifiers: .command) }
         case .todoList(let list):
@@ -140,6 +139,7 @@ enum AppCommand: Hashable, Identifiable {
         case .settings: KeyboardShortcut(",", modifiers: .command)
         case .sync: KeyboardShortcut("r", modifiers: .command)
         case .join: KeyboardShortcut("j", modifiers: .command)
+        case .openMeeting: KeyboardShortcut("n", modifiers: .command)
         case .delete: KeyboardShortcut(.delete, modifiers: .command)
         case .complete: KeyboardShortcut("k", modifiers: .command)
         case .today: KeyboardShortcut("t", modifiers: [.command, .shift])
@@ -164,9 +164,9 @@ enum AppCommand: Hashable, Identifiable {
 
     /// Every command, in the palette's order, with the tabs in the sidebar's.
     static func all(tabs: [SidebarItem] = SidebarItem.allCases) -> [AppCommand] {
-        [.newLogEntry, .newTodo, .newProject]
+        [.newLogEntry, .newTodo]
             + [.complete, .today, .someday, .when, .dayLater, .dayEarlier, .moveToProject, .delete]
-            + [.join, .openInGitHub, .addFeedback, .mergePerson, .importRoster, .exportRoster, .emptyTrash]
+            + [.openMeeting, .join, .openInGitHub, .addFeedback, .mergePerson, .importRoster, .exportRoster, .emptyTrash]
             + tabs.map(AppCommand.goTo) + SmartList.allCases.map(AppCommand.todoList)
             + [.back, .findInTab, .findEverywhere, .sync, .toggleSidebar, .settings]
     }

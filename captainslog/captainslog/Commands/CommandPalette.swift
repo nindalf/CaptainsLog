@@ -3,7 +3,7 @@ import SwiftData
 import CaptainsLogKit
 
 /// The command palette, and the same box searching records, choosing a project or choosing one of
-/// today's meetings to join. Floats over the window. Return runs the selected row; Escape
+/// today's meetings to join or open. Floats over the window. Return runs the selected row; Escape
 /// or a click outside closes it.
 struct CommandPalette: View {
     let request: PaletteRequest
@@ -18,7 +18,7 @@ struct CommandPalette: View {
     @State private var query = ""
     @State private var selectedIndex = 0
     @State private var searchRows: [SearchRow] = []
-    @State private var meetings: [CalendarEvent] = []
+    @State private var meetings = TodaysMeetings(among: [], for: .join)
     @FocusState private var isFieldFocused: Bool
 
     private static let searchLimit = 50
@@ -53,8 +53,8 @@ struct CommandPalette: View {
             searchRows.map(Row.record)
         case .project:
             ([nil] + projects).filter { matches($0?.name ?? "No Project") }.map(Row.project)
-        case .join:
-            meetings.filter { matches($0.title) }.map(Row.meeting)
+        case .meetings:
+            meetings.events.filter { matches($0.title) }.map(Row.meeting)
         }
     }
 
@@ -64,7 +64,8 @@ struct CommandPalette: View {
         case .search(let kind?): "Search \(kind.label.lowercased())"
         case .search(nil): "Search everything"
         case .project: "Move to project"
-        case .join: "Join a meeting"
+        case .meetings(.join): "Join a meeting"
+        case .meetings(.notes): "Open a meeting"
         }
     }
 
@@ -87,9 +88,13 @@ struct CommandPalette: View {
         .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
         .onAppear {
             isFieldFocused = true
-            if request.mode == .join { meetings = CalendarEvent.joinableToday(in: modelContext) }
+            if case .meetings(let purpose) = request.mode {
+                meetings = TodaysMeetings(in: modelContext, for: purpose)
+                selectedIndex = meetings.selected ?? 0
+            }
         }
-        .onChange(of: query) { selectedIndex = 0 }
+        // Clearing the query goes back to the selected meeting.
+        .onChange(of: query) { selectedIndex = query.isEmpty ? meetings.selected ?? 0 : 0 }
         .task(id: query) { await search() }
     }
 
@@ -128,6 +133,7 @@ struct CommandPalette: View {
             }
             .frame(maxHeight: 380)
             .fixedSize(horizontal: false, vertical: true)
+            .onAppear { proxy.scrollTo(selectedIndex, anchor: .center) }
             .onChange(of: selectedIndex) { proxy.scrollTo(selectedIndex) }
         }
     }
@@ -143,21 +149,25 @@ struct CommandPalette: View {
         case .project(let project):
             label(project?.name ?? "No Project", systemImage: project?.icon ?? "xmark.circle", shortcut: nil, isSelected: isSelected)
         case .meeting(let event):
-            label(event.title, systemImage: "video", shortcut: startLabel(event), isSelected: isSelected)
+            label(event.title, systemImage: fieldIcon, shortcut: startLabel(event), isSelected: isSelected)
         }
     }
 
     private var fieldIcon: String {
         switch request.mode {
         case .commands: "command"
-        case .join: "video"
+        case .meetings(.join): AppCommand.join.systemImage
+        case .meetings(.notes): AppCommand.openMeeting.systemImage
         case .search, .project: "magnifyingglass"
         }
     }
 
-    /// "Now" for one under way, else its start time.
+    /// "Now" for one under way, else its start time, with the day when it isn't today.
     private func startLabel(_ event: CalendarEvent) -> String {
-        event.startTime <= .now ? "Now" : event.startTime.formatted(date: .omitted, time: .shortened)
+        let now = Date.now
+        if event.startTime <= now && event.endTime > now { return "Now" }
+        let time = event.startTime.formatted(date: .omitted, time: .shortened)
+        return Calendar.current.isDateInToday(event.startTime) ? time : "\(event.startTime.formatted(.dateTime.weekday(.abbreviated))) \(time)"
     }
 
     /// A row's icon, title and, on the right, its key or time.
@@ -203,9 +213,23 @@ struct CommandPalette: View {
             let query = query
             onClose { open(record, query: query) }
         case .meeting(let event):
-            let url = event.meetingURL
-            onClose { if let url { NSWorkspace.shared.open(url) } }
+            if request.mode == .meetings(.notes) {
+                onClose { open(event) }
+            } else {
+                let url = event.meetingURL
+                onClose { if let url { NSWorkspace.shared.open(url) } }
+            }
         }
+    }
+
+    /// Opens the event's meeting or interview, making a meeting first if it has neither, as the
+    /// event popover's Add Notes does.
+    private func open(_ event: CalendarEvent) {
+        if event.meeting == nil && event.interview == nil {
+            event.createMeeting(in: modelContext)
+            try? modelContext.save()
+        }
+        navigator.openEvent(event)
     }
 
     /// Opens a hit as the Search tab does; log entries and PRs, which that tab expands in place,
