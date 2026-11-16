@@ -12,6 +12,8 @@ public final class Person {
     public var syncsPullRequests: Bool = false
     /// The app's user. At most one person has it; set through `markAsSelf(in:)`.
     public var isSelf: Bool = false
+    /// Added by hand or from a roster, so the People tab lists them before anything links to them.
+    public var isAddedManually: Bool = false
 
     #Index<Person>([\.email], [\.slackHandle], [\.githubHandle])
 

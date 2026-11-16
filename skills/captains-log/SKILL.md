@@ -79,6 +79,7 @@ EOF
 | A recurring meeting's project | `meetings edit <id> --project NAME`, then, if its `isRecurring`, ask whether the rest of the series goes in too; on yes, rerun with `--series` |
 | Feedback | `people feedback add <person id> -`. Feedback to me goes on my own person, starting `From <name>:` |
 | Interview write-up | `interviews edit <id> --raw-notes -` (and `--upsides`, `--risk-factors`, `--conclusion`, `--recommendation`) |
+| A person | `people add NAME [--email E] [--github H] [--slack H]`. An email or handle someone has matches them instead, and stderr says so |
 | People from a roster file | `people import roster.json` previews the changes; `--yes` applies them. `people export` prints a roster |
 
 - `edit` changes only the fields you pass; an empty value clears one.
@@ -98,7 +99,7 @@ Log entries, meetings, interviews and todos have `isPrivate` (`--private` / `--n
 
 The store has only what sync brings in and what I write.
 
-- **GitHub**, configured repos only: my PRs (latest 50 per state); PRs asking me personally for review (not my teams); open and merged PRs of teammates I sync (`people edit <id> --sync-prs`); PRs I reviewed, if sync saw them within 30 days of their last update (only my latest review's date is kept). No comments.
+- **GitHub**, configured repos only: my PRs, authored by or assigned to me, such as an agent's (latest 50 per state); PRs asking me personally for review (not my teams); open and merged PRs of teammates I sync (`people edit <id> --sync-prs`); PRs I reviewed, if sync saw them within 30 days of their last update (only my latest review's date is kept). No comments.
 - **Calendar:** allowlisted calendars, since syncing started.
 - **Meetings and interviews:** only what I wrote. Without notes, one is just a title, a time and attendees.
 - **Slack, Notion, Linear, documents, incidents:** not ingested.

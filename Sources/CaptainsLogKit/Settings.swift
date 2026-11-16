@@ -45,7 +45,7 @@ public final class AppSettings: @unchecked Sendable {
     }
 
     public func isHidden(_ pr: PullRequest) -> Bool {
-        guard !pr.isAuthoredByMe, let handle = pr.author?.githubHandle else { return false }
+        guard !pr.isMine, let handle = pr.author?.githubHandle else { return false }
         return hiddenPRAuthors.contains(handle)
     }
 

@@ -13,7 +13,7 @@ struct MenuBarView: View {
         return allEvents.filter { $0.startTime > now }
     }
 
-    @Query(filter: #Predicate<PullRequest> { $0.isAuthoredByMe && $0.stateRawValue == "open" })
+    @Query(filter: #Predicate<PullRequest> { ($0.isAuthoredByMe || $0.isAssignedToMe) && $0.stateRawValue == "open" })
     private var myOpenPRs: [PullRequest]
 
     @Query(filter: #Predicate<PullRequest> {

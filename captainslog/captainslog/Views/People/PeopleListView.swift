@@ -9,6 +9,8 @@ struct PeopleListView: View {
     @State private var rosterImport: RosterImportPreview?
     @State private var showRosterExport = false
     @State private var rosterError: String?
+    @State private var showAddPerson = false
+    @Environment(Navigator.self) private var navigator
 
     private var people: [Person] {
         let trimmed = searchText.trimmingCharacters(in: .whitespaces).lowercased()
@@ -32,13 +34,17 @@ struct PeopleListView: View {
     var body: some View {
         Group {
             if people.isEmpty {
-                ContentUnavailableView(
-                    searchText.isEmpty ? "No People" : "No Matches",
-                    systemImage: "person.2",
-                    description: Text(searchText.isEmpty
-                        ? "People appear here once they're linked to a meeting, PR, or feedback."
+                ContentUnavailableView {
+                    Label(searchText.isEmpty ? "No People" : "No Matches", systemImage: "person.2")
+                } description: {
+                    Text(searchText.isEmpty
+                        ? "People you add, or who are linked to a meeting, PR or feedback, appear here."
                         : "No one matches \"\(searchText)\".")
-                )
+                } actions: {
+                    if searchText.isEmpty {
+                        Button("Add Person…") { showAddPerson = true }
+                    }
+                }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -57,6 +63,10 @@ struct PeopleListView: View {
         .searchable(text: $searchText, placement: .toolbar, prompt: "Search people")
         .toolbar {
             ToolbarItem {
+                Button("Add Person", systemImage: "plus") { showAddPerson = true }
+                    .help("Add a person")
+            }
+            ToolbarItem {
                 Menu {
                     Button("Import Roster…", action: chooseRoster)
                     Button("Export Roster…") { showRosterExport = true }
@@ -68,6 +78,7 @@ struct PeopleListView: View {
         }
         .sheet(item: $rosterImport) { RosterImportSheet(preview: $0) }
         .sheet(isPresented: $showRosterExport) { RosterExportSheet() }
+        .sheet(isPresented: $showAddPerson) { AddPersonSheet { navigator.openPerson($0) } }
         .focusedSceneValue(\.tabCommands, tabCommands)
         .alert("Couldn't Read Roster", isPresented: Binding(
             get: { rosterError != nil },
@@ -81,6 +92,7 @@ struct PeopleListView: View {
 
     private var tabCommands: CommandHandlers {
         var handlers = CommandHandlers()
+        handlers[.addPerson] = { showAddPerson = true }
         handlers[.importRoster] = { chooseRoster() }
         handlers[.exportRoster] = { showRosterExport = true }
         return handlers

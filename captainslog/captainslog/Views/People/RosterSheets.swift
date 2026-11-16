@@ -107,10 +107,13 @@ private struct RosterImportRowView: View {
                 detail("Merges in " + row.merged.map(\.name).joined(separator: ", "))
             }
             if !row.filled.isEmpty {
-                detail("Adds " + row.filled.map { "\(label($0.field)) \($0.value)" }.joined(separator: ", "))
+                detail("Adds " + row.filled.map { "\($0.field.label) \($0.value)" }.joined(separator: ", "))
+            }
+            if row.listsInPeople {
+                detail("Lists them in People")
             }
             ForEach(row.conflicts, id: \.self) { conflict in
-                detail("Keeps \(label(conflict.field)) \(conflict.stored), not \(conflict.roster)")
+                detail("Keeps \(conflict.field.label) \(conflict.stored), not \(conflict.roster)")
                     .foregroundStyle(.orange)
             }
             if let reason = row.skipReason {
@@ -130,15 +133,6 @@ private struct RosterImportRowView: View {
         Text(text)
             .font(.caption)
             .foregroundStyle(.secondary)
-    }
-
-    private func label(_ field: RosterField) -> String {
-        switch field {
-        case .name: "name"
-        case .email: "email"
-        case .github: "GitHub"
-        case .slack: "Slack"
-        }
     }
 }
 
@@ -236,6 +230,17 @@ struct RosterExportSheet: View {
             dismiss()
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+}
+
+extension RosterField {
+    var label: String {
+        switch self {
+        case .name: "name"
+        case .email: "email"
+        case .github: "GitHub handle"
+        case .slack: "Slack handle"
         }
     }
 }

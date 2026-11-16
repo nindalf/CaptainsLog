@@ -70,4 +70,32 @@ struct PRSyncSourceTests {
         #expect(!mine.isTeammateOnly)
         #expect(!mine.isReviewRequest)
     }
+
+    @Test func aPRAssignedToMeIsMineNotAReviewRequest() {
+        let assigned = pr(.assignedToMe)
+        assigned.applySyncSource(.reviewRequest, isNew: false)
+        #expect(assigned.isMine)
+        #expect(!assigned.isAuthoredByMe)
+        #expect(!assigned.isReviewRequest)
+    }
+
+    @Test func unassigningMakesAPRATeammatesUnlessIWroteIt() {
+        let assigned = pr(.assignedToMe)
+        assigned.setAssignedToMe(false)
+        #expect(!assigned.isMine)
+        #expect(assigned.isTeammateOnly)
+
+        let mine = pr(.mine)
+        mine.applySyncSource(.assignedToMe, isNew: false)
+        mine.setAssignedToMe(false)
+        #expect(mine.isMine)
+        #expect(!mine.isTeammateOnly)
+
+        let teammate = pr(.teammate)
+        teammate.setAssignedToMe(false)
+        #expect(teammate.isTeammateOnly)
+        teammate.setAssignedToMe(true)
+        #expect(teammate.isMine)
+        #expect(!teammate.isTeammateOnly)
+    }
 }

@@ -9,7 +9,7 @@ private var ghPath: String { get throws { try SyncTool.gh.requirePath() } }
 private let prFields = [
     "number", "title", "state", "url", "createdAt", "updatedAt", "mergedAt",
     "reviewDecision", "additions", "deletions", "author",
-    "reviewRequests", "body", "isDraft",
+    "reviewRequests", "body", "isDraft", "assignees",
 ].joined(separator: ",")
 
 /// `reviewDecision` means nothing once a PR is merged or closed, and on a page of them it is
@@ -65,6 +65,7 @@ private struct GHPullRequest: Decodable, Sendable {
     let body: String?
     let isDraft: Bool?
     let reviews: [GHReview]?
+    let assignees: [GHUser]?
 }
 
 private struct GHReview: Decodable, Sendable {
@@ -102,18 +103,19 @@ public actor GitHubSync {
         if myLogin == nil { failures.append("my reviews: couldn't read my GitHub login") }
         for repo in repos {
             try Task.checkCancellation()
-            do {
-                try await syncMyPRs(repo: repo)
-            } catch {
-                logger.error("Failed to sync my PRs from \(repo): \(error)")
-                failures.append("\(repo) (my PRs): \(error.localizedDescription)")
-            }
             // Open PRs these fetches don't return are re-checked one by one, so skip the re-check
             // when a fetch failed rather than re-check everything it would have returned.
             var stillOpen: Set<Int> = []
             var fetchesSucceeded = true
             do {
-                stillOpen = try await syncReviewRequests(repo: repo)
+                stillOpen = try await syncMyPRs(repo: repo, myLogin: myLogin)
+            } catch {
+                fetchesSucceeded = false
+                logger.error("Failed to sync my PRs from \(repo): \(error)")
+                failures.append("\(repo) (my PRs): \(error.localizedDescription)")
+            }
+            do {
+                stillOpen.formUnion(try await syncReviewRequests(repo: repo))
             } catch {
                 fetchesSucceeded = false
                 logger.error("Failed to sync review requests from \(repo): \(error)")
@@ -140,7 +142,7 @@ public actor GitHubSync {
             }
             guard fetchesSucceeded else { continue }
             do {
-                try await reconcileStaleOpenPRs(repo: repo, stillOpen: stillOpen)
+                try await reconcileStaleOpenPRs(repo: repo, stillOpen: stillOpen, myLogin: myLogin)
             } catch {
                 logger.error("Failed to re-check open PRs in \(repo): \(error)")
                 failures.append("\(repo) (re-check): \(error.localizedDescription)")
@@ -152,17 +154,28 @@ public actor GitHubSync {
         logger.info("GitHub sync complete")
     }
 
-    private func syncMyPRs(repo: String) async throws {
+    /// PRs I authored or am assigned to, such as an agent's opened on my behalf. Returns the
+    /// numbers GitHub confirmed open.
+    private func syncMyPRs(repo: String, myLogin: String?) async throws -> Set<Int> {
         async let openPRs = fetchPRs(repo: repo, author: "@me", state: "open", fields: prFields)
         async let mergedPRs = fetchPRs(repo: repo, author: "@me", state: "merged", fields: myClosedFields)
         async let closedPRs = fetchPRs(repo: repo, author: "@me", state: "closed", fields: myClosedFields)
-        let allPRs = try await openPRs + mergedPRs + closedPRs
-        logger.debug("Fetched \(allPRs.count) of my PRs from \(repo)")
+        async let assignedOpenPRs = fetchPRs(repo: repo, assignee: "@me", state: "open", fields: prFields)
+        async let assignedMergedPRs = fetchPRs(repo: repo, assignee: "@me", state: "merged", fields: myClosedFields)
+        async let assignedClosedPRs = fetchPRs(repo: repo, assignee: "@me", state: "closed", fields: myClosedFields)
+        let authored = try await openPRs + mergedPRs + closedPRs
+        let assigned = try await assignedOpenPRs + assignedMergedPRs + assignedClosedPRs
+        logger.debug("Fetched \(authored.count) authored and \(assigned.count) assigned PRs from \(repo)")
 
-        for ghPR in allPRs {
+        for ghPR in authored {
             try Task.checkCancellation()
-            try upsertPR(ghPR, repo: repo, source: .mine)
+            try upsertPR(ghPR, repo: repo, source: .mine, myLogin: myLogin)
         }
+        for ghPR in assigned {
+            try Task.checkCancellation()
+            try upsertPR(ghPR, repo: repo, source: .assignedToMe, myLogin: myLogin)
+        }
+        return Set((authored + assigned).filter { $0.state == "OPEN" }.map(\.number))
     }
 
     /// Open and merged only: a colleague's abandoned PRs aren't worth the calls. Returns the
@@ -221,13 +234,16 @@ public actor GitHubSync {
         }
     }
 
-    private func fetchPRs(repo: String, author: String, state: String, fields: String) async throws -> [GHPullRequest] {
+    private func fetchPRs(
+        repo: String, author: String? = nil, assignee: String? = nil, state: String, fields: String
+    ) async throws -> [GHPullRequest] {
+        let filter = if let author { ["--author", author] } else if let assignee { ["--assignee", assignee] } else { [String]() }
         let result = try await runProcess(
             ghPath,
             arguments: [
                 "pr", "list",
                 "--repo", repo,
-                "--author", author,
+            ] + filter + [
                 "--state", state,
                 "--limit", "50",
                 "--json", fields,
@@ -276,15 +292,15 @@ public actor GitHubSync {
     }
 
     /// `user-review-requested:@me` stops matching a PR once the request is gone — merged, closed, or
-    /// just reviewed — and a teammate's PR leaves their fetch when they are no longer synced, so
-    /// such a PR would stay `.open` locally forever. Re-check those by number: `gh pr view` is a direct node lookup, so it has none of the resource-limit
+    /// just reviewed — a teammate's PR leaves their fetch when they are no longer synced, and a PR
+    /// I'm unassigned from leaves mine, so such a PR would stay `.open` locally forever. Re-check those by number: `gh pr view` is a direct node lookup, so it has none of the resource-limit
     /// problems the search does.
-    private func reconcileStaleOpenPRs(repo: String, stillOpen: Set<Int>) async throws {
+    private func reconcileStaleOpenPRs(repo: String, stillOpen: Set<Int>, myLogin: String?) async throws {
         let openState = PRState.open.rawValue
         let stale = try modelContext.fetch(
             FetchDescriptor<PullRequest>(
                 predicate: #Predicate {
-                    $0.repo == repo && $0.stateRawValue == openState && !$0.isAuthoredByMe
+                    $0.repo == repo && $0.stateRawValue == openState
                 }
             )
         ).map(\.number).filter { !stillOpen.contains($0) }
@@ -317,7 +333,7 @@ public actor GitHubSync {
 
         for ghPR in fetched {
             try Task.checkCancellation()
-            try upsertPR(ghPR, repo: repo, source: .recheck)
+            try upsertPR(ghPR, repo: repo, source: .recheck, myLogin: myLogin)
         }
     }
 
@@ -385,6 +401,10 @@ public actor GitHubSync {
         if let deletions = ghPR.deletions { pr.deletions = deletions }
         if let body = ghPR.body { pr.body = body }
         pr.isDraft = ghPR.isDraft ?? false
+        // Only fetches that ask for `assignees` can see an unassignment: my open PRs and rechecks.
+        if let myLogin, let assignees = ghPR.assignees {
+            pr.setAssignedToMe(assignees.contains { $0.login.caseInsensitiveCompare(myLogin) == .orderedSame })
+        }
         if let myLogin, let reviews = ghPR.reviews {
             let mine = reviews.filter { $0.author?.login.caseInsensitiveCompare(myLogin) == .orderedSame }
             if let latest = mine.compactMap({ $0.submittedAt.flatMap(parseISO8601) }).max() {

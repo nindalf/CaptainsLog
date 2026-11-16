@@ -84,6 +84,7 @@ struct RosterTests {
 
     @Test func keepsStoredValuesAndReportsConflicts() throws {
         let bob = Person(name: "Bob Jones", email: "bob@larder.co.uk", slackHandle: "bob")
+        bob.isAddedManually = true
         let rows = Roster.plan(
             try decode(#"[{"name": "Robert Jones", "email": "bob@larder.co.uk", "slack": "bobj"}]"#),
             against: [bob]
@@ -97,12 +98,26 @@ struct RosterTests {
 
     @Test func rowMatchingAnEarlierRowsPersonIsSkipped() throws {
         let cat = Person(name: "Cat", email: "cat@larder.co.uk", githubHandle: "cat")
+        cat.isAddedManually = true
         let rows = Roster.plan(
             try decode(#"[{"name": "Cat", "email": "cat@larder.co.uk"}, {"name": "Other", "github": "CAT"}]"#),
             against: [cat]
         )
         #expect(rows.map(\.action) == [.unchanged, .skip])
         #expect(rows[1].skipReason == "Matches Cat, already matched by row 1")
+    }
+
+    // A calendar attendee the People tab hides: importing them is a change even with nothing to fill.
+    @Test func matchingSomeoneUnlistedListsThem() throws {
+        let fay = Person(name: "Fay Lin", email: "fay@larder.co.uk")
+        let listed = Person(name: "Gus", email: "gus@larder.co.uk")
+        listed.isAddedManually = true
+        let rows = Roster.plan(
+            try decode(#"[{"name": "Fay Lin", "email": "fay@larder.co.uk"}, {"name": "Gus", "email": "gus@larder.co.uk"}]"#),
+            against: [fay, listed]
+        )
+        #expect(rows.map(\.action) == [.update, .unchanged])
+        #expect(rows.map(\.listsInPeople) == [true, false])
     }
 
     // MARK: - Import
@@ -130,6 +145,7 @@ struct RosterTests {
         #expect(byEmail.name == "Dana Kim")
         #expect(byEmail.githubHandle == "DanaK")
         #expect(byEmail.slackHandle == "dana.k")
+        #expect(byEmail.isAddedManually)
         #expect(meeting.attendees.map(\.id) == [byEmail.id])
         #expect(pr.author?.id == byEmail.id)
 
@@ -148,5 +164,6 @@ struct RosterTests {
         #expect(eve.name == "Eve Stone")
         #expect(eve.email == "eve.roster@larder.co.uk")
         #expect(eve.githubHandle == "evestone")
+        #expect(eve.isAddedManually)
     }
 }

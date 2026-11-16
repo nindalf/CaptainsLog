@@ -13,13 +13,13 @@ struct DashboardView: View {
     @Query(filter: #Predicate<CalendarEvent> { !$0.isHidden }, sort: \CalendarEvent.startTime)
     private var allEvents: [CalendarEvent]
 
-    @Query(filter: #Predicate<PullRequest> { $0.isAuthoredByMe },
+    @Query(filter: #Predicate<PullRequest> { $0.isAuthoredByMe || $0.isAssignedToMe },
            sort: \PullRequest.createdAt, order: .reverse)
-    private var myAuthoredPRs: [PullRequest]
+    private var myPRs: [PullRequest]
 
     // displayStatus is computed, so it can't go in #Predicate: filter on stored fields, refine in Swift.
     @Query(filter: #Predicate<PullRequest> {
-               !$0.isAuthoredByMe && !$0.isTeammateOnly && $0.stateRawValue == "open"
+               !$0.isAuthoredByMe && !$0.isAssignedToMe && !$0.isTeammateOnly && $0.stateRawValue == "open"
            },
            sort: \PullRequest.createdAt, order: .reverse)
     private var openReviewRequests: [PullRequest]
@@ -29,7 +29,7 @@ struct DashboardView: View {
     }
 
     private var myDashboardPRs: [PullRequest] {
-        Array(myAuthoredPRs.filter { $0.state == .open }.prefix(4))
+        Array(myPRs.filter { $0.state == .open }.prefix(4))
     }
 
     @State private var unlinkedEvent: CalendarEvent?

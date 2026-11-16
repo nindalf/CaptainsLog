@@ -6,7 +6,7 @@ import SwiftData
 struct People: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Manage people",
-        subcommands: [List.self, Edit.self, Merge.self, Import.self, Export.self, FeedbackCommands.self],
+        subcommands: [List.self, Add.self, Edit.self, Merge.self, Import.self, Export.self, FeedbackCommands.self],
         defaultSubcommand: List.self
     )
 
@@ -41,6 +41,53 @@ struct People: AsyncParsableCommand {
                     return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
                 }
             try printJSON(people.map(PersonDTO.from), pretty: pretty)
+        }
+    }
+
+    struct Add: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Add a person to the People tab",
+            discussion: "An email or handle that's already someone's matches them instead, as a roster import does: their empty fields are filled and they're listed from then on. Values that differ from theirs are kept and reported on stderr, as is anyone listed under the same name, since a name alone matches no one."
+        )
+
+        @Argument(help: "Name")
+        var name: String
+
+        @Option(name: .long, help: "Email")
+        var email: String?
+
+        @Option(name: .long, help: "GitHub handle")
+        var github: String?
+
+        @Option(name: .long, help: "Slack handle")
+        var slack: String?
+
+        @Flag(name: .long, help: "Pretty-print JSON output")
+        var pretty: Bool = false
+
+        mutating func run() async throws {
+            let context = ModelContext(try Store.makeContainer())
+            let entry = RosterEntry(name: name, email: email, github: github, slack: slack)
+            let added: (person: Person, row: RosterImportRow)
+            do {
+                added = try Person.add(entry, in: context)
+            } catch let error as PersonAddError {
+                throw ValidationError(error.localizedDescription)
+            }
+            let (person, row) = added
+            let namesakes = Person.namesakes(of: row, among: try context.fetch(FetchDescriptor<Person>()))
+                .filter { $0.id != person.id }
+            try context.save()
+
+            var notes = namesakes.map { "Already listed under that name: \($0.id)" }
+            if row.action != .create, let existing = row.personName {
+                notes.append("Matched \(existing), already in the store")
+                notes += row.conflicts.map { "Kept their \($0.field.rawValue) \($0.stored), not \($0.roster)" }
+            }
+            if !notes.isEmpty {
+                FileHandle.standardError.write(Data(notes.map { $0 + "\n" }.joined().utf8))
+            }
+            try printJSON(PersonDTO.from(person), pretty: pretty)
         }
     }
 

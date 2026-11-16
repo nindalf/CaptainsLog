@@ -122,6 +122,7 @@ struct PullRequestDTO: Encodable {
     let isDraft: Bool
     let deploymentStatus: String
     let isAuthoredByMe: Bool
+    let isAssignedToMe: Bool
     let isReviewRequest: Bool
     let myReviewedAt: Date?
     let reviewDecision: String?
@@ -145,6 +146,7 @@ struct PullRequestDTO: Encodable {
             isDraft: pr.isDraft,
             deploymentStatus: pr.deploymentStatus.rawValue,
             isAuthoredByMe: pr.isAuthoredByMe,
+            isAssignedToMe: pr.isAssignedToMe,
             isReviewRequest: pr.isReviewRequest,
             myReviewedAt: pr.myReviewedAt,
             reviewDecision: pr.reviewDecision?.rawValue,

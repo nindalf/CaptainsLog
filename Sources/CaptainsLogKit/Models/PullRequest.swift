@@ -24,6 +24,8 @@ public final class PullRequest {
     public var additions: Int?
     public var deletions: Int?
     public var isAuthoredByMe: Bool
+    /// Assigned to me on GitHub, such as an agent's PR opened on my behalf. From schema V4.
+    public var isAssignedToMe: Bool = false
     /// Synced without my review ever being requested from me personally: its author's PRs are
     /// synced, or I reviewed it on a team request. Stored this way round so the PRs synced before
     /// it existed, all review requests, default right.
@@ -35,8 +37,11 @@ public final class PullRequest {
     public var deploymentStatus: DeploymentStatus = DeploymentStatus.notDeployed
     public var notes: String?
 
+    /// Authored by or assigned to me: the My PRs section. A predicate spells it out.
+    public var isMine: Bool { isAuthoredByMe || isAssignedToMe }
+
     /// Came to me as a review request, whether or not it is still open.
-    public var isReviewRequest: Bool { !isAuthoredByMe && !isTeammateOnly }
+    public var isReviewRequest: Bool { !isMine && !isTeammateOnly }
 
     public var displayStatus: PRDisplayStatus {
         switch state {

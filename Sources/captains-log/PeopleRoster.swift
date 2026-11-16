@@ -7,7 +7,7 @@ extension People {
     struct Import: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Import a roster: a JSON array of {name, email, github, slack}",
-            discussion: "Matches people by email, then GitHub handle, then Slack handle, and folds several matches into one (Person.absorb). Only fills empty fields; a different stored value is kept and listed under conflicts. Without --yes, prints what it would do and changes nothing."
+            discussion: "Matches people by email, then GitHub handle, then Slack handle, and folds several matches into one (Person.absorb). Only fills empty fields; a different stored value is kept and listed under conflicts. Everyone a row creates or updates is listed in the People tab from then on (listsInPeople marks those it newly lists). Without --yes, prints what it would do and changes nothing."
         )
 
         @Argument(help: "Roster file, or - to read stdin")

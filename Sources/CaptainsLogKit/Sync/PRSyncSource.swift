@@ -3,6 +3,8 @@ import Foundation
 /// Why GitHub sync fetched a PR, which decides its flags.
 public enum PRSyncSource: Sendable {
     case mine
+    /// Assigned to me, whoever wrote it.
+    case assignedToMe
     case reviewRequest
     /// Authored by someone whose PRs are synced.
     case teammate
@@ -21,6 +23,9 @@ extension PullRequest {
         case .mine:
             isAuthoredByMe = true
             isTeammateOnly = false
+        case .assignedToMe:
+            isAssignedToMe = true
+            isTeammateOnly = false
         case .reviewRequest:
             isAuthoredByMe = false
             isTeammateOnly = false
@@ -31,6 +36,17 @@ extension PullRequest {
             }
         case .recheck:
             break
+        }
+    }
+
+    /// A PR I'm unassigned from that I neither wrote nor was asked to review becomes a
+    /// teammate's, not a review request; the review-request fetch takes it back if it is one.
+    public func setAssignedToMe(_ assigned: Bool) {
+        if assigned {
+            applySyncSource(.assignedToMe, isNew: false)
+        } else if isAssignedToMe {
+            isAssignedToMe = false
+            if !isAuthoredByMe { isTeammateOnly = true }
         }
     }
 }

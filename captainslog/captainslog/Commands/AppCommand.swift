@@ -10,7 +10,7 @@ enum AppCommand: Hashable, Identifiable {
     case sync, join, openMeeting, delete
     case complete, today, someday, when, dayLater, dayEarlier, moveToProject
     // Palette only.
-    case openInGitHub, addFeedback, mergePerson, importRoster, exportRoster, emptyTrash
+    case openInGitHub, addFeedback, addPerson, mergePerson, importRoster, exportRoster, emptyTrash
 
     var id: String {
         switch self {
@@ -37,6 +37,7 @@ enum AppCommand: Hashable, Identifiable {
         case .moveToProject: "moveToProject"
         case .openInGitHub: "openInGitHub"
         case .addFeedback: "addFeedback"
+        case .addPerson: "addPerson"
         case .mergePerson: "mergePerson"
         case .importRoster: "importRoster"
         case .exportRoster: "exportRoster"
@@ -70,6 +71,7 @@ enum AppCommand: Hashable, Identifiable {
         case .moveToProject: "Move to Project…"
         case .openInGitHub: "Open in GitHub"
         case .addFeedback: "Add Feedback"
+        case .addPerson: "Add Person…"
         case .mergePerson: "Merge Person…"
         case .importRoster: "Import Roster…"
         case .exportRoster: "Export Roster…"
@@ -115,6 +117,7 @@ enum AppCommand: Hashable, Identifiable {
         case .moveToProject: "arrow.right.square"
         case .openInGitHub: "arrow.up.right.square"
         case .addFeedback: "text.bubble"
+        case .addPerson: "person.badge.plus"
         case .mergePerson: "arrow.triangle.merge"
         case .importRoster: "square.and.arrow.down"
         case .exportRoster: "square.and.arrow.up"
@@ -148,7 +151,7 @@ enum AppCommand: Hashable, Identifiable {
         case .dayLater: KeyboardShortcut("]", modifiers: .control)
         case .dayEarlier: KeyboardShortcut("[", modifiers: .control)
         case .moveToProject: KeyboardShortcut("m", modifiers: [.command, .shift])
-        case .openInGitHub, .addFeedback, .mergePerson, .importRoster, .exportRoster, .emptyTrash: nil
+        case .openInGitHub, .addFeedback, .addPerson, .mergePerson, .importRoster, .exportRoster, .emptyTrash: nil
         }
     }
 
@@ -166,7 +169,7 @@ enum AppCommand: Hashable, Identifiable {
     static func all(tabs: [SidebarItem] = SidebarItem.allCases) -> [AppCommand] {
         [.newLogEntry, .newTodo]
             + [.complete, .today, .someday, .when, .dayLater, .dayEarlier, .moveToProject, .delete]
-            + [.openMeeting, .join, .openInGitHub, .addFeedback, .mergePerson, .importRoster, .exportRoster, .emptyTrash]
+            + [.openMeeting, .join, .openInGitHub, .addFeedback, .addPerson, .mergePerson, .importRoster, .exportRoster, .emptyTrash]
             + tabs.map(AppCommand.goTo) + SmartList.allCases.map(AppCommand.todoList)
             + [.back, .findInTab, .findEverywhere, .sync, .toggleSidebar, .settings]
     }

@@ -41,7 +41,7 @@ struct PRListView: View {
     }
 
     private var myPRs: [PullRequest] {
-        visiblePRs.filter { $0.isAuthoredByMe && $0.state != .closed }
+        visiblePRs.filter { $0.isMine && $0.state != .closed }
     }
 
     private var allReviewRequests: [PullRequest] {
@@ -469,7 +469,7 @@ struct PRContextMenu: View {
         Button("Open in GitHub") {
             NSWorkspace.shared.open(pr.url)
         }
-        if !pr.isAuthoredByMe {
+        if !pr.isMine {
             Button("Add a Todo to Review") { addReviewTodo() }
         }
     }

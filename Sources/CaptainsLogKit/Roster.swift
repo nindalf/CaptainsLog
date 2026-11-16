@@ -66,6 +66,8 @@ public struct RosterImportRow: Codable, Sendable, Identifiable {
     public let merged: [RosterMergedPerson]
     public let filled: [RosterFieldValue]
     public let conflicts: [RosterConflict]
+    /// An `update` that lists in People someone it found unlisted, such as a calendar attendee.
+    public var listsInPeople: Bool = false
     public let skipReason: String?
 
     public var id: Int { row }
@@ -102,14 +104,7 @@ public enum Roster {
             throw RosterError.unreadable(describe(error))
         }
 
-        let entries = raw.map { entry in
-            RosterEntry(
-                name: entry.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                email: cleaned(entry.email)?.lowercased(),
-                github: cleaned(entry.github, handle: true),
-                slack: cleaned(entry.slack, handle: true)
-            )
-        }
+        let entries = raw.map(cleaned)
 
         var seen: [RosterField: [String: Int]] = [:]
         for (index, entry) in entries.enumerated() {
@@ -132,6 +127,17 @@ public enum Roster {
             }
         }
         return entries
+    }
+
+    /// Trims every value, drops a leading `@` from handles, lowercases the email and treats empty
+    /// values as missing.
+    static func cleaned(_ entry: RosterEntry) -> RosterEntry {
+        RosterEntry(
+            name: entry.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            email: cleaned(entry.email)?.lowercased(),
+            github: cleaned(entry.github, handle: true),
+            slack: cleaned(entry.slack, handle: true)
+        )
     }
 
     public static func encode(_ entries: [RosterEntry]) throws -> Data {
@@ -160,7 +166,9 @@ public enum Roster {
     /// handle, ignoring case. Several matches are folded into the first (`Person.absorb`).
     /// Only empty fields are filled; a placeholder name (a handle, or an email's local part,
     /// as sync creates) counts as empty. A row matching someone an earlier row matched is
-    /// skipped. `people` should be everyone in `context`. The caller saves.
+    /// skipped. Everyone a row creates or updates is `isAddedManually`, so the People tab lists
+    /// them; an unchanged row's person is listed already. `people` should be everyone in
+    /// `context`. The caller saves.
     @discardableResult
     public static func apply(
         _ entries: [RosterEntry], to people: [Person], in context: ModelContext
@@ -175,6 +183,7 @@ public enum Roster {
                     slackHandle: step.entry.slack,
                     githubHandle: step.entry.github
                 )
+                person.isAddedManually = true
                 context.insert(person)
                 row.personID = person.id
             case .update:
@@ -182,14 +191,8 @@ public enum Roster {
                 for duplicate in step.duplicates {
                     keep.absorb(duplicate, in: context)
                 }
-                for fill in row.filled {
-                    switch fill.field {
-                    case .name: keep.name = fill.value
-                    case .email: keep.email = fill.value
-                    case .github: keep.githubHandle = fill.value
-                    case .slack: keep.slackHandle = fill.value
-                    }
-                }
+                for fill in row.filled { keep.fill(fill) }
+                keep.isAddedManually = true
             case .unchanged, .skip:
                 break
             }
@@ -277,13 +280,14 @@ public enum Roster {
                 }
             }
 
-            let action: RosterImportRow.Action = duplicates.isEmpty && filled.isEmpty ? .unchanged : .update
+            let listsInPeople = !matches.contains { $0.isMeaningfulContact }
+            let action: RosterImportRow.Action = duplicates.isEmpty && filled.isEmpty && !listsInPeople ? .unchanged : .update
             return Step(
                 entry: entry,
                 row: RosterImportRow(
                     row: rowNumber, entry: entry, action: action, personID: keep.id, personName: keep.name,
                     merged: duplicates.map { RosterMergedPerson(id: $0.id, name: $0.name) },
-                    filled: filled, conflicts: conflicts, skipReason: nil
+                    filled: filled, conflicts: conflicts, listsInPeople: listsInPeople, skipReason: nil
                 ),
                 keep: keep, duplicates: duplicates
             )
@@ -334,5 +338,16 @@ public enum Roster {
         guard let first = codingPath.first, let index = first.intValue else { return "The file" }
         let rest = codingPath.dropFirst().map(\.stringValue)
         return (["Row \(index + 1)"] + rest).joined(separator: ".")
+    }
+}
+
+private extension Person {
+    func fill(_ value: RosterFieldValue) {
+        switch value.field {
+        case .name: name = value.value
+        case .email: email = value.value
+        case .github: githubHandle = value.value
+        case .slack: slackHandle = value.value
+        }
     }
 }

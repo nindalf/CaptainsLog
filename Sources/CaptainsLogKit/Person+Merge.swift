@@ -6,7 +6,8 @@ extension Person {
     /// beyond being a raw calendar attendee. Filters out the noise created by
     /// syncing every event attendee.
     public var isMeaningfulContact: Bool {
-        !(meetings ?? []).isEmpty
+        isAddedManually
+            || !(meetings ?? []).isEmpty
             || !(feedback ?? []).isEmpty
             || !(authoredPRs ?? []).isEmpty
             || !(reviewedPRs ?? []).isEmpty
@@ -73,6 +74,7 @@ extension Person {
         if githubHandle == nil { githubHandle = other.githubHandle }
         if other.syncsPullRequests { syncsPullRequests = true }
         if other.isSelf { isSelf = true }
+        if other.isAddedManually { isAddedManually = true }
 
         context.delete(other)
     }

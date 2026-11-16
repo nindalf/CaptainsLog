@@ -64,7 +64,7 @@ struct FeedCommand: AsyncParsableCommand {
         if types.contains(.pr) {
             // Filed under the merge date, which a predicate can't express; every PR in range was created before its end.
             let prs = try context.fetch(FetchDescriptor<PullRequest>(
-                predicate: #Predicate { $0.isAuthoredByMe && $0.createdAt < end }
+                predicate: #Predicate { ($0.isAuthoredByMe || $0.isAssignedToMe) && $0.createdAt < end }
             ))
             items += prs.filter { Feed.includes($0) && range.contains(Feed.date(of: $0)) }.map {
                 FeedItemDTO(type: .pr, id: $0.id, date: Feed.date(of: $0), title: "\($0.repo)#\($0.number) \($0.title)",

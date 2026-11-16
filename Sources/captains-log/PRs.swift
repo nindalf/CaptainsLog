@@ -19,7 +19,7 @@ struct PRs: AsyncParsableCommand {
         @Option(name: .long, help: "Filter by state: open, merged, closed")
         var state: String?
 
-        @Flag(name: .long, help: "Show only PRs authored by me")
+        @Flag(name: .long, help: "Show only my PRs: authored by or assigned to me")
         var mine: Bool = false
 
         @Flag(name: .long, help: "Show only PRs awaiting my review")
@@ -68,7 +68,7 @@ struct PRs: AsyncParsableCommand {
             // Filtered in Swift so the flags combine; one predicate per flag would overwrite the last.
             let wanted = state.flatMap(PRState.init(rawValue:))
             let prs = try context.fetch(descriptor).filter { pr in
-                if mine && !pr.isAuthoredByMe { return false }
+                if mine && !pr.isMine { return false }
                 if reviews && (!pr.isReviewRequest || pr.state != .open) { return false }
                 if teammates && !pr.isTeammateOnly { return false }
                 if let wanted, pr.state != wanted { return false }
