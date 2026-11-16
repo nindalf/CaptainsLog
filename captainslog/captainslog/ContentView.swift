@@ -103,7 +103,7 @@ struct ContentView: View {
         case .log:
             LogListView()
         case .meetings:
-            MeetingListView()
+            CalendarTabView()
         case .pullRequests:
             PRListView()
         case .todos:
