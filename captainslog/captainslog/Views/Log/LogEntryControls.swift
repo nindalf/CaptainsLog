@@ -1,8 +1,8 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// A log entry's controls, at the bottom right of its card: source, tags, project, privacy.
-/// Set tags or a project show as pills, else as icons.
+/// A log entry's controls, at the bottom right of its card: source, tags, project, day, privacy.
+/// Set tags, a project or a day other than today show as pills, else as icons.
 struct LogEntryControls: View {
     @Bindable var entry: LogEntry
     let projects: [Project]
@@ -10,6 +10,7 @@ struct LogEntryControls: View {
     var pendingProject: Binding<UUID?>? = nil
 
     @State private var showTags = false
+    @State private var showDate = false
 
     private var project: Project? {
         guard let pendingProject else { return entry.project }
@@ -25,6 +26,7 @@ struct LogEntryControls: View {
             }
             tagsControl
             projectControl
+            dateControl
             PrivacyEye(isOn: $entry.isPrivate)
         }
         .font(.system(size: 14))
@@ -44,6 +46,19 @@ struct LogEntryControls: View {
         .buttonStyle(.plain)
         .help("Tags")
         .popover(isPresented: $showTags) { LogEntryTagPopover(entry: entry) }
+    }
+
+    private var dateControl: some View {
+        Button { showDate.toggle() } label: {
+            if Calendar.current.isDateInToday(entry.timestamp) {
+                Image(systemName: "calendar")
+            } else {
+                Text(DateLabel.day(entry.timestamp)).cardPill(.blue)
+            }
+        }
+        .buttonStyle(.plain)
+        .help("Date")
+        .popover(isPresented: $showDate) { LogDatePopover(entry: entry) }
     }
 
     private var projectControl: some View {

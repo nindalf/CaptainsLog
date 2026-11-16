@@ -58,7 +58,10 @@ struct LogQuickEntryView: View {
         let title = draft.title.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
         draft.title = title
+        // Now, on the day picked for it.
+        let day = draft.timestamp
         draft.timestamp = .now
+        draft.move(toDay: day)
         modelContext.insert(draft)
         draft.project = project
         _ = try? draft.linkMentionedPeople(in: modelContext)

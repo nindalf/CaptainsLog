@@ -69,6 +69,10 @@ struct LogListContent: View {
         feedItems.map(\.id)
     }
 
+    private var expandedTimestamp: Date? {
+        logEntries.first { $0.id == expandedID }?.timestamp
+    }
+
     private func feedItem(for id: UUID) -> FeedItem? {
         feedItems.first { $0.id == id }
     }
@@ -86,8 +90,15 @@ struct LogListContent: View {
     // MARK: - View hierarchy
 
     private var feedScrollView: some View {
-        ScrollView {
-            feedListContent
+        ScrollViewReader { proxy in
+            ScrollView {
+                feedListContent
+            }
+            // An open entry given another day moves to that day's group; follow it there.
+            .onChange(of: expandedTimestamp) { _, timestamp in
+                guard timestamp != nil, let expandedID else { return }
+                withAnimation(.snappy(duration: 0.18)) { proxy.scrollTo(expandedID) }
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture { collapseAndCommit() }
