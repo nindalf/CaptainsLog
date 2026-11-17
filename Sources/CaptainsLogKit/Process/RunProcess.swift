@@ -45,13 +45,16 @@ public func findExecutable(_ name: String) -> String? {
         .first { FileManager.default.isExecutableFile(atPath: $0) }
 }
 
+/// `allowsNonZeroExit` returns the output of a child that exits non-zero but still printed a
+/// result, such as `gh api graphql` with partial data and errors.
 public func runProcess(
     _ executable: String,
     arguments: [String],
     environment: [String: String]? = nil,
     workingDirectory: URL? = nil,
     stdinData: Data? = nil,
-    timeout: Duration = .seconds(30)
+    timeout: Duration = .seconds(30),
+    allowsNonZeroExit: Bool = false
 ) async throws -> ProcessResult {
     let proc = Process()
     proc.executableURL = URL(fileURLWithPath: executable)
@@ -85,7 +88,7 @@ public func runProcess(
             try await exit
             let (out, err) = try await (stdoutData, stderrData)
 
-            guard proc.terminationStatus == 0 else {
+            guard proc.terminationStatus == 0 || allowsNonZeroExit else {
                 let msg = String(data: err, encoding: .utf8) ?? "<binary>"
                 throw ProcessError.nonZeroExit(code: proc.terminationStatus, stderr: msg)
             }
@@ -109,7 +112,7 @@ public func runProcess(
         try await exit
         let (out, err) = try await (stdoutData, stderrData)
 
-        guard proc.terminationStatus == 0 else {
+        guard proc.terminationStatus == 0 || allowsNonZeroExit else {
             let msg = String(data: err, encoding: .utf8) ?? "<binary>"
             logger.error(
                 "Process failed: \(executable) exit=\(proc.terminationStatus) stderr=\(msg)")

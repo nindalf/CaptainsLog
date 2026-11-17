@@ -34,8 +34,32 @@ public final class PullRequest {
     public var myReviewedAt: Date?
     public var project: Project?
     public var isDraft: Bool = false
-    public var deploymentStatus: DeploymentStatus = DeploymentStatus.notDeployed
     public var notes: String?
+
+    // From schema V5, filled in for open PRs by GitHub sync's enrichment; left as last seen once
+    // a PR closes. Enums are raw strings: a lightweight migration leaves a new enum attribute nil
+    // on existing rows, and reading it crashes.
+    public var ciStatusRawValue: String = CIStatus.unknown.rawValue
+    public var ciStatus: CIStatus {
+        get { CIStatus(rawValue: ciStatusRawValue) ?? .unknown }
+        set { ciStatusRawValue = newValue.rawValue }
+    }
+    /// Kept as last known while GitHub is still computing mergeability.
+    public var hasConflicts: Bool = false
+    public var isAutoMergeEnabled: Bool = false
+    public var reviewStatusRawValue: String = PRReviewStatus.unreviewed.rawValue
+    public var reviewStatus: PRReviewStatus {
+        get { PRReviewStatus(rawValue: reviewStatusRawValue) ?? .unreviewed }
+        set { reviewStatusRawValue = newValue.rawValue }
+    }
+    /// My latest review requested changes, and they've pushed since.
+    public var myReviewIsOutdated: Bool = false
+    /// The latest review by anyone but the author, or me on my own PR.
+    public var lastReviewedAt: Date?
+    /// A review is requested from me personally right now. `isReviewRequest` stays true for good.
+    public var isReviewRequestedFromMe: Bool = false
+    /// When the PR last asked for review: a review request, or leaving draft.
+    public var reviewRequestedAt: Date?
 
     /// Authored by or assigned to me: the My PRs section. A predicate spells it out.
     public var isMine: Bool { isAuthoredByMe || isAssignedToMe }
@@ -46,11 +70,7 @@ public final class PullRequest {
     public var displayStatus: PRDisplayStatus {
         switch state {
         case .merged:
-            switch deploymentStatus {
-            case .notDeployed: return .merged
-            case .partiallyDeployed: return .staging
-            case .deployed: return .prod
-            }
+            return .merged
         case .closed:
             return .closed
         case .open:
@@ -84,3 +104,4 @@ public final class PullRequest {
         self.isAuthoredByMe = isAuthoredByMe
     }
 }
+

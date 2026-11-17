@@ -649,8 +649,6 @@ struct PRStatusBadge: View {
         case .approved: "Approved"
         case .closed: "Closed"
         case .merged: "Merged"
-        case .staging: "Staging"
-        case .prod: "Prod"
         }
     }
 
@@ -662,8 +660,6 @@ struct PRStatusBadge: View {
         case .approved: .mint
         case .closed: .red
         case .merged: .purple
-        case .staging: .blue
-        case .prod: .teal
         }
     }
 }

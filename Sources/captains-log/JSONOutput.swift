@@ -120,12 +120,17 @@ struct PullRequestDTO: Encodable {
     let state: String
     let status: String
     let isDraft: Bool
-    let deploymentStatus: String
     let isAuthoredByMe: Bool
     let isAssignedToMe: Bool
     let isReviewRequest: Bool
     let myReviewedAt: Date?
     let reviewDecision: String?
+    let ciStatus: String
+    let hasConflicts: Bool
+    let isAutoMergeEnabled: Bool
+    let reviewStatus: String
+    let isReviewRequestedFromMe: Bool
+    let reviewRequestedAt: Date?
     let createdAt: Date
     let mergedAt: Date?
     let additions: Int?
@@ -144,12 +149,17 @@ struct PullRequestDTO: Encodable {
             state: pr.state.rawValue,
             status: pr.displayStatus.rawValue,
             isDraft: pr.isDraft,
-            deploymentStatus: pr.deploymentStatus.rawValue,
             isAuthoredByMe: pr.isAuthoredByMe,
             isAssignedToMe: pr.isAssignedToMe,
             isReviewRequest: pr.isReviewRequest,
             myReviewedAt: pr.myReviewedAt,
             reviewDecision: pr.reviewDecision?.rawValue,
+            ciStatus: pr.ciStatus.rawValue,
+            hasConflicts: pr.hasConflicts,
+            isAutoMergeEnabled: pr.isAutoMergeEnabled,
+            reviewStatus: pr.reviewStatus.rawValue,
+            isReviewRequestedFromMe: pr.isReviewRequestedFromMe,
+            reviewRequestedAt: pr.reviewRequestedAt,
             createdAt: pr.createdAt,
             mergedAt: pr.mergedAt,
             additions: pr.additions,

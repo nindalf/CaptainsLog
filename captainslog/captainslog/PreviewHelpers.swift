@@ -180,7 +180,6 @@ enum PreviewData {
         pr2.additions = 523
         pr2.deletions = 89
         pr2.body = "Replaces the synchronous substitution loop with a batch pipeline that processes up to 1000 order lines per run. Reduces p99 latency from 2s to 200ms."
-        pr2.deploymentStatus = .partiallyDeployed
         context.insert(pr2)
 
         let pr3 = PullRequest(number: 4510, title: "Fix warehouse API retry logic", url: URL(string: "https://github.com/larder/platform/pull/4510")!, repo: "larder/platform", state: .open, createdAt: .now.addingTimeInterval(-43200), isAuthoredByMe: false)
@@ -197,7 +196,6 @@ enum PreviewData {
         pr5.mergedAt = .now.addingTimeInterval(-1_123_200)
         pr5.additions = 87
         pr5.deletions = 312
-        pr5.deploymentStatus = .deployed
         context.insert(pr5)
 
         let todo1 = Todo(title: "Write Q2 stock accuracy review", dueDate: today)

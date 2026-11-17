@@ -281,12 +281,11 @@ final class DemoSeeder {
 
             let merged = created.addingTimeInterval(Double(seed.mergeAfterHours) * 3600)
             switch seed.outcome {
-            case .prod, .staging, .merged:
+            case .merged:
                 if merged <= clock.now {
                     pr.state = .merged
                     pr.mergedAt = merged
                     pr.reviewDecision = .approved
-                    pr.deploymentStatus = seed.outcome == .prod ? .deployed : seed.outcome == .staging ? .partiallyDeployed : .notDeployed
                 } else {
                     pr.reviewDecision = .approved
                 }
@@ -436,7 +435,7 @@ enum DemoRepo: String {
 }
 
 enum DemoOutcome: Equatable {
-    case prod, staging, merged, open(ReviewDecision), draft, closed
+    case merged, open(ReviewDecision), draft, closed
 }
 
 struct DemoPR {

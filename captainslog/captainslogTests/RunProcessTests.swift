@@ -13,4 +13,11 @@ struct RunProcessTests {
         plain.cancel()
         await #expect(throws: CancellationError.self) { try await plain.value }
     }
+
+    /// `gh api graphql` exits non-zero with partial data that is still worth reading.
+    @Test func aNonZeroExitCanStillBeRead() async throws {
+        let result = try await runProcess("/usr/bin/false", arguments: [], allowsNonZeroExit: true)
+        #expect(result.exitCode == 1)
+        await #expect(throws: ProcessError.self) { try await runProcess("/usr/bin/false", arguments: []) }
+    }
 }

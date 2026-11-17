@@ -266,12 +266,19 @@ struct PullRequestDetail: Encodable {
     let state: String
     let status: String
     let isDraft: Bool
-    let deploymentStatus: String
     let reviewDecision: String?
     let isAuthoredByMe: Bool
     let isAssignedToMe: Bool
     let isReviewRequest: Bool
     let myReviewedAt: Date?
+    let ciStatus: String
+    let hasConflicts: Bool
+    let isAutoMergeEnabled: Bool
+    let reviewStatus: String
+    let isReviewRequestedFromMe: Bool
+    let myReviewIsOutdated: Bool
+    let reviewRequestedAt: Date?
+    let lastReviewedAt: Date?
     let author: PersonRef?
     let reviewers: [PersonRef]
     let createdAt: Date
@@ -287,9 +294,13 @@ struct PullRequestDetail: Encodable {
         PullRequestDetail(
             id: pr.id, number: pr.number, title: pr.title, url: pr.url, repo: pr.repo,
             state: pr.state.rawValue, status: pr.displayStatus.rawValue, isDraft: pr.isDraft,
-            deploymentStatus: pr.deploymentStatus.rawValue, reviewDecision: pr.reviewDecision?.rawValue,
+            reviewDecision: pr.reviewDecision?.rawValue,
             isAuthoredByMe: pr.isAuthoredByMe, isAssignedToMe: pr.isAssignedToMe, isReviewRequest: pr.isReviewRequest,
-            myReviewedAt: pr.myReviewedAt, author: pr.author.map(PersonRef.from),
+            myReviewedAt: pr.myReviewedAt, ciStatus: pr.ciStatus.rawValue,
+            hasConflicts: pr.hasConflicts, isAutoMergeEnabled: pr.isAutoMergeEnabled,
+            reviewStatus: pr.reviewStatus.rawValue, isReviewRequestedFromMe: pr.isReviewRequestedFromMe,
+            myReviewIsOutdated: pr.myReviewIsOutdated, reviewRequestedAt: pr.reviewRequestedAt,
+            lastReviewedAt: pr.lastReviewedAt, author: pr.author.map(PersonRef.from),
             reviewers: pr.reviewers.sorted { $0.name < $1.name }.map(PersonRef.from),
             createdAt: pr.createdAt, mergedAt: pr.mergedAt, additions: pr.additions, deletions: pr.deletions,
             project: pr.project.map(RecordRef.from),
