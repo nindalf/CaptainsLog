@@ -1,8 +1,8 @@
 # Edit this in github.com/nindalf/CaptainsLog (homebrew/captains-log.rb). `just release` sets version and
 # sha256 there and publishes it to github.com/nindalf/homebrew-tap
 cask "captains-log" do
-  version "0.14.2"
-  sha256 "c62f309eab2421681a82b2907c660efc11168312e94b638ec07cc9188ba183e4"
+  version "0.15.0"
+  sha256 "40e60309687edab8aea6745012d7fac7e6798048d5bb233d3189e1f65111e82f"
 
   url "https://github.com/nindalf/CaptainsLog/releases/download/v#{version}/CaptainsLog-#{version}.zip"
   name "Captain's Log"
