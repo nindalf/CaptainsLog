@@ -52,14 +52,13 @@ struct PersonDetailView: View {
     var body: some View {
         DetailPage {
             DetailHeader(title: $person.name, placeholder: "Name", onCommit: person.trimWhitespace) {
-                Toggle(isOn: syncsPullRequests) {
-                    Text("Sync all their PRs")
+                if !(person.githubHandle ?? "").isEmpty {
+                    Toggle(isOn: syncsPullRequests) {
+                        Text("Sync all their PRs")
+                    }
+                    .toggleStyle(.checkbox)
+                    .help("Open and merged PRs in your repos, not just review requests.")
                 }
-                .toggleStyle(.checkbox)
-                .disabled(person.githubHandle == nil)
-                .help(person.githubHandle == nil
-                      ? "Needs a GitHub handle."
-                      : "Open and merged PRs in your repos, not just review requests.")
             }
 
             DetailProperties {
