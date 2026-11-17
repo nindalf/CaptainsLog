@@ -8,94 +8,60 @@ enum PRFocusField: Hashable {
 }
 
 struct PRListView: View {
-    @Query(sort: \PullRequest.createdAt, order: .reverse)
-    private var allPRs: [PullRequest]
-    @Query(filter: #Predicate<Person> { $0.syncsPullRequests }, sort: \Person.name)
-    private var syncedPeople: [Person]
+    @Query(filter: #Predicate<PullRequest> { $0.stateRawValue == "open" }, sort: \PullRequest.createdAt, order: .reverse)
+    private var openPRs: [PullRequest]
+    @Query(filter: #Predicate<PullRequest> { $0.stateRawValue == "merged" }, sort: \PullRequest.mergedAt, order: .reverse)
+    private var mergedPRs: [PullRequest]
     @Environment(SyncCoordinator.self) private var syncCoordinator
     @Environment(AppSettings.self) private var settings
 
-    @State private var stateFilter: PRState?
-    @State private var showAll = false
     @State private var selectedID: UUID?
     @State private var expandedID: UUID?
-    @State private var reviewRequestLimit = 5
-    @State private var teammateLimit = 5
+    /// Team in Flight shows this many more each time.
+    private static let teamPage = 8
+
+    @State private var teamLimit = teamPage
+    @State private var showsShipped = false
     @FocusState private var focusedField: PRFocusField?
 
-    /// The PRs the state filter and the older-PRs cutoff let through, before hiding anyone.
-    private var scopedPRs: [PullRequest] {
-        var prs = allPRs
-        if let stateFilter {
-            prs = prs.filter { $0.state == stateFilter }
-        }
-        if !showAll && stateFilter == nil {
-            let cutoff = Self.recentCutoff
-            prs = prs.filter { Self.isRecent($0, cutoff: cutoff) }
-        }
-        return prs
+    /// Open PRs by what they need from me, each section in the order it shows.
+    private struct Sections {
+        var needsMe: [Row]
+        var waiting: [Row]
+        var inFlight: [Row]
     }
 
-    private var visiblePRs: [PullRequest] {
-        scopedPRs.filter { !settings.isHidden($0) }
+    private var sections: Sections {
+        let rows = openPRs.map { Row(pr: $0, attention: $0.attention()) }
+        func since(_ row: Row) -> Date { row.attention.since(row.pr) }
+        let needsMe = rows.filter { $0.attention.section == .needsMe }
+            .sorted { ($0.attention.urgency, since($0)) < ($1.attention.urgency, since($1)) }
+        // Stale first, then longest waiting.
+        let waiting = rows.filter { $0.attention.section == .waiting }
+            .sorted { ($0.attention.isStale ? 0 : 1, since($0)) < ($1.attention.isStale ? 0 : 1, since($1)) }
+        // Stale first, then newest.
+        let inFlight = rows.filter { $0.attention.section == .inFlight }
+            .sorted { $0.attention.isStale != $1.attention.isStale ? $0.attention.isStale : since($0) > since($1) }
+        return Sections(needsMe: needsMe, waiting: waiting, inFlight: inFlight)
     }
 
-    private var myPRs: [PullRequest] {
-        visiblePRs.filter { $0.isMine && $0.state != .closed }
+    /// Newest first, so the week's are a prefix.
+    private var shipped: [Row] {
+        let weekStart = Calendar.current.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+        return mergedPRs.prefix { ($0.mergedAt ?? .distantPast) >= weekStart }
+            .map { Row(pr: $0, attention: .merged) }
     }
 
-    private var allReviewRequests: [PullRequest] {
-        visiblePRs.filter { $0.isReviewRequest && !$0.isDraft }
-    }
-
-    private var shownReviewRequests: [PullRequest] {
-        Array(allReviewRequests.prefix(reviewRequestLimit))
-    }
-
-    private var allTeammatePRs: [PullRequest] {
-        visiblePRs.filter(\.isTeammateOnly)
-    }
-
-    private var shownTeammatePRs: [PullRequest] {
-        Array(allTeammatePRs.prefix(teammateLimit))
-    }
-
-    private var flatIDs: [UUID] {
-        myPRs.map(\.id) + shownReviewRequests.map(\.id) + shownTeammatePRs.map(\.id)
-    }
-
-    private var hiddenCount: Int {
-        guard !showAll, stateFilter == nil else { return 0 }
-        let cutoff = Self.recentCutoff
-        return allPRs.filter { !settings.isHidden($0) && !Self.isRecent($0, cutoff: cutoff) }.count
-    }
-
-    /// Everyone whose PRs are synced: people synced by choice, and the authors of the review
-    /// requests and teammates' PRs in scope, hidden or not.
-    private var authors: [PRAuthorChip.Author] {
-        var counts: [UUID: Int] = [:]
-        var people: [UUID: Person] = [:]
-        for pr in scopedPRs where pr.isTeammateOnly || (pr.isReviewRequest && !pr.isDraft) {
-            guard let author = pr.author else { continue }
-            counts[author.id, default: 0] += 1
-            people[author.id] = author
-        }
-        for person in syncedPeople {
-            people[person.id] = person
-        }
-        return people.values
-            .map { PRAuthorChip.Author(person: $0, count: counts[$0.id] ?? 0) }
-            .sorted {
-                if $0.person.syncsPullRequests != $1.person.syncsPullRequests { return $0.person.syncsPullRequests }
-                if $0.count != $1.count { return $0.count > $1.count }
-                return $0.person.name.localizedStandardCompare($1.person.name) == .orderedAscending
-            }
+    /// The rows on screen, in order.
+    private var shownRows: [Row] {
+        let sections = sections
+        return sections.needsMe + sections.waiting + sections.inFlight.prefix(teamLimit) + (showsShipped ? shipped : [])
     }
 
     var body: some View {
         // Setup and the repo bar stay outside the list, so its key handlers don't take a field's Return and arrows.
         VStack(spacing: 0) {
-            if let setup, allPRs.isEmpty {
+            if let setup, openPRs.isEmpty && mergedPRs.isEmpty {
                 SetupInstructionView(instruction: setup)
                     .padding(.horizontal, 20)
                     .padding(.top, 40)
@@ -119,63 +85,43 @@ struct PRListView: View {
     }
 
     private var prList: some View {
-        ScrollView {
+        let sections = sections
+        let shipped = shipped
+        return ScrollView {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                if syncCoordinator.history.sources[.github]?.isFailing == true {
-                    SyncStatusLabel(source: .github)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 12)
-                        .padding(.horizontal, 4)
+                if setup == nil {
+                    SyncStatusLabel(source: .github, alignment: .trailing)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.top, 8)
+                        .padding(.horizontal, 8)
                 }
-                if !authors.isEmpty {
-                    authorFilter
-                }
-                if !myPRs.isEmpty {
+                section("Needs You", sections.needsMe)
+                section("Waiting on Others", sections.waiting)
+                if !sections.inFlight.isEmpty {
                     Section {
-                        ForEach(myPRs) { pr in prRow(for: pr) }
+                        ForEach(sections.inFlight.prefix(teamLimit)) { row in prRow(row) }
+                        moreButton(sections.inFlight.count - teamLimit) { teamLimit += Self.teamPage }
                     } header: {
-                        sectionHeader("My PRs")
+                        sectionHeader("Team in Flight", count: sections.inFlight.count)
                     }
                 }
-                if !allReviewRequests.isEmpty {
+                if !shipped.isEmpty {
                     Section {
-                        ForEach(shownReviewRequests) { pr in prRow(for: pr) }
-                        moreButton(allReviewRequests.count - reviewRequestLimit, "review request") {
-                            reviewRequestLimit += 5
+                        if showsShipped {
+                            ForEach(shipped) { row in prRow(row) }
                         }
                     } header: {
-                        sectionHeader("Review Requests")
-                    }
-                }
-                if !allTeammatePRs.isEmpty {
-                    Section {
-                        ForEach(shownTeammatePRs) { pr in prRow(for: pr) }
-                        moreButton(allTeammatePRs.count - teammateLimit, "PR") {
-                            teammateLimit += 5
+                        Button {
+                            withAnimation { showsShipped.toggle() }
+                        } label: {
+                            sectionHeader("Shipped This Week", count: shipped.count, chevron: showsShipped ? "chevron.down" : "chevron.right")
                         }
-                    } header: {
-                        sectionHeader("Teammates")
+                        .buttonStyle(.plain)
                     }
                 }
-                if hiddenCount > 0 {
-                    Button {
-                        withAnimation { showAll = true }
-                    } label: {
-                        Label(
-                            "\(hiddenCount) older pull request\(hiddenCount == 1 ? "" : "s")",
-                            systemImage: "clock.arrow.circlepath"
-                        )
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.plain)
-                }
-                if visiblePRs.isEmpty {
+                if openPRs.isEmpty && shipped.isEmpty {
                     emptyState
                         .padding(.top, 40)
-                } else if setup == nil, syncCoordinator.history.sources[.github]?.isFailing != true {
-                    SyncStatusLabel(source: .github)
-                        .padding(.vertical, 12)
                 }
             }
             .contentColumn()
@@ -198,15 +144,38 @@ struct PRListView: View {
 
     private var selectionCommands: CommandHandlers {
         var handlers = CommandHandlers()
-        if let pr = visiblePRs.first(where: { $0.id == selectedID }) {
+        if let pr = selectedPR {
             handlers[.openInGitHub] = { NSWorkspace.shared.open(pr.url) }
         }
         return handlers
     }
 
+    /// Only while its row is on screen: a collapsed section or the Team in Flight limit can hide it.
+    private var selectedPR: PullRequest? {
+        guard let selectedID else { return nil }
+        return shownRows.first { $0.pr.id == selectedID }?.pr
+    }
+
     // MARK: - Sections
 
+    struct Row: Identifiable {
+        let pr: PullRequest
+        let attention: PRAttention
+        var id: UUID { pr.id }
+    }
+
     private var setup: SetupInstruction? { SetupInstruction.github(syncCoordinator.githubSetup) }
+
+    @ViewBuilder
+    private func section(_ title: String, _ rows: [Row]) -> some View {
+        if !rows.isEmpty {
+            Section {
+                ForEach(rows) { row in prRow(row) }
+            } header: {
+                sectionHeader(title, count: rows.count)
+            }
+        }
+    }
 
     @ViewBuilder
     private var emptyState: some View {
@@ -217,34 +186,17 @@ struct PRListView: View {
                     .foregroundStyle(.secondary)
             }
         } else {
-            ContentUnavailableView {
-                Label("No Pull Requests", systemImage: "arrow.triangle.pull")
-            } description: {
-                if syncCoordinator.history.sources[.github]?.isFailing != true {
-                    SyncStatusLabel(source: .github)
-                }
-            }
+            ContentUnavailableView("Nothing in Flight", systemImage: "arrow.triangle.pull")
         }
-    }
-
-    private var authorFilter: some View {
-        FlowLayout(spacing: 6) {
-            ForEach(authors, id: \.person.id) { author in
-                PRAuthorChip(author: author)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 12)
-        .padding(.horizontal, 4)
     }
 
     @ViewBuilder
-    private func moreButton(_ count: Int, _ noun: String, action: @escaping () -> Void) -> some View {
+    private func moreButton(_ count: Int, action: @escaping () -> Void) -> some View {
         if count > 0 {
             Button {
                 withAnimation { action() }
             } label: {
-                Text("\(count) more \(noun)\(count == 1 ? "" : "s")")
+                Text("\(count) more")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
@@ -254,15 +206,26 @@ struct PRListView: View {
         }
     }
 
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.headline)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 16)
-            .padding(.bottom, 6)
-            .padding(.horizontal, 4)
-            .background(.background)
+    private func sectionHeader(_ title: String, count: Int, chevron: String? = nil) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Text("\(count)")
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+            if let chevron {
+                Image(systemName: chevron)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .font(.headline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 16)
+        .padding(.bottom, 6)
+        .padding(.horizontal, 8)
+        .background(.background)
+        .contentShape(Rectangle())
     }
 
     @ToolbarContentBuilder
@@ -275,35 +238,27 @@ struct PRListView: View {
             }
             .disabled(syncCoordinator.isSyncing)
         }
-        ToolbarItem {
-            Picker("State", selection: $stateFilter) {
-                Text("All").tag(PRState?.none)
-                ForEach(PRState.allCases, id: \.self) { state in
-                    Text(state.rawValue.capitalized).tag(PRState?.some(state))
-                }
-            }
-        }
     }
 
     // MARK: - Row builder
 
     @ViewBuilder
-    private func prRow(for pr: PullRequest) -> some View {
-        if expandedID == pr.id {
-            PRCardView(pr: pr, focusedField: $focusedField, onCollapse: { collapseCard() })
+    private func prRow(_ row: Row) -> some View {
+        if expandedID == row.pr.id {
+            PRCardView(pr: row.pr, focusedField: $focusedField, onCollapse: { collapseCard() })
                 .padding(.vertical, 2)
-                .contextMenu { PRContextMenu(pr: pr) }
+                .contextMenu { PRContextMenu(pr: row.pr) }
         } else {
-            PRCollapsedRow(pr: pr, isSelected: selectedID == pr.id)
+            PRRow(pr: row.pr, attention: row.attention, isSelected: selectedID == row.pr.id)
                 .onTapGesture {
-                    if selectedID == pr.id {
-                        expandPR(pr)
+                    if selectedID == row.pr.id {
+                        expandPR(row.pr)
                     } else {
                         collapseCard()
-                        selectedID = pr.id
+                        selectedID = row.pr.id
                     }
                 }
-                .contextMenu { PRContextMenu(pr: pr) }
+                .contextMenu { PRContextMenu(pr: row.pr) }
         }
     }
 
@@ -323,7 +278,7 @@ struct PRListView: View {
     // MARK: - Selection
 
     private func moveSelection(by delta: Int) {
-        let ids = flatIDs
+        let ids = shownRows.map(\.pr.id)
         guard !ids.isEmpty else { return }
         if let selectedID, let index = ids.firstIndex(of: selectedID) {
             let newIndex = max(0, min(ids.count - 1, index + delta))
@@ -341,8 +296,7 @@ struct PRListView: View {
             collapseCard()
             return .handled
         }
-        guard let selectedID else { return .ignored }
-        guard let pr = visiblePRs.first(where: { $0.id == selectedID }) else { return .ignored }
+        guard let pr = selectedPR else { return .ignored }
         expandPR(pr)
         return .handled
     }
@@ -353,109 +307,6 @@ struct PRListView: View {
             return .handled
         }
         return .ignored
-    }
-
-    // MARK: - Cutoff
-
-    private static func isRecent(_ pr: PullRequest, cutoff: Date) -> Bool {
-        switch pr.state {
-        case .open:
-            true
-        case .merged:
-            (pr.mergedAt ?? pr.createdAt) >= cutoff
-        case .closed:
-            pr.createdAt >= cutoff
-        }
-    }
-
-    private static var recentCutoff: Date {
-        let calendar = Calendar.current
-        var date = calendar.startOfDay(for: .now)
-        var weekdays = 0
-        while weekdays < 5 {
-            date = calendar.date(byAdding: .day, value: -1, to: date)!
-            let weekday = calendar.component(.weekday, from: date)
-            if weekday != 1 && weekday != 7 {
-                weekdays += 1
-            }
-        }
-        return date
-    }
-}
-
-// MARK: - Author filter
-
-/// One person whose PRs are synced. Clicking hides or shows their PRs; the right-click menu turns
-/// syncing all their PRs on or off.
-struct PRAuthorChip: View {
-    struct Author {
-        let person: Person
-        let count: Int
-    }
-
-    let author: Author
-    @Environment(AppSettings.self) private var settings
-    @Environment(SyncCoordinator.self) private var syncCoordinator
-    @Environment(\.modelContext) private var modelContext
-
-    private var handle: String? { author.person.githubHandle }
-
-    private var isHidden: Bool {
-        handle.map(settings.hiddenPRAuthors.contains) ?? false
-    }
-
-    var body: some View {
-        Button(action: toggleHidden) {
-            HStack(spacing: 4) {
-                if author.person.syncsPullRequests {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.caption2)
-                }
-                Text(author.person.name)
-                    .strikethrough(isHidden)
-                Text("\(author.count)")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .font(.caption)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(isHidden ? Color.clear : Color.accentColor.opacity(0.12), in: .capsule)
-            .overlay(Capsule().strokeBorder(.quaternary))
-            .foregroundStyle(isHidden ? .secondary : .primary)
-            .contentShape(.capsule)
-        }
-        .buttonStyle(.plain)
-        .disabled(handle == nil)
-        .help(help)
-        .contextMenu {
-            Toggle("Sync All Their PRs", isOn: Binding(
-                get: { author.person.syncsPullRequests },
-                set: { newValue in
-                    author.person.syncsPullRequests = newValue
-                    if newValue {
-                        try? modelContext.save()
-                        syncCoordinator.syncGitHubNow()
-                    }
-                }
-            ))
-        }
-    }
-
-    private var help: String {
-        let what = author.person.syncsPullRequests
-            ? "All of \(author.person.name)'s PRs sync"
-            : "\(author.person.name)'s review requests sync"
-        return "\(what). Click to \(isHidden ? "show" : "hide") them."
-    }
-
-    private func toggleHidden() {
-        guard let handle else { return }
-        if isHidden {
-            settings.hiddenPRAuthors.removeAll { $0 == handle }
-        } else {
-            settings.hiddenPRAuthors.append(handle)
-        }
     }
 }
 
@@ -485,9 +336,11 @@ struct PRContextMenu: View {
 
 // MARK: - Expanded card
 
+/// A PR's row, unchanged, with its details and notes below.
 struct PRCardView: View {
     @Bindable var pr: PullRequest
     var focusedField: FocusState<PRFocusField?>.Binding
+    var compact = false
     var onCollapse: () -> Void
     @Query(sort: \Project.sortOrder) private var projects: [Project]
 
@@ -499,21 +352,25 @@ struct PRCardView: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PRRow(pr: pr, attention: pr.attention(), isSelected: false, compact: compact)
+            details
+                .padding(.leading, PRRow.titleInset)
+                .padding(.trailing, 12)
+                .padding(.bottom, 12)
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .contentShape(Rectangle())
+        .onTapGesture { }
+    }
+
+    private var details: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                PRStatusBadge(status: pr.displayStatus)
-                Link(pr.title, destination: pr.url)
-                    .font(.headline)
-            }
-
-            HStack(spacing: 6) {
                 Text(pr.repo)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 CopyablePRNumber(pr: pr)
-            }
-
-            HStack(spacing: 8) {
+                GitHubButton(pr: pr)
                 Text(DateLabel.day(pr.createdAt))
                 if let merged = pr.mergedAt {
                     Text("Merged \(DateLabel.day(merged, inSentence: true))")
@@ -574,101 +431,16 @@ struct PRCardView: View {
             .font(.system(size: 14))
             .foregroundStyle(.secondary)
         }
-        .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .contentShape(Rectangle())
-        .onTapGesture { }
-    }
-}
-
-// MARK: - Collapsed row
-
-struct PRCollapsedRow: View {
-    let pr: PullRequest
-    let isSelected: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                PRStatusBadge(status: pr.displayStatus)
-                Text(pr.title)
-                    .font(.headline)
-                    .lineLimit(1)
-            }
-            HStack {
-                Text(pr.repo)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                CopyablePRNumber(pr: pr)
-                if let author = pr.author, !pr.isAuthoredByMe {
-                    Text(author.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if let additions = pr.additions, let deletions = pr.deletions {
-                    ChangeStats(additions: additions, deletions: deletions)
-                }
-                Text(DateLabel.day(pr.createdAt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
-        .background(isSelected ? Color.accentColor.opacity(0.08) : .clear)
-        .contentShape(Rectangle())
     }
 }
 
 // MARK: - Shared views
 
-struct PRStatusBadge: View {
-    let status: PRDisplayStatus
-
-    private static let badgeWidth: CGFloat = 80
-
-    var body: some View {
-        Text(label)
-            .font(.caption.bold())
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .frame(width: Self.badgeWidth)
-            .background(color.opacity(0.15))
-            .foregroundStyle(color)
-            .clipShape(Capsule())
-    }
-
-    private var label: String {
-        switch status {
-        case .draft: "Draft"
-        case .open: "Open"
-        case .changesRequested: "Changes Requested"
-        case .approved: "Approved"
-        case .closed: "Closed"
-        case .merged: "Merged"
-        }
-    }
-
-    private var color: Color {
-        switch status {
-        case .draft: .gray
-        case .open: .green
-        case .changesRequested: .orange
-        case .approved: .mint
-        case .closed: .red
-        case .merged: .purple
-        }
-    }
-}
-
 /// The GitHub mark as a button that opens the pull request in the browser. An asset rather than an
-/// SF Symbol, so it doesn't follow the font: the default size matches a caption.
+/// SF Symbol, so it doesn't follow the font: sized to match a caption.
 struct GitHubButton: View {
     let pr: PullRequest
-    var size: CGFloat = 11
+    private let size: CGFloat = 11
 
     var body: some View {
         Button { NSWorkspace.shared.open(pr.url) } label: {

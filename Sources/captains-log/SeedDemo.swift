@@ -280,17 +280,39 @@ final class DemoSeeder {
             pr.isTeammateOnly = seed.teammateOnly
 
             let merged = created.addingTimeInterval(Double(seed.mergeAfterHours) * 3600)
+            // An open PR's review, two hours in, so an approved one doesn't read as unreviewed.
+            let reviewed = min(created.addingTimeInterval(2 * 3600), clock.now)
             switch seed.outcome {
             case .merged:
+                pr.reviewDecision = .approved
                 if merged <= clock.now {
                     pr.state = .merged
                     pr.mergedAt = merged
-                    pr.reviewDecision = .approved
                 } else {
-                    pr.reviewDecision = .approved
+                    pr.reviewStatus = .approved
+                    pr.reviewRequestedAt = created
+                    pr.lastReviewedAt = reviewed
                 }
             case .open(let decision):
                 pr.reviewDecision = decision
+                pr.ciStatus = seed.ci
+                pr.reviewRequestedAt = created
+                let isRequestToMe = seed.author != nil && !seed.teammateOnly
+                switch decision {
+                case .approved:
+                    pr.reviewStatus = .approved
+                    pr.lastReviewedAt = reviewed
+                case .changesRequested where isRequestToMe:
+                    // I asked for changes and they've pushed since.
+                    pr.myReviewedAt = reviewed
+                    pr.myReviewIsOutdated = true
+                    pr.lastReviewedAt = reviewed
+                case .changesRequested:
+                    pr.reviewStatus = .changesRequested
+                    pr.lastReviewedAt = reviewed
+                default:
+                    pr.isReviewRequestedFromMe = isRequestToMe
+                }
             case .draft:
                 pr.isDraft = true
             case .closed:
@@ -453,6 +475,7 @@ struct DemoPR {
     let body: String
     var notes: String? = nil
     var teammateOnly: Bool = false
+    var ci: CIStatus = .passing
 }
 
 struct DemoLogEntry {

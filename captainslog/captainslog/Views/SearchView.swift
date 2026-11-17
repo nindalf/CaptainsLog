@@ -147,9 +147,6 @@ struct SearchView: View {
             .contextMenu { deleteMenu(row) }
         case .pr(let pr) where isExpanded:
             PRCardView(pr: pr, focusedField: $prFocusedField, onCollapse: { collapse() })
-                .overlay(alignment: .topTrailing) {
-                    GitHubButton(pr: pr, size: 14).padding(12)
-                }
                 .padding(.vertical, 2)
                 .contextMenu { PRContextMenu(pr: pr) }
         default:
@@ -329,8 +326,7 @@ struct SearchResultRow: View {
                         .foregroundStyle(.secondary)
                 }
                 if case .pr(let pr) = row.result {
-                    PRStatusBadge(status: pr.displayStatus)
-                        .scaleEffect(0.85, anchor: .trailing)
+                    PRGlyph(pr: pr, attention: pr.attention())
                 }
             }
         }

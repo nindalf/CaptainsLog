@@ -26,6 +26,20 @@ public enum PRAttention: Equatable, Sendable {
     /// A PR waiting this long for a first review since it asked for one is stale.
     public static let staleAfterWorkingDays = 2
 
+    /// Order within Needs You: what blocks my own PR, then reviews I owe, then merging.
+    public var urgency: Int {
+        switch self {
+        case .conflict: 0
+        case .ciFailing: 1
+        case .changesRequested: 2
+        case .approvalDismissed: 3
+        case .reReview: 4
+        case .reviewRequested: 5
+        case .readyToMerge: 6
+        case .draft, .autoMerge, .ciPending, .moreApprovalsNeeded, .awaitingReview, .inFlight, .merged, .closed: 7
+        }
+    }
+
     public var section: Section {
         switch self {
         case .conflict, .ciFailing, .changesRequested, .approvalDismissed, .readyToMerge,
@@ -42,6 +56,14 @@ public enum PRAttention: Equatable, Sendable {
 }
 
 extension PullRequest {
+    /// Asked to review it, or to look again: the Dashboard's and menu bar's review requests.
+    public var needsMyReview: Bool {
+        switch attention() {
+        case .reviewRequested, .reReview: true
+        default: false
+        }
+    }
+
     public func attention(now: Date = .now, calendar: Calendar = .current) -> PRAttention {
         switch state {
         case .merged: return .merged

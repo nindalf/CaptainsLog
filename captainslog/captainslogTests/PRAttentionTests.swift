@@ -138,6 +138,11 @@ struct PRAttentionTests {
         #expect(attention(theirs) == .inFlight(isStale: false))
     }
 
+    @Test func needsYouPutsWhatBlocksMyPRsFirstAndMergingLast() {
+        let order: [PRAttention] = [.readyToMerge, .reviewRequested, .reReview, .approvalDismissed, .changesRequested, .ciFailing, .conflict]
+        #expect(order.sorted { $0.urgency < $1.urgency } == order.reversed())
+    }
+
     @Test func mergedAndClosedAreDone() {
         let merged = pr(mine: true)
         merged.state = .merged

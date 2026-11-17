@@ -355,7 +355,7 @@ private struct PRLinkRow: View {
     var body: some View {
         Link(destination: pr.url) {
             HStack(spacing: 8) {
-                PRStatusBadge(status: pr.displayStatus)
+                PRGlyph(pr: pr, attention: pr.attention())
                 Text(pr.title).lineLimit(1)
                 Spacer()
                 Text("#\(pr.number)")

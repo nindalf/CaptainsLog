@@ -4,7 +4,6 @@ import CaptainsLogKit
 
 struct MenuBarView: View {
     @Environment(SyncCoordinator.self) private var sync
-    @Environment(AppSettings.self) private var settings
     @Query(filter: #Predicate<CalendarEvent> { !$0.isHidden }, sort: \CalendarEvent.startTime)
     private var allEvents: [CalendarEvent]
 
@@ -16,13 +15,14 @@ struct MenuBarView: View {
     @Query(filter: #Predicate<PullRequest> { ($0.isAuthoredByMe || $0.isAssignedToMe) && $0.stateRawValue == "open" })
     private var myOpenPRs: [PullRequest]
 
+    // Attention is computed, so it can't go in #Predicate: filter on stored fields, refine in Swift.
     @Query(filter: #Predicate<PullRequest> {
-        !$0.isAuthoredByMe && !$0.isTeammateOnly && $0.stateRawValue == "open"
+        !$0.isAuthoredByMe && !$0.isAssignedToMe && $0.stateRawValue == "open"
     })
-    private var openReviewRequests: [PullRequest]
+    private var openOthersPRs: [PullRequest]
 
     private var reviewRequests: [PullRequest] {
-        openReviewRequests.filter { !settings.isHidden($0) }
+        openOthersPRs.filter(\.needsMyReview)
     }
 
     @Query(filter: #Predicate<Todo> { $0.completedDate == nil })

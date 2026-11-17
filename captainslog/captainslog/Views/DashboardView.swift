@@ -17,15 +17,15 @@ struct DashboardView: View {
            sort: \PullRequest.createdAt, order: .reverse)
     private var myPRs: [PullRequest]
 
-    // displayStatus is computed, so it can't go in #Predicate: filter on stored fields, refine in Swift.
+    // Attention is computed, so it can't go in #Predicate: filter on stored fields, refine in Swift.
     @Query(filter: #Predicate<PullRequest> {
-               !$0.isAuthoredByMe && !$0.isAssignedToMe && !$0.isTeammateOnly && $0.stateRawValue == "open"
+               !$0.isAuthoredByMe && !$0.isAssignedToMe && $0.stateRawValue == "open"
            },
            sort: \PullRequest.createdAt, order: .reverse)
     private var openReviewRequests: [PullRequest]
 
     private var reviewRequests: [PullRequest] {
-        openReviewRequests.filter { $0.displayStatus == .open && !settings.isHidden($0) }
+        openReviewRequests.filter(\.needsMyReview)
     }
 
     private var myDashboardPRs: [PullRequest] {
@@ -233,11 +233,11 @@ struct DashboardView: View {
     @ViewBuilder
     private func dashboardPRRow(_ pr: PullRequest) -> some View {
         if prExpandedID == pr.id {
-            PRCardView(pr: pr, focusedField: $prFocusField, onCollapse: { collapsePRCard() })
+            PRCardView(pr: pr, focusedField: $prFocusField, compact: true, onCollapse: { collapsePRCard() })
                 .padding(.vertical, 2)
                 .contextMenu { PRContextMenu(pr: pr) }
         } else {
-            PRCollapsedRow(pr: pr, isSelected: prSelectedID == pr.id)
+            PRRow(pr: pr, attention: pr.attention(), isSelected: prSelectedID == pr.id, compact: true)
                 .onTapGesture {
                     if prSelectedID == pr.id {
                         prSelectedID = pr.id

@@ -30,25 +30,6 @@ public final class AppSettings: @unchecked Sendable {
         }
     }
 
-    /// GitHub handles whose PRs the app hides. They still sync.
-    public var hiddenPRAuthors: [String] {
-        get {
-            access(keyPath: \.hiddenPRAuthors)
-            return defaults.stringArray(forKey: "hiddenPRAuthors") ?? []
-        }
-        set {
-            withMutation(keyPath: \.hiddenPRAuthors) {
-                defaults.set(newValue, forKey: "hiddenPRAuthors")
-            }
-            logger.debug("Updated hidden PR authors: \(newValue)")
-        }
-    }
-
-    public func isHidden(_ pr: PullRequest) -> Bool {
-        guard !pr.isMine, let handle = pr.author?.githubHandle else { return false }
-        return hiddenPRAuthors.contains(handle)
-    }
-
     /// Sidebar tabs by raw value, in display order. The app appends tabs missing from it.
     public var sidebarOrder: [String] {
         get {
