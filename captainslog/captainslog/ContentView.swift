@@ -80,7 +80,8 @@ struct ContentView: View {
     }
 
     /// Once the palette has gone, hands focus back to the text it was in, else to the list commands
-    /// act on, then runs what was chosen.
+    /// act on, then runs what was chosen. A choice that opens another palette (Join Meeting) keeps
+    /// focus in it, and hands it the place to return to.
     private func closePalette(then action: (() -> Void)?) {
         let responder = navigator.palette?.returnFocus
         navigator.palette = nil
@@ -90,8 +91,13 @@ struct ContentView: View {
             let backInText = (target as? NSView).map { view in
                 (view is NSTextField || view is NSTextView) && view.window?.makeFirstResponder(view) == true
             } ?? false
-            if !backInText { navigator.paletteReturnTick += 1 }
             action?()
+            if navigator.palette != nil {
+                navigator.palette?.returnFocus = responder
+            } else if !backInText {
+                // The list focuses itself on the next update, which would take focus from a new palette.
+                navigator.paletteReturnTick += 1
+            }
         }
     }
 
