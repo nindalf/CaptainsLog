@@ -437,10 +437,10 @@ struct PRCardView: View {
 // MARK: - Shared views
 
 /// The GitHub mark as a button that opens the pull request in the browser. An asset rather than an
-/// SF Symbol, so it doesn't follow the font: sized to match a caption.
+/// SF Symbol, so it doesn't follow the font: the default size matches a caption.
 struct GitHubButton: View {
     let pr: PullRequest
-    private let size: CGFloat = 11
+    var size: CGFloat = 11
 
     var body: some View {
         Button { NSWorkspace.shared.open(pr.url) } label: {

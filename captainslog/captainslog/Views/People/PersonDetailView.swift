@@ -358,7 +358,7 @@ private struct PRLinkRow: View {
                 PRGlyph(pr: pr, attention: pr.attention())
                 Text(pr.title).lineLimit(1)
                 Spacer()
-                Text("#\(pr.number)")
+                Text(verbatim: "#\(pr.number)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

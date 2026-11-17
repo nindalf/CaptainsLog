@@ -90,14 +90,9 @@ struct FeedRowView: View {
                 }
             }
         case .pullRequest(let pr):
-            HStack(spacing: 6) {
-                Text("#\(pr.number)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(pr.repo)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(verbatim: "#\(pr.number)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         case .todo(let todo):
             HStack(spacing: 6) {
                 if let project = todo.project {
@@ -135,23 +130,10 @@ struct FeedRowView: View {
                     .clipShape(Capsule())
             }
         case .pullRequest(let pr):
-            Text(pr.state.rawValue)
-                .font(.caption2)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(prStateColor(pr.state).opacity(0.2))
-                .foregroundStyle(prStateColor(pr.state))
-                .clipShape(Capsule())
+            // Always merged, so its size says more than its state.
+            PRSizeBar(additions: pr.additions, deletions: pr.deletions)
         case .todo:
             EmptyView()
-        }
-    }
-
-    private func prStateColor(_ state: PRState) -> Color {
-        switch state {
-        case .open: .green
-        case .merged: .purple
-        case .closed: .red
         }
     }
 

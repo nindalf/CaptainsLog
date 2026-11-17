@@ -207,10 +207,7 @@ struct LogListContent: View {
             .buttonStyle(.plain)
             .contextMenu { deleteMenu(item) }
         case .pullRequest(let pr):
-            FeedRowView(item: item, isSelected: selectedID == item.id)
-                .onTapGesture {
-                    NSWorkspace.shared.open(pr.url)
-                }
+            pullRequestRow(pr)
         case .todo(let todo):
             todoRow(todo)
         }
@@ -250,6 +247,31 @@ struct LogListContent: View {
                     }
                 }
                 .contextMenu { deleteMenu(.log(entry)) }
+        }
+    }
+
+    @ViewBuilder
+    private func pullRequestRow(_ pr: PullRequest) -> some View {
+        if expandedID == pr.id {
+            MergedPRCardView(
+                pr: pr,
+                projects: projects,
+                focusedField: $focusedField,
+                onCollapse: { collapseAndCommit() }
+            )
+            .padding(.vertical, 2)
+            .contextMenu { PRContextMenu(pr: pr) }
+        } else {
+            FeedRowView(item: .pullRequest(pr), isSelected: selectedID == pr.id)
+                .onTapGesture {
+                    if selectedID == pr.id {
+                        expand(pr.id)
+                    } else {
+                        collapseAndCommit()
+                        selectedID = pr.id
+                    }
+                }
+                .contextMenu { PRContextMenu(pr: pr) }
         }
     }
 
@@ -341,14 +363,19 @@ struct LogListContent: View {
         return nil
     }
 
-    /// Opens a log entry's or completed todo's card.
+    /// Opens a log entry's, completed todo's or PR's card, in its title or, for a PR, whose title
+    /// is GitHub's, its notes.
     private func expand(_ id: UUID) {
         commitDraft()
         selectedID = id
         withAnimation(.snappy(duration: 0.15)) {
             expandedID = id
         }
-        focusedField = .title(id)
+        if case .pullRequest = feedItem(for: id) {
+            focusedField = .content(id)
+        } else {
+            focusedField = .title(id)
+        }
     }
 
     // MARK: - Selection
@@ -381,7 +408,7 @@ struct LogListContent: View {
         }
         guard let selectedID, let item = feedItem(for: selectedID) else { return .ignored }
         switch item {
-        case .log, .todo:
+        case .log, .todo, .pullRequest:
             expand(selectedID)
             return .handled
         default:

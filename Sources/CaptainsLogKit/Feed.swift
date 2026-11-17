@@ -5,7 +5,8 @@ import Foundation
 public enum Feed {
     public static func includes(_ meeting: Meeting) -> Bool { meeting.notes?.isEmpty == false }
     public static func includes(_ interview: Interview) -> Bool { interview.rawNotes?.isEmpty == false }
-    public static func includes(_ pr: PullRequest) -> Bool { pr.isMine }
+    /// Merged: an open PR is on the Pull Requests tab, a closed one never shipped.
+    public static func includes(_ pr: PullRequest) -> Bool { pr.isMine && pr.state == .merged }
     public static func includes(_ todo: Todo) -> Bool { todo.isCompleted && !todo.isTrashed }
 
     public static func date(of pr: PullRequest) -> Date { pr.mergedAt ?? pr.createdAt }
