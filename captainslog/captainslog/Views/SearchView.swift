@@ -76,7 +76,7 @@ struct SearchView: View {
             selectedID = visibleRows.first?.id
             focusedField = .list
         }
-        .onAppear { isSearchFocused = true }
+        .onAppear { DispatchQueue.main.async { isSearchFocused = true } }
         .task(id: query) { await search(query) }
         .toolbar { toolbarContent }
         .focusedSceneValue(\.tabCommands, tabCommands)

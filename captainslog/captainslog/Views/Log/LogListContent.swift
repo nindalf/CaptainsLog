@@ -105,7 +105,7 @@ struct LogListContent: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focusedField, equals: .list)
-        .onAppear { if focusesOnAppear { focusedField = .list } }
+        .onAppear { if focusesOnAppear { DispatchQueue.main.async { focusedField = .list } } }
         .onKeyPress(.return, phases: .down) { handleReturnKey($0) }
         .onKeyPress(.escape) { handleEscape() }
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in handleArrow(delta: -1) }

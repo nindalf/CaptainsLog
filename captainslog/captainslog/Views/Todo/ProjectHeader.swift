@@ -70,9 +70,8 @@ struct ProjectHeader: View {
             nameError = nil
             if navigator.renamingProjectID == project.id {
                 navigator.renamingProjectID = nil
-                // Focus set in the same pass as the field appears is dropped.
-                try? await Task.sleep(for: .milliseconds(100))
-                titleFocused = true
+                // Next turn, once the field is in the window (docs/overview.md).
+                DispatchQueue.main.async { titleFocused = true }
             }
         }
         .alert("Complete \"\(project.name)\"?", isPresented: $confirmCompletion) {

@@ -185,7 +185,7 @@ struct PRListView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focusedField, equals: .list)
-        .onAppear { focusedField = .list }
+        .onAppear { DispatchQueue.main.async { focusedField = .list } }
         .onKeyPress(.return, phases: .down) { handleReturn($0) }
         .onKeyPress(.escape) { handleEscape() }
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1); return .handled }

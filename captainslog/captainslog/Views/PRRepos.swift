@@ -109,7 +109,7 @@ struct RepoField: View {
                     .foregroundStyle(.red)
             }
         }
-        .onAppear { if compact { focused = true } }
+        .onAppear { if compact { DispatchQueue.main.async { focused = true } } }
     }
 
     private func add() {

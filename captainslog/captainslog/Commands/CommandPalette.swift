@@ -87,7 +87,9 @@ struct CommandPalette: View {
         }
         .shadow(color: .black.opacity(0.25), radius: 24, y: 8)
         .onAppear {
-            isFieldFocused = true
+            // Next turn, once the field is in the window. Asked for in this update, focus moves
+            // between the field and the window a few times and can stop on the window.
+            DispatchQueue.main.async { isFieldFocused = true }
             if case .meetings(let purpose) = request.mode {
                 meetings = TodaysMeetings(in: modelContext, for: purpose)
                 selectedIndex = meetings.selected ?? 0
