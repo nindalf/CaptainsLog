@@ -95,6 +95,8 @@ struct MeetingDetailView: View {
                 }
                 .padding(.horizontal, 4)
             }
+
+            SeriesHistorySection(meeting: meeting)
         }
         .onChange(of: meeting.id, initial: true) {
             shownNotes = Set(NotesField.allCases.filter(hasText))

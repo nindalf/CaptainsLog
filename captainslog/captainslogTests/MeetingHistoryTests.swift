@@ -47,6 +47,27 @@ struct MeetingHistoryTests {
         #expect(meeting(2, [me]).seriesMeetings(among: [now]).isEmpty)
     }
 
+    @Test func seriesHistoryIsEarlierEventsWithOrWithoutNotesNewestFirst() {
+        let now = meeting(0, [me, tom], event: "abc_20261105T100000Z")
+        func past(_ daysAgo: Int, _ id: String) -> CalendarEvent {
+            let e = event(id)
+            e.startTime = Calendar.current.date(byAdding: .day, value: -daysAgo, to: now.date)!
+            return e
+        }
+        let withNotes = past(7, "abc_20261029T100000Z")
+        withNotes.meeting = meeting(7, [me, tom])
+        let withoutNotes = past(14, "abc_20261022T100000Z")
+        let hidden = past(21, "abc_20261015T100000Z"); hidden.isHidden = true
+        let hiddenWithNotes = past(28, "abc_20261008T100000Z"); hiddenWithNotes.isHidden = true
+        hiddenWithNotes.meeting = meeting(28, [me])
+        let next = past(-7, "abc_20261112T100000Z")
+        let other = past(3, "xyz_20261102T100000Z")
+        let events = [withoutNotes, next, now.calendarEvent!, hidden, other, withNotes, hiddenWithNotes]
+        #expect(now.earlierSeriesEvents(among: events).map(\.externalID)
+            == [withNotes, withoutNotes, hiddenWithNotes].map(\.externalID))
+        #expect(meeting(1, [me], event: "abc").earlierSeriesEvents(among: events).isEmpty)
+    }
+
     @Test func aNewSeriesMeetingJoinsAProjectOnlyIfTheWholeSeriesIsInIt() {
         let launch = Project(name: "Launch")
         let other = Project(name: "Other")

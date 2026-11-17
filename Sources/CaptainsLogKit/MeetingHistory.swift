@@ -46,6 +46,18 @@ extension Meeting {
         return seriesMeetings(among: try context.fetch(FetchDescriptor<Meeting>()))
     }
 
+    /// The earlier events of this meeting's recurring series, newest first, whether or not they
+    /// have notes: the series history its page lists. Hidden events only with a meeting.
+    public func earlierSeriesEvents(among events: [CalendarEvent]) -> [CalendarEvent] {
+        guard let event = calendarEvent, let series = event.seriesID else { return [] }
+        return events
+            .filter { other in
+                other.id != event.id && other.startTime < event.startTime && other.seriesID == series
+                    && (!other.isHidden || other.meeting != nil)
+            }
+            .sorted { $0.startTime > $1.startTime }
+    }
+
     /// The meetings of `series` among `candidates`, oldest first.
     public static func inSeries(_ series: String, among candidates: [Meeting]) -> [Meeting] {
         candidates.filter { $0.calendarEvent?.seriesID == series }.sorted { $0.date < $1.date }
