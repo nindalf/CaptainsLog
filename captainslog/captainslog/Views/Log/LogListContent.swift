@@ -177,14 +177,7 @@ struct LogListContent: View {
     }
 
     private func dateHeader(_ label: String) -> some View {
-        Text(label)
-            .font(.headline)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 16)
-            .padding(.bottom, 6)
-            .padding(.horizontal, 4)
-            .background(.background)
+        SectionHeader(title: label).pinnedSectionHeader()
     }
 
     // MARK: - Row builder

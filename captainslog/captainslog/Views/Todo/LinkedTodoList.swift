@@ -26,7 +26,7 @@ struct LinkedTodoList: View {
     @Environment(\.modelContext) private var modelContext
     @State private var draft: Todo?
     @State private var expandedID: UUID?
-    @State private var showsAll = false
+    @State private var shownCount = collapsedCount
     @FocusState private var focusedField: TodoFocusField?
 
     init(meeting: Meeting, addTick: Int) {
@@ -100,7 +100,7 @@ struct LinkedTodoList: View {
     private static let collapsedCount = 5
 
     private var visibleTodos: [Todo] {
-        showsAll ? orderedTodos : Array(orderedTodos.prefix(Self.collapsedCount))
+        Array(orderedTodos.prefix(shownCount))
     }
 
     private func taggedNames(_ todo: Todo) -> String? {
@@ -119,18 +119,8 @@ struct LinkedTodoList: View {
     }
 
     private var section: some View {
-        DetailSection(title) {
-            if attach != nil {
-                Button(action: createDraft) {
-                    Image(systemName: "plus")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .help(AppCommand.newTodo.help("Add Todo"))
-            }
-        } content: {
+        let onAdd: (() -> Void)? = attach == nil ? nil : { createDraft() }
+        return DetailSection(title, onAdd: onAdd, addHelp: AppCommand.newTodo.help("Add Todo")) {
             VStack(alignment: .leading, spacing: 2) {
                 if let draft {
                     card(for: draft)
@@ -146,16 +136,10 @@ struct LinkedTodoList: View {
                         row(for: todo)
                     }
                 }
-                if orderedTodos.count > Self.collapsedCount {
-                    Button(showsAll ? "Show Less" : "Show \(orderedTodos.count - Self.collapsedCount) More") {
-                        showsAll.toggle()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 30)
-                    .padding(.vertical, 2)
+                ShowMoreButton(remaining: orderedTodos.count - visibleTodos.count, pageSize: Self.collapsedCount) {
+                    shownCount += Self.collapsedCount
                 }
+                .padding(.leading, 30)
             }
         }
         .onChange(of: addTick) { createDraft() }

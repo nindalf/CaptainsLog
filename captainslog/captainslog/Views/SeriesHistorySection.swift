@@ -32,18 +32,8 @@ struct SeriesHistorySection: View {
         if !events.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Button { isExpanded.toggle() } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "chevron.right")
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                            .frame(width: 12)
-                        Text("Previous Meetings").font(.headline)
-                        Text(countLabel(events))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                    .contentShape(.rect)
+                    SectionHeader(title: "Previous Meetings", count: events.count, isExpanded: isExpanded)
+                        .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 4)
@@ -65,11 +55,6 @@ struct SeriesHistorySection: View {
                 }
             }
         }
-    }
-
-    private func countLabel(_ events: [CalendarEvent]) -> String {
-        let withNotes = events.filter { $0.meeting != nil }.count
-        return "\(events.count) earlier, \(withNotes) with notes"
     }
 
     private func meetingRow(_ previous: Meeting) -> some View {

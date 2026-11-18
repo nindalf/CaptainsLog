@@ -74,17 +74,17 @@ struct PersonDetailView: View {
             feedbackSection
 
             if !authoredPRs.isEmpty {
-                DetailSection("Authored PRs") {
+                DetailSection("Authored PRs", count: authoredPRs.count) {
                     DetailRows(data: authoredPRs, limit: Self.rowLimit) { pr in PRLinkRow(pr: pr) }
                 }
             }
             if !reviewedPRs.isEmpty {
-                DetailSection("Reviewed PRs") {
+                DetailSection("Reviewed PRs", count: reviewedPRs.count) {
                     DetailRows(data: reviewedPRs, limit: Self.rowLimit) { pr in PRLinkRow(pr: pr) }
                 }
             }
             if !meetings.isEmpty {
-                DetailSection("Meetings") {
+                DetailSection("Meetings", count: meetings.count) {
                     DetailRows(data: meetings, limit: Self.rowLimit) { meeting in
                         NavigationLink(value: meeting) {
                             MeetingRecordRow(meeting: meeting, date: .day(meeting.date), isPadded: false)
@@ -94,7 +94,7 @@ struct PersonDetailView: View {
                 }
             }
             if !interviews.isEmpty {
-                DetailSection("Interviews") {
+                DetailSection("Interviews", count: interviews.count) {
                     DetailRows(data: interviews) { interview in
                         NavigationLink(value: interview) {
                             InterviewRecordRow(interview: interview, date: .day(interview.date), isPadded: false)
@@ -104,7 +104,7 @@ struct PersonDetailView: View {
                 }
             }
             if !logEntries.isEmpty {
-                DetailSection("Log Entries") {
+                DetailSection("Log Entries", count: logEntries.count) {
                     DetailRows(data: logEntries) { entry in
                         LogRecordRow(entry: entry, date: .day(entry.timestamp), isPadded: false)
                     }
@@ -144,15 +144,7 @@ struct PersonDetailView: View {
     // MARK: - Feedback
 
     private var feedbackSection: some View {
-        DetailSection("Feedback") {
-            Button(action: addFeedback) {
-                Image(systemName: "plus")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Add Feedback")
-        } content: {
+        DetailSection("Feedback", count: sortedFeedback.isEmpty ? nil : sortedFeedback.count, onAdd: addFeedback, addHelp: "Add Feedback") {
             if sortedFeedback.isEmpty {
                 Button("Add Feedback", systemImage: "plus", action: addFeedback)
                     .buttonStyle(.plain)

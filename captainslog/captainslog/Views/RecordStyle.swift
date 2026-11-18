@@ -48,36 +48,6 @@ extension CalendarEvent {
     }
 }
 
-/// The heading over a group of rows in a tab's list: its title, a plain count, and an optional
-/// chevron for a group that collapses.
-struct ListSectionHeader: View {
-    let title: String
-    let count: Int
-    var chevron: String?
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .foregroundStyle(.secondary)
-            Text("\(count)")
-                .foregroundStyle(.tertiary)
-                .monospacedDigit()
-            if let chevron {
-                Image(systemName: chevron)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .font(.headline)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 16)
-        .padding(.bottom, 6)
-        .padding(.horizontal, 8)
-        .background(.background)
-        .contentShape(Rectangle())
-    }
-}
-
 /// A record's icon at the head of its row.
 struct RecordIcon: View {
     let kind: RecordKind

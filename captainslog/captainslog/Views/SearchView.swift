@@ -59,7 +59,8 @@ struct SearchView: View {
                             resultRow(row)
                         }
                     } header: {
-                        ListSectionHeader(title: group.kind.label, count: group.items.count)
+                        SectionHeader(title: group.kind.label, count: group.items.count)
+                            .pinnedSectionHeader()
                     }
                 }
             }

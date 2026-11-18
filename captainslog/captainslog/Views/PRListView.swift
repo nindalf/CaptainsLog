@@ -10,18 +10,20 @@ enum PRFocusField: Hashable {
 struct PRListView: View {
     @Query(filter: #Predicate<PullRequest> { $0.stateRawValue == "open" }, sort: \PullRequest.createdAt, order: .reverse)
     private var openPRs: [PullRequest]
-    @Query(filter: #Predicate<PullRequest> { $0.stateRawValue == "merged" }, sort: \PullRequest.mergedAt, order: .reverse)
-    private var mergedPRs: [PullRequest]
+    @Query(filter: #Predicate<PullRequest> { $0.stateRawValue != "open" }, sort: \PullRequest.createdAt, order: .reverse)
+    private var donePRs: [PullRequest]
     @Environment(SyncCoordinator.self) private var syncCoordinator
     @Environment(AppSettings.self) private var settings
 
     @State private var selectedID: UUID?
     @State private var expandedID: UUID?
-    /// Team in Flight shows this many more each time.
-    private static let teamPage = 8
+    /// Team in Flight and Older show this many more each time.
+    private static let page = 10
 
-    @State private var teamLimit = teamPage
+    @State private var teamLimit = page
+    @State private var olderLimit = page
     @State private var showsShipped = false
+    @State private var showsOlder = false
     @FocusState private var focusedField: PRFocusField?
 
     /// Open PRs by what they need from me, each section in the order it shows.
@@ -45,23 +47,30 @@ struct PRListView: View {
         return Sections(needsMe: needsMe, waiting: waiting, inFlight: inFlight)
     }
 
-    /// Newest first, so the week's are a prefix.
-    private var shipped: [Row] {
+    /// Merged and closed PRs, newest first: this week's merges, then everything older.
+    private var finished: (shipped: [Row], older: [Row]) {
         let weekStart = Calendar.current.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
-        return mergedPRs.prefix { ($0.mergedAt ?? .distantPast) >= weekStart }
-            .map { Row(pr: $0, attention: .merged) }
+        let rows = donePRs
+            .map { Row(pr: $0, attention: $0.state == .merged ? .merged : .closed) }
+            .sorted { $0.attention.since($0.pr) > $1.attention.since($1.pr) }
+        let shipped = rows.filter { $0.attention == .merged && $0.attention.since($0.pr) >= weekStart }
+        let shippedIDs = Set(shipped.map(\.id))
+        return (shipped, rows.filter { !shippedIDs.contains($0.id) })
     }
 
     /// The rows on screen, in order.
     private var shownRows: [Row] {
         let sections = sections
-        return sections.needsMe + sections.waiting + sections.inFlight.prefix(teamLimit) + (showsShipped ? shipped : [])
+        let finished = finished
+        return sections.needsMe + sections.waiting + sections.inFlight.prefix(teamLimit)
+            + (showsShipped ? finished.shipped : [])
+            + (showsOlder ? Array(finished.older.prefix(olderLimit)) : [])
     }
 
     var body: some View {
         // Setup stays outside the list, so its key handlers don't take a field's Return and arrows.
         VStack(spacing: 0) {
-            if let setup, openPRs.isEmpty && mergedPRs.isEmpty {
+            if let setup, openPRs.isEmpty && donePRs.isEmpty {
                 SetupInstructionView(instruction: setup)
                     .padding(.horizontal, 20)
                     .padding(.top, 40)
@@ -81,7 +90,7 @@ struct PRListView: View {
 
     private var prList: some View {
         let sections = sections
-        let shipped = shipped
+        let (shipped, older) = finished
         return ScrollView {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
                 section("Needs You", sections.needsMe)
@@ -89,26 +98,15 @@ struct PRListView: View {
                 if !sections.inFlight.isEmpty {
                     Section {
                         ForEach(sections.inFlight.prefix(teamLimit)) { row in prRow(row) }
-                        moreButton(sections.inFlight.count - teamLimit) { teamLimit += Self.teamPage }
+                        ShowMoreButton(remaining: sections.inFlight.count - teamLimit, pageSize: Self.page) { teamLimit += Self.page }
+                            .padding(.horizontal, RecordRowMetrics.padding)
                     } header: {
                         sectionHeader("Team in Flight", count: sections.inFlight.count)
                     }
                 }
-                if !shipped.isEmpty {
-                    Section {
-                        if showsShipped {
-                            ForEach(shipped) { row in prRow(row) }
-                        }
-                    } header: {
-                        Button {
-                            withAnimation { showsShipped.toggle() }
-                        } label: {
-                            sectionHeader("Shipped This Week", count: shipped.count, chevron: showsShipped ? "chevron.down" : "chevron.right")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                if openPRs.isEmpty && shipped.isEmpty {
+                collapsibleSection("Shipped This Week", shipped, isExpanded: $showsShipped)
+                collapsibleSection("Older", older, isExpanded: $showsOlder, limit: $olderLimit)
+                if openPRs.isEmpty && donePRs.isEmpty {
                     emptyState
                         .padding(.top, 40)
                 }
@@ -179,24 +177,33 @@ struct PRListView: View {
         }
     }
 
+    /// Finished PRs, collapsed until their header is clicked. With a limit, a page at a time.
     @ViewBuilder
-    private func moreButton(_ count: Int, action: @escaping () -> Void) -> some View {
-        if count > 0 {
-            Button {
-                withAnimation { action() }
-            } label: {
-                Text("\(count) more")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
+    private func collapsibleSection(_ title: String, _ rows: [Row], isExpanded: Binding<Bool>, limit: Binding<Int>? = nil) -> some View {
+        if !rows.isEmpty {
+            Section {
+                if isExpanded.wrappedValue {
+                    let shown = limit.map { rows.prefix($0.wrappedValue) } ?? rows[...]
+                    ForEach(shown) { row in prRow(row) }
+                    if let limit {
+                        ShowMoreButton(remaining: rows.count - limit.wrappedValue, pageSize: Self.page) { limit.wrappedValue += Self.page }
+                            .padding(.horizontal, RecordRowMetrics.padding)
+                    }
+                }
+            } header: {
+                Button {
+                    withAnimation { isExpanded.wrappedValue.toggle() }
+                } label: {
+                    SectionHeader(title: title, count: rows.count, isExpanded: isExpanded.wrappedValue)
+                        .pinnedSectionHeader()
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
-    private func sectionHeader(_ title: String, count: Int, chevron: String? = nil) -> some View {
-        ListSectionHeader(title: title, count: count, chevron: chevron)
+    private func sectionHeader(_ title: String, count: Int) -> some View {
+        SectionHeader(title: title, count: count).pinnedSectionHeader()
     }
 
     @ToolbarContentBuilder

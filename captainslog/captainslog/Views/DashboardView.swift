@@ -106,7 +106,7 @@ struct DashboardView: View {
     }
 
     private var reviewRequestsPane: some View {
-        pane("Review Requests (\(reviewRequests.count))", destination: .pullRequests) {
+        pane("Review Requests", count: reviewRequests.count, destination: .pullRequests) {
             if reviewRequests.isEmpty {
                 emptyPaneLabel("Nothing to review")
             } else {
@@ -120,7 +120,7 @@ struct DashboardView: View {
     }
 
     private var myPRsPane: some View {
-        pane("My PRs (\(myDashboardPRs.count))", destination: .pullRequests) {
+        pane("My PRs", count: myDashboardPRs.count, destination: .pullRequests) {
             if myDashboardPRs.isEmpty {
                 emptyPaneLabel("No open PRs")
             } else {
@@ -134,7 +134,7 @@ struct DashboardView: View {
 
     // Same views as the Todos tab, minus the toolbar: reorder, expand, complete and drafts all come along.
     private var todosPane: some View {
-        pane("Today", destination: .todos, onAdd: { todoAddTick += 1 }) {
+        pane("Today", destination: .todos, onAdd: { todoAddTick += 1 }, addHelp: AppCommand.newTodo.help("Add Todo")) {
             TodoListContent(
                 scope: .smart(.today),
                 addTick: todoAddTick,
@@ -146,7 +146,7 @@ struct DashboardView: View {
     }
 
     private var logPane: some View {
-        pane("Log", destination: .log, onAdd: { logAddTick += 1 }) {
+        pane("Log", destination: .log, onAdd: { logAddTick += 1 }, addHelp: AppCommand.newLogEntry.help("Add Entry")) {
             LogListContent(
                 typeFilter: .constant(nil),
                 addTick: logAddTick,
@@ -159,25 +159,20 @@ struct DashboardView: View {
 
     private func pane<Content: View>(
         _ title: String,
+        count: Int? = nil,
         destination: SidebarItem,
         onAdd: (() -> Void)? = nil,
+        addHelp: String = "Add",
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                sectionHeader(title, destination: destination)
-                if let onAdd {
-                    Button(action: onAdd) {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
-                    .help("Add")
-                }
-                Spacer()
-            }
+            SectionHeader(
+                title: title,
+                count: count,
+                onOpen: { selectedSidebarItem = destination },
+                onAdd: onAdd,
+                addHelp: addHelp
+            )
             content()
         }
         .padding(12)
@@ -195,21 +190,6 @@ struct DashboardView: View {
     }
 
     // MARK: - PR rows
-
-    private func sectionHeader(_ title: String, destination: SidebarItem) -> some View {
-        Button { selectedSidebarItem = destination } label: {
-            HStack(spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .foregroundStyle(.primary)
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
-    }
 
     @ViewBuilder
     private func dashboardPRRow(_ pr: PullRequest) -> some View {

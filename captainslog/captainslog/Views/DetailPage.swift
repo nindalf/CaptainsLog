@@ -110,16 +110,20 @@ struct DetailTextProperty: View {
     }
 }
 
-/// A heading over a rounded box, as a grouped form section looks, without the form's layout.
+/// A section header over a rounded box, as a grouped form section looks, without the form's layout.
 struct DetailSection<Content: View, Accessory: View>: View {
     let title: String
+    var count: Int?
+    var onAdd: (() -> Void)?
+    var addHelp = "Add"
+    /// A control after the header, such as the debrief's date.
     @ViewBuilder var accessory: Accessory
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text(title).font(.headline)
+                SectionHeader(title: title, count: count, onAdd: onAdd, addHelp: addHelp)
                 accessory
             }
             .padding(.horizontal, 4)
@@ -134,28 +138,24 @@ struct DetailSection<Content: View, Accessory: View>: View {
 }
 
 extension DetailSection where Accessory == EmptyView {
-    init(_ title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.accessory = EmptyView()
-        self.content = content()
+    init(_ title: String, count: Int? = nil, onAdd: (() -> Void)? = nil, addHelp: String = "Add", @ViewBuilder content: () -> Content) {
+        self.init(title: title, count: count, onAdd: onAdd, addHelp: addHelp, accessory: { EmptyView() }, content: content)
     }
 }
 
 extension DetailSection {
     init(_ title: String, @ViewBuilder accessory: () -> Accessory, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.accessory = accessory()
-        self.content = content()
+        self.init(title: title, accessory: accessory, content: content)
     }
 }
 
-/// Rows in a `DetailSection`, divided as a grouped form divides them. Past `limit`, the rest wait
-/// behind a Show More row.
+/// Rows in a `DetailSection`, divided as a grouped form divides them. Past `limit`, the rest
+/// come a page of `limit` at a time.
 struct DetailRows<Data: RandomAccessCollection, Row: View>: View where Data.Element: Identifiable {
     let data: Data
     let limit: Int?
     @ViewBuilder var row: (Data.Element) -> Row
-    @State private var showsAll = false
+    @State private var shown: Int?
 
     init(data: Data, limit: Int? = nil, @ViewBuilder row: @escaping (Data.Element) -> Row) {
         self.data = data
@@ -163,14 +163,9 @@ struct DetailRows<Data: RandomAccessCollection, Row: View>: View where Data.Elem
         self.row = row
     }
 
-    private var hiddenCount: Int {
-        guard let limit else { return 0 }
-        return max(data.count - limit, 0)
-    }
-
     private var visible: [Data.Element] {
-        guard let limit, !showsAll else { return Array(data) }
-        return Array(data.prefix(limit))
+        guard let count = shown ?? limit else { return Array(data) }
+        return Array(data.prefix(count))
     }
 
     var body: some View {
@@ -178,14 +173,11 @@ struct DetailRows<Data: RandomAccessCollection, Row: View>: View where Data.Elem
             if index > 0 { Divider().padding(.vertical, 6) }
             row(element)
         }
-        if hiddenCount > 0 {
+        if let limit, data.count > visible.count {
             Divider().padding(.vertical, 6)
-            Button(showsAll ? "Show Less" : "Show \(hiddenCount) More") {
-                showsAll.toggle()
+            ShowMoreButton(remaining: data.count - visible.count, pageSize: limit) {
+                shown = visible.count + limit
             }
-            .buttonStyle(.plain)
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
     }
 }

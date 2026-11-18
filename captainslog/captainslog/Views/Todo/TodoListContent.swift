@@ -334,22 +334,10 @@ struct TodoListContent: View {
     @ViewBuilder
     private func projectHeading(_ id: UUID) -> some View {
         if let project = projects.first(where: { $0.id == id }) {
-            Button { navigator.todoSelection = .project(id) } label: {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Image(systemName: project.icon)
-                            .foregroundStyle(.blue)
-                        Text(project.name)
-                            .font(.headline)
-                            .lineLimit(1)
-                    }
-                    Divider()
-                }
+            SectionHeader(title: project.name, icon: project.icon, onOpen: { navigator.todoSelection = .project(id) })
                 .padding(.horizontal, 8)
+                .padding(.bottom, 6)
                 .frame(maxWidth: .infinity, minHeight: headingHeight, maxHeight: headingHeight, alignment: .bottomLeading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -387,28 +375,21 @@ struct TodoListContent: View {
     /// A section heading in People. Each name opens that person, as project headings open the
     /// project. Drags measure it, so it keeps exactly `headingHeight`.
     private func peopleHeading(_ people: [Person]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            PersonLinks(people: people)
-                .font(.headline)
-                .tint(.primary)
-                .lineLimit(1)
-            Divider()
-        }
-        .padding(.bottom, 4)
-        .padding(.horizontal, 8)
-        .frame(maxWidth: .infinity, minHeight: headingHeight, maxHeight: headingHeight, alignment: .bottomLeading)
+        PersonLinks(people: people)
+            .font(.headline)
+            .tint(.primary)
+            .lineLimit(1)
+            .padding(.bottom, 6)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, minHeight: headingHeight, maxHeight: headingHeight, alignment: .bottomLeading)
     }
 
     /// A date heading: in Upcoming it is a drag target, so it keeps exactly `headingHeight`.
     private func groupHeader(_ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.headline)
-            Divider()
-        }
-        .padding(.bottom, 4)
-        .padding(.horizontal, 8)
-        .frame(maxWidth: .infinity, minHeight: headingHeight, maxHeight: headingHeight, alignment: .bottomLeading)
+        SectionHeader(title: label)
+            .padding(.bottom, 6)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, minHeight: headingHeight, maxHeight: headingHeight, alignment: .bottomLeading)
     }
 
     @ViewBuilder

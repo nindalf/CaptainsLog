@@ -50,21 +50,7 @@ struct InterviewListView: View {
     }
 
     private func header(_ group: MonthGroup) -> some View {
-        let completed = group.interviews.count { $0.date <= .now }
-        let scheduled = group.interviews.count - completed
-        let summary = [
-            completed > 0 ? "\(completed) completed" : nil,
-            scheduled > 0 ? "\(scheduled) scheduled" : nil,
-        ].compactMap { $0 }.joined(separator: ", ")
-        return HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(group.label).font(.title3.bold())
-            Text(summary).font(.caption).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 16)
-        .padding(.bottom, 6)
-        .padding(.horizontal, 4)
-        .background(.background)
+        SectionHeader(title: group.label, count: group.interviews.count).pinnedSectionHeader()
     }
 }
 
