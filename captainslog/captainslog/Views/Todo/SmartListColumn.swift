@@ -3,9 +3,14 @@ import SwiftData
 import CaptainsLogKit
 
 /// The Todos tab's inner sidebar: Inbox, Today, Upcoming, Anytime, Someday, Logbook, then projects.
+/// Rows match the main sidebar's height, icon size and highlight, so it reads as a second level of
+/// navigation.
 // Plain buttons rather than List(selection:): the list did not highlight the stored selection on
 // launch, and it took arrow keys meant for the todo list beside it.
 struct SmartListColumn: View {
+    /// Wide enough for most projects' names; a longer one shows in full on hover.
+    static let width: CGFloat = 280
+
     @Binding var selection: TodoSelection
 
     @Environment(\.modelContext) private var modelContext
@@ -31,7 +36,7 @@ struct SmartListColumn: View {
         // Completed projects are in the Logbook.
         let openProjects = projects.filter { !$0.isCompleted }
         ScrollView {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 0) {
                 row(.inbox, count: counts[.inbox])
                 Spacer().frame(height: 12)
                 row(.today, count: counts[.today])
@@ -50,8 +55,9 @@ struct SmartListColumn: View {
                     projectRow(project, count: projectCounts[project.id])
                 }
             }
+            // Rows line up with the main sidebar's.
             .padding(.horizontal, 10)
-            .padding(.vertical, 10)
+            .padding(.bottom, 10)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(.background.secondary)
@@ -82,9 +88,7 @@ struct SmartListColumn: View {
 
     private func row(_ list: SmartList, count: Int? = nil) -> some View {
         rowButton(isSelected: selection == .smart(list), action: { selection = .smart(list) }) {
-            Image(systemName: list.systemImage)
-                .foregroundStyle(list.tint)
-                .frame(width: 18)
+            icon(list.systemImage, tint: list.tint)
             Text(list.title)
             Spacer()
             countLabel(count)
@@ -93,11 +97,10 @@ struct SmartListColumn: View {
 
     private func projectRow(_ project: Project, count: Int?) -> some View {
         rowButton(isSelected: selection == .project(project.id), action: { selection = .project(project.id) }) {
-            Image(systemName: project.icon)
-                .foregroundStyle(.blue)
-                .frame(width: 18)
+            icon(project.icon, tint: .blue)
             Text(project.name)
                 .lineLimit(1)
+                .help(project.name)
             Spacer()
             countLabel(count)
         }
@@ -115,19 +118,29 @@ struct SmartListColumn: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 8) { label() }
+                .fontWeight(isSelected ? .semibold : .regular)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(isSelected ? Color.primary.opacity(0.1) : .clear, in: .rect(cornerRadius: 6))
+                .frame(height: 32)
+                .background(isSelected ? Color.primary.opacity(0.1) : .clear, in: .rect(cornerRadius: 8))
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+    }
+
+    /// The main sidebar's icon size.
+    private func icon(_ name: String, tint: Color) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 15))
+            .foregroundStyle(tint)
+            .frame(width: 22)
     }
 
     @ViewBuilder
     private func countLabel(_ count: Int?) -> some View {
         if let count, count > 0 {
             Text("\(count)")
-                .font(.caption)
+                .font(.callout)
+                .fontWeight(.regular)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
         }

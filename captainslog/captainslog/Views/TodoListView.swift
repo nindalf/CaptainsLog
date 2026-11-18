@@ -24,7 +24,7 @@ struct TodoListView: View {
         @Bindable var navigator = navigator
         HStack(spacing: 0) {
             SmartListColumn(selection: $navigator.todoSelection)
-                .frame(width: 200)
+                .frame(width: SmartListColumn.width)
             Divider()
             VStack(spacing: 0) {
                 if let selectedProject {
