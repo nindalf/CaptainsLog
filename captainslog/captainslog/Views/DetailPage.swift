@@ -5,6 +5,7 @@ import CaptainsLogKit
 /// and `DetailSection`s. Replaces the grouped `Form`, whose rows push values far from their labels.
 struct DetailPage<Content: View>: View {
     @ViewBuilder var content: Content
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -14,6 +15,12 @@ struct DetailPage<Content: View>: View {
             .contentColumn()
             .padding(.vertical, 20)
         }
+        // The page takes focus on arrival, as tabs do. Left alone, SwiftUI hands it to the title
+        // with its text selected, so a keystroke would replace it.
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isFocused)
+        .onAppear { DispatchQueue.main.async { isFocused = true } }
         // The page's own title replaces the toolbar's.
         .navigationTitle("")
     }

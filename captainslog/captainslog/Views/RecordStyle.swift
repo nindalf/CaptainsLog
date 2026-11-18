@@ -49,6 +49,14 @@ extension CalendarEvent {
     }
 }
 
+/// The row `delta` rows from `current` among `ids`, clamped to the ends; with nothing selected,
+/// the first row going down or the last going up.
+func movedSelection<ID: Equatable>(_ current: ID?, by delta: Int, in ids: [ID]) -> ID? {
+    guard !ids.isEmpty else { return nil }
+    guard let current, let index = ids.firstIndex(of: current) else { return delta > 0 ? ids.first : ids.last }
+    return ids[max(0, min(ids.count - 1, index + delta))]
+}
+
 /// Whether the click being handled is the second of a double-click.
 @MainActor
 var isDoubleClick: Bool { (NSApp.currentEvent?.clickCount ?? 1) > 1 }

@@ -17,26 +17,3 @@ extension View {
             .frame(maxWidth: .infinity)
     }
 }
-
-/// A row in a content-column list that opens a page, padded like the Log and PR rows.
-/// Stands in for a `List` row, whose width can't be capped without moving the scroller.
-struct NavigationRow<Value: Hashable, Label: View>: View {
-    let value: Value
-    /// Off for a `RecordRow`, which pads itself.
-    var isPadded = true
-    @ViewBuilder var label: Label
-    @State private var isHovered = false
-
-    var body: some View {
-        NavigationLink(value: value) {
-            label
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, isPadded ? 12 : 0)
-                .padding(.vertical, isPadded ? 6 : 0)
-                .background(isHovered ? Color.primary.opacity(0.05) : .clear, in: .rect(cornerRadius: 6))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-    }
-}

@@ -3,6 +3,7 @@ import SwiftData
 import CaptainsLogKit
 
 struct CalendarWeekView: View {
+    @FocusState private var isFocused: Bool
     @Environment(\.modelContext) private var modelContext
     @Environment(Navigator.self) private var navigator
     @Environment(AppSettings.self) private var settings
@@ -78,6 +79,11 @@ struct CalendarWeekView: View {
                 unlinkedEvent = nil
             }
         }
+        // Takes focus on arrival, as every tab does, so its keys work at once.
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isFocused)
+        .onAppear { DispatchQueue.main.async { isFocused = true } }
         .onKeyPress(.leftArrow) {
             shiftWeek(by: -1)
             return .handled

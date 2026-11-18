@@ -10,6 +10,8 @@ struct PeopleListView: View {
     @State private var showRosterExport = false
     @State private var rosterError: String?
     @State private var showAddPerson = false
+    @State private var selectedID: UUID?
+    @FocusState private var listFocused: Bool
     @Environment(Navigator.self) private var navigator
 
     private var people: [Person] {
@@ -49,14 +51,26 @@ struct PeopleListView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(people) { person in
-                            NavigationRow(value: person) {
-                                PersonRow(person: person)
-                            }
+                            PersonRow(person: person)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(selectedID == person.id ? Color.accentColor.opacity(0.08) : .clear, in: .rect(cornerRadius: 6))
+                                .contentShape(Rectangle())
+                                .onRecordClick(select: { selectedID = person.id }, open: { open(person) })
                         }
                     }
                     .contentColumn()
                     .padding(.vertical, 8)
                 }
+                .focusable()
+                .focusEffectDisabled()
+                .focused($listFocused)
+                .onAppear { DispatchQueue.main.async { listFocused = true } }
+                .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1); return .handled }
+                .onKeyPress(.downArrow, phases: [.down, .repeat]) { _ in moveSelection(by: 1); return .handled }
+                .onKeyPress(.return, phases: .down) { _ in openSelected() }
+                .selectionCommands(CommandHandlers(), claimsOnAppear: true, selection: selectedID) { listFocused = true }
             }
         }
         .navigationTitle("People")
@@ -96,6 +110,21 @@ struct PeopleListView: View {
         handlers[.importRoster] = { chooseRoster() }
         handlers[.exportRoster] = { showRosterExport = true }
         return handlers
+    }
+
+    private func moveSelection(by delta: Int) {
+        selectedID = movedSelection(selectedID, by: delta, in: people.map(\.id))
+    }
+
+    private func openSelected() -> KeyPress.Result {
+        guard let person = people.first(where: { $0.id == selectedID }) else { return .ignored }
+        open(person)
+        return .handled
+    }
+
+    private func open(_ person: Person) {
+        selectedID = person.id
+        navigator.openPerson(person)
     }
 
     private func chooseRoster() {

@@ -36,6 +36,7 @@ struct DashboardView: View {
     @State private var prExpandedID: UUID?
     @FocusState private var prFocusField: PRFocusField?
     @State private var todoAddTick = 0
+    @FocusState private var isFocused: Bool
     @State private var logAddTick = 0
 
     var body: some View {
@@ -81,6 +82,11 @@ struct DashboardView: View {
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .navigationTitle("Dashboard")
+        // Takes focus on arrival, as every tab does; its panes' lists take it when clicked.
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isFocused)
+        .onAppear { DispatchQueue.main.async { isFocused = true } }
         .popover(item: $unlinkedEvent) { event in
             CalendarEventPopover(event: event) { action in
                 handleEventAction(event, action: action)
