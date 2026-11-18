@@ -39,17 +39,35 @@ struct SearchView: View {
 
     private var query: String { navigator.searchQuery }
 
+    /// The results grouped by kind, each group where its best result ranked.
+    private var groups: [(kind: SearchKind, rows: [SearchRow])] {
+        let filtered = kindFilter.map { kind in rows.filter { $0.hit.kind == kind } } ?? rows
+        var order: [SearchKind] = []
+        var byKind: [SearchKind: [SearchRow]] = [:]
+        for row in filtered {
+            if byKind[row.hit.kind] == nil { order.append(row.hit.kind) }
+            byKind[row.hit.kind, default: []].append(row)
+        }
+        return order.map { ($0, byKind[$0] ?? []) }
+    }
+
+    /// The rows on screen, in order.
     private var visibleRows: [SearchRow] {
-        guard let kindFilter else { return rows }
-        return rows.filter { $0.hit.kind == kindFilter }
+        groups.flatMap(\.rows)
     }
 
     var body: some View {
         @Bindable var navigator = navigator
         ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(visibleRows) { row in
-                    resultRow(row)
+            LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
+                ForEach(groups, id: \.kind) { group in
+                    Section {
+                        ForEach(group.rows) { row in
+                            resultRow(row)
+                        }
+                    } header: {
+                        ListSectionHeader(title: group.kind.label, count: group.rows.count)
+                    }
                 }
             }
             .contentColumn()

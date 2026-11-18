@@ -52,8 +52,6 @@ struct AllDayBandView: View {
     }
 
     private func eventColor(_ event: CalendarEvent) -> Color {
-        if event.meeting != nil { return .blue }
-        if event.interview != nil { return .green }
-        return .secondary
+        event.meeting == nil && event.interview == nil ? .secondary : event.recordColor
     }
 }

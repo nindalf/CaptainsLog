@@ -33,6 +33,45 @@ enum RecordKind {
     }
 }
 
+extension CalendarEvent {
+    /// An interview's or meeting's colour; grey for an event with neither.
+    var recordColor: Color {
+        if interview != nil { return RecordKind.interview.color }
+        if meeting != nil { return RecordKind.meeting.color }
+        return .gray
+    }
+}
+
+/// The heading over a group of rows in a tab's list: its title and a plain count, pinned as the
+/// list scrolls. With a chevron, the heading collapses its group.
+struct ListSectionHeader: View {
+    let title: String
+    let count: Int
+    var chevron: String?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Text("\(count)")
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+            if let chevron {
+                Image(systemName: chevron)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .font(.headline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 16)
+        .padding(.bottom, 6)
+        .padding(.horizontal, 8)
+        .background(.background)
+        .contentShape(Rectangle())
+    }
+}
+
 /// A record's icon at the head of its row.
 struct RecordIcon: View {
     let kind: RecordKind
@@ -155,6 +194,44 @@ extension Recommendation {
         case .no: .orange
         case .definitelyNot: .red
         }
+    }
+}
+
+/// A small icon after a title that stands for a linked record or a property, in the record's colour,
+/// with a tooltip saying what it is. With an action, a click opens what it stands for.
+struct RecordBadge: View {
+    let icon: String
+    var color: Color?
+    let help: String
+    var action: (() -> Void)?
+
+    init(_ kind: RecordKind, help: String, action: (() -> Void)? = nil) {
+        self.icon = kind.icon
+        self.color = kind.color
+        self.help = help
+        self.action = action
+    }
+
+    init(icon: String, help: String) {
+        self.icon = icon
+        self.help = help
+    }
+
+    var body: some View {
+        let image = Image(systemName: icon)
+            .font(.caption)
+            .foregroundStyle(color.map(AnyShapeStyle.init) ?? AnyShapeStyle(.secondary))
+            .contentShape(.rect)
+        Group {
+            if let action {
+                Button(action: action) { image }
+                    .buttonStyle(.plain)
+            } else {
+                image
+            }
+        }
+        .help(help)
+        .accessibilityLabel(help)
     }
 }
 

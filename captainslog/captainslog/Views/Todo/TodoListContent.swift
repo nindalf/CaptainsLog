@@ -480,6 +480,12 @@ struct TodoListContent: View {
         scope.projectID == nil && !isGroupedByProject ? todo.project?.name : nil
     }
 
+    /// In Upcoming's month groups, each todo's day, which the heading doesn't say.
+    private func upcomingDay(for todo: Todo) -> String? {
+        guard scope == .smart(.upcoming), let due = todo.dueDate, TodoUpcomingGroup.isInMonthGroup(due) else { return nil }
+        return DateLabel.day(due)
+    }
+
     private func collapsedRow(for todo: Todo) -> some View {
         TodoRowView(
             todo: todo,
@@ -487,6 +493,7 @@ struct TodoListContent: View {
             isCompleting: false,
             showsTodayStar: (scope.projectID != nil || scope == .smart(.anytime)) && SmartList.today.contains(todo),
             subtitle: projectName(for: todo),
+            trailing: upcomingDay(for: todo),
             onSelect: { handleRowClick(todo) },
             onExpand: { expandTodo(todo) },
             onComplete: { toggleComplete(todo) }

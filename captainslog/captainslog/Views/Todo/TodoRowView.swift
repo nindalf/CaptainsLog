@@ -65,6 +65,7 @@ struct TodoRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .padding(.trailing, compact ? 0 : 12)
             }
         }
         .frame(maxWidth: .infinity, minHeight: compact ? 28 : 44, alignment: .leading)

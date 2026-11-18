@@ -110,8 +110,6 @@ struct DashboardAgenda: View {
     }
 
     static func color(_ event: CalendarEvent) -> Color {
-        if event.meeting != nil { return .blue }
-        if event.interview != nil { return .green }
-        return .gray
+        event.recordColor
     }
 }

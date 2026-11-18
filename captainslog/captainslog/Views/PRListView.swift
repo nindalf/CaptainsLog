@@ -196,25 +196,7 @@ struct PRListView: View {
     }
 
     private func sectionHeader(_ title: String, count: Int, chevron: String? = nil) -> some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .foregroundStyle(.secondary)
-            Text("\(count)")
-                .foregroundStyle(.tertiary)
-                .monospacedDigit()
-            if let chevron {
-                Image(systemName: chevron)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .font(.headline)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 16)
-        .padding(.bottom, 6)
-        .padding(.horizontal, 8)
-        .background(.background)
-        .contentShape(Rectangle())
+        ListSectionHeader(title: title, count: count, chevron: chevron)
     }
 
     @ToolbarContentBuilder
