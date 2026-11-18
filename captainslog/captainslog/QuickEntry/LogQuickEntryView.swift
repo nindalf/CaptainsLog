@@ -41,7 +41,7 @@ struct LogQuickEntryView: View {
             }
             MarkdownEditor(
                 text: $draft.content,
-                placeholder: "Content",
+                placeholder: "Notes",
                 minHeight: 44,
                 maxHeight: 220,
                 showSlackControls: false,
