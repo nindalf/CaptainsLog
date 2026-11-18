@@ -167,11 +167,11 @@ enum AppCommand: Hashable, Identifiable {
 
     /// Every command, in the palette's order, with the tabs in the sidebar's.
     static func all(tabs: [SidebarItem] = SidebarItem.allCases) -> [AppCommand] {
-        [.newLogEntry, .newTodo]
+        [.newLogEntry, .newTodo, .findEverywhere]
             + [.complete, .today, .someday, .when, .dayLater, .dayEarlier, .moveToProject, .delete]
             + [.openMeeting, .join, .openInGitHub, .addFeedback, .addPerson, .mergePerson, .importRoster, .exportRoster, .emptyTrash]
             + tabs.map(AppCommand.goTo) + SmartList.allCases.map(AppCommand.todoList)
-            + [.back, .findInTab, .findEverywhere, .sync, .toggleSidebar, .settings]
+            + [.back, .findInTab, .sync, .toggleSidebar, .settings]
     }
 }
 
