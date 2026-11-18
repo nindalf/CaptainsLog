@@ -163,7 +163,7 @@ struct SearchView: View {
                 .contextMenu { PRContextMenu(pr: pr) }
         default:
             SearchResultRow(row: row, terms: SearchMatch.terms(of: searchedQuery), isSelected: selectedID == row.id)
-                .onRecordClick(select: {
+                .onRecordClick(isSelected: selectedID == row.id, select: {
                     if selectedID != row.id { collapse() }
                     selectedID = row.id
                 }, open: { open(row) })
@@ -206,13 +206,7 @@ struct SearchView: View {
     // MARK: - Keys
 
     private func moveSelection(by delta: Int) {
-        let ids = visibleRows.map(\.id)
-        guard !ids.isEmpty else { return }
-        if let selectedID, let index = ids.firstIndex(of: selectedID) {
-            self.selectedID = ids[max(0, min(ids.count - 1, index + delta))]
-        } else {
-            selectedID = delta > 0 ? ids.first : ids.last
-        }
+        selectedID = movedSelection(selectedID, by: delta, in: visibleRows.map(\.id))
     }
 
     private func handleReturn(_ keyPress: KeyPress) -> KeyPress.Result {

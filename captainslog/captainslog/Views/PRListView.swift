@@ -52,7 +52,7 @@ struct PRListView: View {
     private var finished: (shipped: [Row], older: [Row]) {
         let weekStart = Calendar.current.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
         let rows = donePRs
-            .map { Row(pr: $0, attention: $0.state == .merged ? .merged : .closed) }
+            .map { Row(pr: $0, attention: $0.attention()) }
             .sorted { $0.attention.since($0.pr) > $1.attention.since($1.pr) }
         let shipped = rows.filter { $0.attention == .merged && $0.attention.since($0.pr) >= weekStart }
         let shippedIDs = Set(shipped.map(\.id))
@@ -92,37 +92,39 @@ struct PRListView: View {
     private var prList: some View {
         let sections = sections
         let (shipped, older) = finished
-        return ScrollViewReader { proxy in ScrollView {
-            LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                section("Needs You", sections.needsMe)
-                section("Waiting on Others", sections.waiting)
-                if !sections.inFlight.isEmpty {
-                    Section {
-                        ForEach(sections.inFlight.prefix(teamLimit)) { row in prRow(row) }
-                        ShowMoreButton(remaining: sections.inFlight.count - teamLimit, pageSize: Self.page) { teamLimit += Self.page }
-                            .padding(.horizontal, RecordRowMetrics.padding)
-                    } header: {
-                        sectionHeader("Team in Flight", count: sections.inFlight.count)
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
+                    // Nothing open, though finished PRs may follow.
+                    if openPRs.isEmpty {
+                        emptyState
+                            .padding(.vertical, 40)
                     }
+                    section("Needs You", sections.needsMe)
+                    section("Waiting on Others", sections.waiting)
+                    if !sections.inFlight.isEmpty {
+                        Section {
+                            ForEach(sections.inFlight.prefix(teamLimit)) { row in prRow(row) }
+                            ShowMoreButton(remaining: sections.inFlight.count - teamLimit, pageSize: Self.page) { teamLimit += Self.page }
+                                .padding(.horizontal, RecordRowMetrics.padding)
+                        } header: {
+                            sectionHeader("Team in Flight", count: sections.inFlight.count)
+                        }
+                    }
+                    collapsibleSection("Shipped This Week", shipped, isExpanded: $showsShipped)
+                    collapsibleSection("Older", older, isExpanded: $showsOlder, limit: $olderLimit)
                 }
-                collapsibleSection("Shipped This Week", shipped, isExpanded: $showsShipped)
-                collapsibleSection("Older", older, isExpanded: $showsOlder, limit: $olderLimit)
-                if openPRs.isEmpty && donePRs.isEmpty {
-                    emptyState
-                        .padding(.top, 40)
-                }
+                .contentColumn()
             }
-            .contentColumn()
-        }
-        .onAppear { revealRequestedPR(proxy) }
-        .onChange(of: navigator.revealRecordID) { revealRequestedPR(proxy) }
+            .onAppear { revealRequestedPR(proxy) }
+            .onChange(of: navigator.revealRecordID) { revealRequestedPR(proxy) }
         }
         .contentShape(Rectangle())
         .onTapGesture { collapseCard() }
         .focusable()
         .focusEffectDisabled()
         .focused($focusedField, equals: .list)
-        .onAppear { DispatchQueue.main.async { focusedField = .list } }
+        .onAppear { DispatchQueue.main.async { if expandedID == nil { focusedField = .list } } }
         .onKeyPress(.return, phases: .down) { handleReturn($0) }
         .onKeyPress(.escape) { handleEscape() }
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1); return .handled }
@@ -227,7 +229,7 @@ struct PRListView: View {
                 .contextMenu { PRContextMenu(pr: row.pr) }
         } else {
             PRRecordRow(pr: row.pr, attention: row.attention, isSelected: selectedID == row.pr.id)
-                .onRecordClick(select: {
+                .onRecordClick(isSelected: selectedID == row.pr.id, select: {
                     if selectedID != row.pr.id { collapseCard() }
                     selectedID = row.pr.id
                 }, open: { expandPR(row.pr) })
@@ -237,9 +239,11 @@ struct PRListView: View {
 
     // MARK: - Expand / collapse
 
-    /// A PR opened from elsewhere: its section opened far enough to show it, expanded and scrolled to.
+    /// A PR opened from elsewhere: its section opened far enough to show it, expanded and scrolled
+    /// to. Focus goes to its notes once the rows the section opened are laid out.
     private func revealRequestedPR(_ proxy: ScrollViewProxy) {
         guard let id = navigator.revealRecordID else { return }
+        navigator.revealRecordID = nil
         let sections = sections
         let (shipped, older) = finished
         if let index = sections.inFlight.firstIndex(where: { $0.id == id }) {
@@ -252,12 +256,12 @@ struct PRListView: View {
         } else if !(sections.needsMe + sections.waiting).contains(where: { $0.id == id }) {
             return
         }
-        navigator.revealRecordID = nil
-        guard let pr = (openPRs + donePRs).first(where: { $0.id == id }) else { return }
-        expandPR(pr)
-        // After the section it opened has laid out its rows.
+        selectedID = id
+        expandedID = id
+        // A turn isn't always enough for a section that just opened.
         Task {
             try? await Task.sleep(for: .milliseconds(150))
+            focusedField = .notes(id)
             withAnimation { proxy.scrollTo(id, anchor: .center) }
         }
     }
@@ -276,14 +280,7 @@ struct PRListView: View {
     // MARK: - Selection
 
     private func moveSelection(by delta: Int) {
-        let ids = shownRows.map(\.pr.id)
-        guard !ids.isEmpty else { return }
-        if let selectedID, let index = ids.firstIndex(of: selectedID) {
-            let newIndex = max(0, min(ids.count - 1, index + delta))
-            self.selectedID = ids[newIndex]
-        } else {
-            selectedID = delta > 0 ? ids.first : ids.last
-        }
+        selectedID = movedSelection(selectedID, by: delta, in: shownRows.map(\.pr.id))
     }
 
     // MARK: - Key handlers
@@ -338,6 +335,8 @@ struct PRContextMenu: View {
 struct PRCardView: View {
     @Bindable var pr: PullRequest
     var focusedField: FocusState<PRFocusField?>.Binding
+    /// The row's, so the card's first line says what the row did.
+    var date: RowDate?
     var onCollapse: () -> Void
     @Query(sort: \Project.sortOrder) private var projects: [Project]
 
@@ -350,7 +349,7 @@ struct PRCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PRRecordRow(pr: pr)
+            PRRecordRow(pr: pr, date: date)
             details
                 .padding(.leading, RecordRowMetrics.titleInset)
                 .padding(.trailing, 12)

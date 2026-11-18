@@ -40,19 +40,10 @@ final class Navigator {
         selectedItem = item
     }
 
-    func openPerson(_ person: Person) { push(person) }
-    func openMeeting(_ meeting: Meeting) { push(meeting) }
-    func openInterview(_ interview: Interview) { push(interview) }
-
-    /// Leaving a focused view, such as the todo list, hands focus to the new page's first field
-    /// with its text selected, so a keystroke would replace a person's name or a meeting's title.
-    /// Focus is dropped once the page is up, since SwiftUI moves it after the push.
-    private func push<Value: Hashable>(_ value: Value) {
-        path.append(value)
-        DispatchQueue.main.async {
-            NSApp.keyWindow?.makeFirstResponder(nil)
-        }
-    }
+    // A pushed page takes focus itself (`DetailPage`), so its title doesn't arrive selected.
+    func openPerson(_ person: Person) { path.append(person) }
+    func openMeeting(_ meeting: Meeting) { path.append(meeting) }
+    func openInterview(_ interview: Interview) { path.append(interview) }
 
     /// Switches to the Todos tab, on the todo's home list, with the todo selected.
     func openTodo(_ todo: Todo) {
@@ -64,7 +55,7 @@ final class Navigator {
     func openPullRequest(_ pr: PullRequest) { reveal(pr.id, on: .pullRequests) }
     func openLogEntry(_ entry: LogEntry) { reveal(entry.id, on: .log) }
 
-    /// From the same tab too, back at its list.
+    /// Pops any page too, which `select` does only when the tab changes.
     private func reveal(_ id: UUID, on item: SidebarItem) {
         revealRecordID = id
         path = NavigationPath()

@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import CaptainsLogKit
 
@@ -49,25 +48,7 @@ extension CalendarEvent {
     }
 }
 
-/// The row `delta` rows from `current` among `ids`, clamped to the ends; with nothing selected,
-/// the first row going down or the last going up.
-func movedSelection<ID: Equatable>(_ current: ID?, by delta: Int, in ids: [ID]) -> ID? {
-    guard !ids.isEmpty else { return nil }
-    guard let current, let index = ids.firstIndex(of: current) else { return delta > 0 ? ids.first : ids.last }
-    return ids[max(0, min(ids.count - 1, index + delta))]
-}
-
-/// Whether the click being handled is the second of a double-click.
-@MainActor
-var isDoubleClick: Bool { (NSApp.currentEvent?.clickCount ?? 1) > 1 }
-
 extension View {
-    /// The one rule for a record in a list: a click selects it; a double-click, like Return, opens
-    /// it. A record with notes opens as a page, a one-line record expands in place.
-    func onRecordClick(select: @escaping () -> Void, open: @escaping () -> Void) -> some View {
-        onTapGesture { if isDoubleClick { open() } else { select() } }
-    }
-
     /// The card a one-line record expands into in place: raised off the list by a border and a
     /// shadow, so edit mode is plain to see.
     func recordCard() -> some View {
@@ -132,7 +113,7 @@ struct RecordRow<Leading: View, Title: View, Secondary: View, Trailing: View>: V
         .frame(maxWidth: .infinity, minHeight: isPadded ? 44 : 32, alignment: .leading)
         .padding(.horizontal, isPadded ? RecordRowMetrics.padding : 0)
         .padding(.vertical, isPadded ? 4 : 0)
-        .background(isSelected ? Color.accentColor.opacity(0.08) : .clear, in: .rect(cornerRadius: 6))
+        .selectionHighlight(isSelected)
         .contentShape(Rectangle())
     }
 }

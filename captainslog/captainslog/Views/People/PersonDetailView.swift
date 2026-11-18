@@ -92,7 +92,7 @@ struct PersonDetailView: View {
                 DetailSection("Meetings", count: meetings.count) {
                     DetailRows(data: meetings, limit: Self.rowLimit) { meeting in
                         MeetingRecordRow(meeting: meeting, date: .day(meeting.date), isSelected: selectedRowID == meeting.id, isPadded: false)
-                            .onRecordClick(select: { selectedRowID = meeting.id }, open: { navigator.openMeeting(meeting) })
+                            .onRecordClick(isSelected: selectedRowID == meeting.id, select: { select(meeting.id) }, open: { navigator.openMeeting(meeting) })
                     }
                 }
             }
@@ -100,7 +100,7 @@ struct PersonDetailView: View {
                 DetailSection("Interviews", count: interviews.count) {
                     DetailRows(data: interviews) { interview in
                         InterviewRecordRow(interview: interview, date: .day(interview.date), isSelected: selectedRowID == interview.id, isPadded: false)
-                            .onRecordClick(select: { selectedRowID = interview.id }, open: { navigator.openInterview(interview) })
+                            .onRecordClick(isSelected: selectedRowID == interview.id, select: { select(interview.id) }, open: { navigator.openInterview(interview) })
                     }
                 }
             }
@@ -109,7 +109,7 @@ struct PersonDetailView: View {
                     DetailRows(data: logEntries) { entry in
                         // Opens on the Log, where its card lives.
                         LogRecordRow(entry: entry, date: .day(entry.timestamp), isSelected: selectedRowID == entry.id, isPadded: false)
-                            .onRecordClick(select: { selectedRowID = entry.id }, open: { navigator.openLogEntry(entry) })
+                            .onRecordClick(isSelected: selectedRowID == entry.id, select: { select(entry.id) }, open: { navigator.openLogEntry(entry) })
                     }
                 }
             }
@@ -162,8 +162,8 @@ struct PersonDetailView: View {
                     )
                 } else {
                     FeedbackSummaryRow(feedback: item)
-                        .background(selectedRowID == item.id ? Color.accentColor.opacity(0.08) : .clear, in: .rect(cornerRadius: 6))
-                        .onRecordClick(select: { selectedRowID = item.id }, open: { expandedFeedbackID = item.id })
+                        .selectionHighlight(selectedRowID == item.id)
+                        .onRecordClick(isSelected: selectedRowID == item.id, select: { select(item.id) }, open: { expandedFeedbackID = item.id })
                 }
             }
         }
@@ -173,18 +173,21 @@ struct PersonDetailView: View {
         .onDisappear { deleteIfBlank(expandedFeedbackID) }
     }
 
+    /// Selecting any row on the page closes an open PR card.
+    private func select(_ id: UUID) {
+        selectedRowID = id
+        if expandedPRID != id { expandedPRID = nil }
+    }
+
     /// Expands in place, as on the PR tab.
     @ViewBuilder
     private func prRow(_ pr: PullRequest) -> some View {
         if expandedPRID == pr.id {
-            PRCardView(pr: pr, focusedField: $prFocus, onCollapse: { expandedPRID = nil })
+            PRCardView(pr: pr, focusedField: $prFocus, date: .day(pr.createdAt), onCollapse: { expandedPRID = nil })
                 .contextMenu { PRContextMenu(pr: pr) }
         } else {
             PRRecordRow(pr: pr, date: .day(pr.createdAt), isSelected: selectedRowID == pr.id, isPadded: false)
-                .onRecordClick(select: {
-                    selectedRowID = pr.id
-                    expandedPRID = nil
-                }, open: {
+                .onRecordClick(isSelected: selectedRowID == pr.id, select: { select(pr.id) }, open: {
                     selectedRowID = pr.id
                     expandedPRID = pr.id
                     prFocus = .notes(pr.id)

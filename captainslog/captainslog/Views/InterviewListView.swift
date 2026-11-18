@@ -28,12 +28,12 @@ struct InterviewListView: View {
                     Section {
                         ForEach(group.interviews) { interview in
                             InterviewRecordRow(interview: interview, date: .dayTime(interview.date), isSelected: selectedID == interview.id)
-                                .onRecordClick(select: { selectedID = interview.id }, open: { open(interview) })
-                            .contextMenu {
-                                Button("Delete Interview…", systemImage: "trash", role: .destructive) {
-                                    pendingDelete = .interview(interview)
+                                .onRecordClick(isSelected: selectedID == interview.id, select: { selectedID = interview.id }, open: { open(interview) })
+                                .contextMenu {
+                                    Button("Delete Interview…", systemImage: "trash", role: .destructive) {
+                                        pendingDelete = .interview(interview)
+                                    }
                                 }
-                            }
                         }
                     } header: {
                         header(group)
@@ -49,6 +49,12 @@ struct InterviewListView: View {
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1); return .handled }
         .onKeyPress(.downArrow, phases: [.down, .repeat]) { _ in moveSelection(by: 1); return .handled }
         .onKeyPress(.return, phases: .down) { _ in openSelected() }
+        // The Delete key arrives as U+007F, which `.delete` doesn't match.
+        .onKeyPress(phases: .down) { press in
+            guard press.characters == "\u{7F}" || press.key == .deleteForward, let interview = selectedInterview else { return .ignored }
+            pendingDelete = .interview(interview)
+            return .handled
+        }
         .selectionCommands(selectionCommands, claimsOnAppear: true, selection: selectedID) { listFocused = true }
         .overlay {
             if interviews.isEmpty {

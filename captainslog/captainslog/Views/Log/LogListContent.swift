@@ -108,7 +108,7 @@ struct LogListContent: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focusedField, equals: .list)
-        .onAppear { if focusesOnAppear { DispatchQueue.main.async { focusedField = .list } } }
+        .onAppear { if focusesOnAppear { DispatchQueue.main.async { if expandedID == nil { focusedField = .list } } } }
         .onKeyPress(.return, phases: .down) { handleReturnKey($0) }
         .onKeyPress(.escape) { handleEscape() }
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in handleArrow(delta: -1) }
@@ -192,7 +192,7 @@ struct LogListContent: View {
             logEntryRow(entry)
         case .meeting, .interview:
             FeedRowView(item: item, isSelected: selectedID == item.id)
-                .onRecordClick(select: { select(item.id) }, open: { openPage(item) })
+                .onRecordClick(isSelected: selectedID == item.id, select: { select(item.id) }, open: { openPage(item) })
                 .contextMenu { deleteMenu(item) }
         case .pullRequest(let pr):
             pullRequestRow(pr)
@@ -226,7 +226,7 @@ struct LogListContent: View {
             .contextMenu { deleteMenu(.log(entry)) }
         } else {
             FeedRowView(item: .log(entry), isSelected: selectedID == entry.id)
-                .onRecordClick(select: { select(entry.id) }, open: { expand(entry.id) })
+                .onRecordClick(isSelected: selectedID == entry.id, select: { select(entry.id) }, open: { expand(entry.id) })
                 .contextMenu { deleteMenu(.log(entry)) }
         }
     }
@@ -244,7 +244,7 @@ struct LogListContent: View {
             .contextMenu { PRContextMenu(pr: pr) }
         } else {
             FeedRowView(item: .pullRequest(pr), isSelected: selectedID == pr.id)
-                .onRecordClick(select: { select(pr.id) }, open: { expand(pr.id) })
+                .onRecordClick(isSelected: selectedID == pr.id, select: { select(pr.id) }, open: { expand(pr.id) })
                 .contextMenu { PRContextMenu(pr: pr) }
         }
     }
@@ -264,7 +264,7 @@ struct LogListContent: View {
             FeedRowView(item: .todo(todo), isSelected: selectedID == todo.id, onReopen: {
                 ReopenConfirmation.request([todo], pending: &pendingReopen, in: modelContext)
             })
-            .onRecordClick(select: { select(todo.id) }, open: { expand(todo.id) })
+            .onRecordClick(isSelected: selectedID == todo.id, select: { select(todo.id) }, open: { expand(todo.id) })
             .contextMenu { deleteMenu(.todo(todo)) }
         }
     }
@@ -330,17 +330,23 @@ struct LogListContent: View {
         return nil
     }
 
-    /// Opens a log entry's, completed todo's or PR's card, in its title or, for a PR, whose title
-    /// is GitHub's, its notes.
     /// A log entry opened from elsewhere: shown whatever the filter, expanded and scrolled to.
+    /// Focus goes to its title next turn, after the list's own arrival focus.
     private func revealRequestedEntry(_ proxy: ScrollViewProxy) {
         guard let id = navigator.revealRecordID, logEntries.contains(where: { $0.id == id }) else { return }
         navigator.revealRecordID = nil
+        commitDraft()
         if typeFilter != nil && typeFilter != .log { typeFilter = nil }
-        expand(id)
-        DispatchQueue.main.async { proxy.scrollTo(id, anchor: .center) }
+        selectedID = id
+        expandedID = id
+        DispatchQueue.main.async {
+            focusedField = .title(id)
+            proxy.scrollTo(id, anchor: .center)
+        }
     }
 
+    /// Opens a log entry's, completed todo's or PR's card, in its title or, for a PR, whose title
+    /// is GitHub's, its notes.
     private func expand(_ id: UUID) {
         commitDraft()
         selectedID = id
@@ -357,14 +363,7 @@ struct LogListContent: View {
     // MARK: - Selection
 
     private func moveSelection(by delta: Int) {
-        let ids = flatItemIDs
-        guard !ids.isEmpty else { return }
-        if let selectedID, let index = ids.firstIndex(of: selectedID) {
-            let newIndex = max(0, min(ids.count - 1, index + delta))
-            self.selectedID = ids[newIndex]
-        } else {
-            selectedID = delta > 0 ? ids.first : ids.last
-        }
+        selectedID = movedSelection(selectedID, by: delta, in: flatItemIDs)
     }
 
     // MARK: - Key handlers

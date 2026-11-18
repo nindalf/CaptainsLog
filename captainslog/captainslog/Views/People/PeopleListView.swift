@@ -55,9 +55,9 @@ struct PeopleListView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(selectedID == person.id ? Color.accentColor.opacity(0.08) : .clear, in: .rect(cornerRadius: 6))
+                                .selectionHighlight(selectedID == person.id)
                                 .contentShape(Rectangle())
-                                .onRecordClick(select: { selectedID = person.id }, open: { open(person) })
+                                .onRecordClick(isSelected: selectedID == person.id, select: { selectedID = person.id }, open: { open(person) })
                         }
                     }
                     .contentColumn()

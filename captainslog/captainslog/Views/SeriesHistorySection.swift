@@ -44,8 +44,8 @@ struct SeriesHistorySection: View {
                         DetailRows(data: events, limit: Self.rowLimit) { event in
                             if let previous = event.meeting {
                                 meetingRow(previous)
-                                    .background(selectedID == previous.id ? Color.accentColor.opacity(0.08) : .clear, in: .rect(cornerRadius: 6))
-                                    .onRecordClick(select: { selectedID = previous.id }, open: { navigator.openMeeting(previous) })
+                                    .selectionHighlight(selectedID == previous.id)
+                                    .onRecordClick(isSelected: selectedID == previous.id, select: { selectedID = previous.id }, open: { navigator.openMeeting(previous) })
                             } else {
                                 eventRow(event)
                             }

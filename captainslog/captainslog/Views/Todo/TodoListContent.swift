@@ -234,7 +234,7 @@ struct TodoListContent: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focusedField, equals: .list)
-        .onAppear { if focusesOnAppear { DispatchQueue.main.async { focusedField = .list } } }
+        .onAppear { if focusesOnAppear { DispatchQueue.main.async { if expandedID == nil { focusedField = .list } } } }
         .onKeyPress(.return, phases: .down) { handleReturnKey($0) }
         .onKeyPress(.escape) { handleEscape() }
         .onKeyPress(.upArrow, phases: [.down, .repeat]) { handleUpArrow($0) }
@@ -688,12 +688,18 @@ struct TodoListContent: View {
         return todos[..<last].last(where: { !ids.contains($0.id) })?.id
     }
 
-    /// Selects and scrolls to the todo another tab asked to open (`Navigator.openTodo`), if this list shows it.
+    /// Expands and scrolls to the todo another tab asked to open (`Navigator.openTodo`), if this
+    /// list shows it. Focus goes to its title next turn, after the list's own arrival focus.
     private func revealRequestedTodo(_ proxy: ScrollViewProxy) {
         guard let id = navigator.revealTodoID, displayedTodos.contains(where: { $0.id == id }) else { return }
         navigator.revealTodoID = nil
+        commitDraft()
         select(id)
-        proxy.scrollTo(id, anchor: .center)
+        expandedID = id
+        DispatchQueue.main.async {
+            focusedField = .title(id)
+            proxy.scrollTo(id, anchor: .center)
+        }
     }
 
     // MARK: - Selection & reorder

@@ -36,8 +36,8 @@ struct DashboardView: View {
     @State private var prExpandedID: UUID?
     @FocusState private var prFocusField: PRFocusField?
     @State private var todoAddTick = 0
-    @FocusState private var isFocused: Bool
     @State private var logAddTick = 0
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -205,7 +205,7 @@ struct DashboardView: View {
                 .contextMenu { PRContextMenu(pr: pr) }
         } else {
             PRRecordRow(pr: pr, isSelected: prSelectedID == pr.id)
-                .onRecordClick(select: {
+                .onRecordClick(isSelected: prSelectedID == pr.id, select: {
                     if prSelectedID != pr.id { collapsePRCard() }
                     prSelectedID = pr.id
                 }, open: {
