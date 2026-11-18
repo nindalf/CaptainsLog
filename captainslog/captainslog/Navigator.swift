@@ -1,8 +1,9 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// Owns the sidebar selection and the detail column's navigation path so any view can open a
-/// person, meeting or interview without threading bindings through every intermediate view.
+/// Owns the sidebar selection and the detail column's navigation path so any view can open any
+/// record without threading bindings through every intermediate view. A record with notes opens as
+/// a page; a one-line record opens on its tab, selected and expanded.
 @Observable
 @MainActor
 final class Navigator {
@@ -14,6 +15,8 @@ final class Navigator {
     var renamingProjectID: UUID?
     /// A todo for the Todos tab to select and scroll to once it shows the todo's list.
     var revealTodoID: UUID?
+    /// A PR or log entry for its tab to select, expand and scroll to.
+    var revealRecordID: UUID?
     /// The Search tab's query. Lives here so a search survives opening a todo or project in another tab.
     var searchQuery = ""
     /// The list whose selection commands act on: the one last selected in, or shown. The Dashboard
@@ -56,6 +59,16 @@ final class Navigator {
         todoSelection = .smart(SmartList.of(todo))
         revealTodoID = todo.id
         select(.todos)
+    }
+
+    func openPullRequest(_ pr: PullRequest) { reveal(pr.id, on: .pullRequests) }
+    func openLogEntry(_ entry: LogEntry) { reveal(entry.id, on: .log) }
+
+    /// From the same tab too, back at its list.
+    private func reveal(_ id: UUID, on item: SidebarItem) {
+        revealRecordID = id
+        path = NavigationPath()
+        select(item)
     }
 
     func openProject(_ project: Project) {

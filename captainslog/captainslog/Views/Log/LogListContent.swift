@@ -100,6 +100,8 @@ struct LogListContent: View {
                 guard timestamp != nil, let expandedID else { return }
                 withAnimation(.snappy(duration: 0.18)) { proxy.scrollTo(expandedID) }
             }
+            .onAppear { revealRequestedEntry(proxy) }
+            .onChange(of: navigator.revealRecordID) { revealRequestedEntry(proxy) }
         }
         .contentShape(Rectangle())
         .onTapGesture { collapseAndCommit() }
@@ -330,6 +332,15 @@ struct LogListContent: View {
 
     /// Opens a log entry's, completed todo's or PR's card, in its title or, for a PR, whose title
     /// is GitHub's, its notes.
+    /// A log entry opened from elsewhere: shown whatever the filter, expanded and scrolled to.
+    private func revealRequestedEntry(_ proxy: ScrollViewProxy) {
+        guard let id = navigator.revealRecordID, logEntries.contains(where: { $0.id == id }) else { return }
+        navigator.revealRecordID = nil
+        if typeFilter != nil && typeFilter != .log { typeFilter = nil }
+        expand(id)
+        DispatchQueue.main.async { proxy.scrollTo(id, anchor: .center) }
+    }
+
     private func expand(_ id: UUID) {
         commitDraft()
         selectedID = id

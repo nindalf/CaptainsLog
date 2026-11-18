@@ -8,6 +8,7 @@ struct SeriesHistorySection: View {
     let meeting: Meeting
     @Query private var candidates: [CalendarEvent]
     @State private var isExpanded = false
+    @State private var selectedID: UUID?
     @Environment(Navigator.self) private var navigator
     @Environment(\.modelContext) private var modelContext
 
@@ -42,8 +43,9 @@ struct SeriesHistorySection: View {
                     VStack(alignment: .leading, spacing: 0) {
                         DetailRows(data: events, limit: Self.rowLimit) { event in
                             if let previous = event.meeting {
-                                NavigationLink(value: previous) { meetingRow(previous) }
-                                    .buttonStyle(.plain)
+                                meetingRow(previous)
+                                    .background(selectedID == previous.id ? Color.accentColor.opacity(0.08) : .clear, in: .rect(cornerRadius: 6))
+                                    .onRecordClick(select: { selectedID = previous.id }, open: { navigator.openMeeting(previous) })
                             } else {
                                 eventRow(event)
                             }

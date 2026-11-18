@@ -14,6 +14,7 @@ struct PRListView: View {
     private var donePRs: [PullRequest]
     @Environment(SyncCoordinator.self) private var syncCoordinator
     @Environment(AppSettings.self) private var settings
+    @Environment(Navigator.self) private var navigator
 
     @State private var selectedID: UUID?
     @State private var expandedID: UUID?
@@ -91,7 +92,7 @@ struct PRListView: View {
     private var prList: some View {
         let sections = sections
         let (shipped, older) = finished
-        return ScrollView {
+        return ScrollViewReader { proxy in ScrollView {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
                 section("Needs You", sections.needsMe)
                 section("Waiting on Others", sections.waiting)
@@ -112,6 +113,9 @@ struct PRListView: View {
                 }
             }
             .contentColumn()
+        }
+        .onAppear { revealRequestedPR(proxy) }
+        .onChange(of: navigator.revealRecordID) { revealRequestedPR(proxy) }
         }
         .contentShape(Rectangle())
         .onTapGesture { collapseCard() }
@@ -232,6 +236,31 @@ struct PRListView: View {
     }
 
     // MARK: - Expand / collapse
+
+    /// A PR opened from elsewhere: its section opened far enough to show it, expanded and scrolled to.
+    private func revealRequestedPR(_ proxy: ScrollViewProxy) {
+        guard let id = navigator.revealRecordID else { return }
+        let sections = sections
+        let (shipped, older) = finished
+        if let index = sections.inFlight.firstIndex(where: { $0.id == id }) {
+            teamLimit = max(teamLimit, (index / Self.page + 1) * Self.page)
+        } else if shipped.contains(where: { $0.id == id }) {
+            showsShipped = true
+        } else if let index = older.firstIndex(where: { $0.id == id }) {
+            showsOlder = true
+            olderLimit = max(olderLimit, (index / Self.page + 1) * Self.page)
+        } else if !(sections.needsMe + sections.waiting).contains(where: { $0.id == id }) {
+            return
+        }
+        navigator.revealRecordID = nil
+        guard let pr = (openPRs + donePRs).first(where: { $0.id == id }) else { return }
+        expandPR(pr)
+        // After the section it opened has laid out its rows.
+        Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            withAnimation { proxy.scrollTo(id, anchor: .center) }
+        }
+    }
 
     private func expandPR(_ pr: PullRequest) {
         selectedID = pr.id

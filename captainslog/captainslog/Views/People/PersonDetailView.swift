@@ -6,8 +6,13 @@ struct PersonDetailView: View {
     @Bindable var person: Person
     @Environment(\.modelContext) private var modelContext
     @Environment(SyncCoordinator.self) private var syncCoordinator
+    @Environment(Navigator.self) private var navigator
     @State private var showMergeSheet = false
     @State private var expandedFeedbackID: UUID?
+    /// The row last clicked in any of the page's lists.
+    @State private var selectedRowID: UUID?
+    @State private var expandedPRID: UUID?
+    @FocusState private var prFocus: PRFocusField?
 
     // Queried rather than read from `person.feedback`: an insert only sets the inverse side,
     // which does not notify observers of `person`, so the section would not redraw.
@@ -75,38 +80,36 @@ struct PersonDetailView: View {
 
             if !authoredPRs.isEmpty {
                 DetailSection("Authored PRs", count: authoredPRs.count) {
-                    DetailRows(data: authoredPRs, limit: Self.rowLimit) { pr in PRLinkRow(pr: pr) }
+                    DetailRows(data: authoredPRs, limit: Self.rowLimit) { pr in prRow(pr) }
                 }
             }
             if !reviewedPRs.isEmpty {
                 DetailSection("Reviewed PRs", count: reviewedPRs.count) {
-                    DetailRows(data: reviewedPRs, limit: Self.rowLimit) { pr in PRLinkRow(pr: pr) }
+                    DetailRows(data: reviewedPRs, limit: Self.rowLimit) { pr in prRow(pr) }
                 }
             }
             if !meetings.isEmpty {
                 DetailSection("Meetings", count: meetings.count) {
                     DetailRows(data: meetings, limit: Self.rowLimit) { meeting in
-                        NavigationLink(value: meeting) {
-                            MeetingRecordRow(meeting: meeting, date: .day(meeting.date), isPadded: false)
-                        }
-                        .buttonStyle(.plain)
+                        MeetingRecordRow(meeting: meeting, date: .day(meeting.date), isSelected: selectedRowID == meeting.id, isPadded: false)
+                            .onRecordClick(select: { selectedRowID = meeting.id }, open: { navigator.openMeeting(meeting) })
                     }
                 }
             }
             if !interviews.isEmpty {
                 DetailSection("Interviews", count: interviews.count) {
                     DetailRows(data: interviews) { interview in
-                        NavigationLink(value: interview) {
-                            InterviewRecordRow(interview: interview, date: .day(interview.date), isPadded: false)
-                        }
-                        .buttonStyle(.plain)
+                        InterviewRecordRow(interview: interview, date: .day(interview.date), isSelected: selectedRowID == interview.id, isPadded: false)
+                            .onRecordClick(select: { selectedRowID = interview.id }, open: { navigator.openInterview(interview) })
                     }
                 }
             }
             if !logEntries.isEmpty {
                 DetailSection("Log Entries", count: logEntries.count) {
                     DetailRows(data: logEntries) { entry in
-                        LogRecordRow(entry: entry, date: .day(entry.timestamp), isPadded: false)
+                        // Opens on the Log, where its card lives.
+                        LogRecordRow(entry: entry, date: .day(entry.timestamp), isSelected: selectedRowID == entry.id, isPadded: false)
+                            .onRecordClick(select: { selectedRowID = entry.id }, open: { navigator.openLogEntry(entry) })
                     }
                 }
             }
@@ -159,7 +162,8 @@ struct PersonDetailView: View {
                     )
                 } else {
                     FeedbackSummaryRow(feedback: item)
-                        .onTapGesture { expandedFeedbackID = item.id }
+                        .background(selectedRowID == item.id ? Color.accentColor.opacity(0.08) : .clear, in: .rect(cornerRadius: 6))
+                        .onRecordClick(select: { selectedRowID = item.id }, open: { expandedFeedbackID = item.id })
                 }
             }
         }
@@ -167,6 +171,26 @@ struct PersonDetailView: View {
         // An item left blank when it closes was never written, so it goes.
         .onChange(of: expandedFeedbackID) { closed, _ in deleteIfBlank(closed) }
         .onDisappear { deleteIfBlank(expandedFeedbackID) }
+    }
+
+    /// Expands in place, as on the PR tab.
+    @ViewBuilder
+    private func prRow(_ pr: PullRequest) -> some View {
+        if expandedPRID == pr.id {
+            PRCardView(pr: pr, focusedField: $prFocus, onCollapse: { expandedPRID = nil })
+                .contextMenu { PRContextMenu(pr: pr) }
+        } else {
+            PRRecordRow(pr: pr, date: .day(pr.createdAt), isSelected: selectedRowID == pr.id, isPadded: false)
+                .onRecordClick(select: {
+                    selectedRowID = pr.id
+                    expandedPRID = nil
+                }, open: {
+                    selectedRowID = pr.id
+                    expandedPRID = pr.id
+                    prFocus = .notes(pr.id)
+                })
+                .contextMenu { PRContextMenu(pr: pr) }
+        }
     }
 
     private func addFeedback() {
@@ -324,20 +348,6 @@ private struct PersonMergePicker: View {
 }
 
 // MARK: - PR row
-
-/// A PR on a person's page, the shared row; it opens on GitHub.
-private struct PRLinkRow: View {
-    let pr: PullRequest
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Button { openURL(pr.url) } label: {
-            PRRecordRow(pr: pr, date: .day(pr.createdAt), isPadded: false)
-        }
-        .buttonStyle(.plain)
-        .help("Open on GitHub")
-    }
-}
 
 #Preview {
     NavigationStack {

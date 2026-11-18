@@ -212,8 +212,7 @@ struct CommandPalette: View {
             let choose = request.chooseProject
             onClose { choose?(project) }
         case .record(let record):
-            let query = query
-            onClose { open(record, query: query) }
+            onClose { open(record) }
         case .meeting(let event):
             if request.mode == .meetings(.notes) {
                 onClose { open(event) }
@@ -234,9 +233,8 @@ struct CommandPalette: View {
         navigator.openEvent(event)
     }
 
-    /// Opens a hit as the Search tab does; log entries and PRs, which that tab expands in place,
-    /// open the Search tab on this query.
-    private func open(_ row: SearchRow, query: String) {
+    /// Opens a hit as a link does: a page record's page, or a log entry or PR on its own tab.
+    private func open(_ row: SearchRow) {
         switch row.result {
         case .person(let person): navigator.openPerson(person)
         case .feedback(let feedback): navigator.openPerson(feedback.person)
@@ -244,9 +242,8 @@ struct CommandPalette: View {
         case .interview(let interview): navigator.openInterview(interview)
         case .todo(let todo): navigator.openTodo(todo)
         case .project(let project): navigator.openProject(project)
-        case .log, .pr:
-            navigator.searchQuery = query
-            navigator.select(.search)
+        case .log(let entry): navigator.openLogEntry(entry)
+        case .pr(let pr): navigator.openPullRequest(pr)
         }
     }
 
