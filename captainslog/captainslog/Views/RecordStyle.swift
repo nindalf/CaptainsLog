@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import CaptainsLogKit
 
@@ -45,6 +46,26 @@ extension CalendarEvent {
         if interview != nil { return RecordKind.interview.color }
         if meeting != nil { return RecordKind.meeting.color }
         return .gray
+    }
+}
+
+/// Whether the click being handled is the second of a double-click.
+@MainActor
+var isDoubleClick: Bool { (NSApp.currentEvent?.clickCount ?? 1) > 1 }
+
+extension View {
+    /// The one rule for a record in a list: a click selects it; a double-click, like Return, opens
+    /// it. A record with notes opens as a page, a one-line record expands in place.
+    func onRecordClick(select: @escaping () -> Void, open: @escaping () -> Void) -> some View {
+        onTapGesture { if isDoubleClick { open() } else { select() } }
+    }
+
+    /// The card a one-line record expands into in place: raised off the list by a border and a
+    /// shadow, so edit mode is plain to see.
+    func recordCard() -> some View {
+        background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary))
+            .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
     }
 }
 

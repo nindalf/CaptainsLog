@@ -46,8 +46,7 @@ struct CompletedTodoCardView: View {
             }
         }
         .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .recordCard()
         .contentShape(Rectangle())
         .onTapGesture { }
         // On close rather than per keystroke, as todo cards do.

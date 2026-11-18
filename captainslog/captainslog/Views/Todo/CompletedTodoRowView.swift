@@ -45,7 +45,7 @@ struct CompletedTodoRowView: View {
             .onTapGesture {
                 // Cmd- and Shift-clicks change the selection rather than opening the row.
                 let extending = !NSEvent.modifierFlags.intersection([.command, .shift]).isEmpty
-                if isSelected && !extending {
+                if isDoubleClick && !extending {
                     onExpand()
                 } else {
                     onSelect()

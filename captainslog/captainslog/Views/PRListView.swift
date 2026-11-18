@@ -223,14 +223,10 @@ struct PRListView: View {
                 .contextMenu { PRContextMenu(pr: row.pr) }
         } else {
             PRRecordRow(pr: row.pr, attention: row.attention, isSelected: selectedID == row.pr.id)
-                .onTapGesture {
-                    if selectedID == row.pr.id {
-                        expandPR(row.pr)
-                    } else {
-                        collapseCard()
-                        selectedID = row.pr.id
-                    }
-                }
+                .onRecordClick(select: {
+                    if selectedID != row.pr.id { collapseCard() }
+                    selectedID = row.pr.id
+                }, open: { expandPR(row.pr) })
                 .contextMenu { PRContextMenu(pr: row.pr) }
         }
     }
@@ -331,8 +327,7 @@ struct PRCardView: View {
                 .padding(.trailing, 12)
                 .padding(.bottom, 12)
         }
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .recordCard()
         .contentShape(Rectangle())
         .onTapGesture { }
     }

@@ -199,16 +199,14 @@ struct DashboardView: View {
                 .contextMenu { PRContextMenu(pr: pr) }
         } else {
             PRRecordRow(pr: pr, isSelected: prSelectedID == pr.id)
-                .onTapGesture {
-                    if prSelectedID == pr.id {
-                        prSelectedID = pr.id
-                        prExpandedID = pr.id
-                        prFocusField = .notes(pr.id)
-                    } else {
-                        collapsePRCard()
-                        prSelectedID = pr.id
-                    }
-                }
+                .onRecordClick(select: {
+                    if prSelectedID != pr.id { collapsePRCard() }
+                    prSelectedID = pr.id
+                }, open: {
+                    prSelectedID = pr.id
+                    prExpandedID = pr.id
+                    prFocusField = .notes(pr.id)
+                })
                 .contextMenu { PRContextMenu(pr: pr) }
         }
     }

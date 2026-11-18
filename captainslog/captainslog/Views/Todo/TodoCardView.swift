@@ -32,8 +32,7 @@ struct TodoCardView: View {
                 .padding(.leading, 30)
         }
         .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .recordCard()
         .contentShape(Rectangle())
         .onTapGesture { }
         // On close rather than per keystroke, so a todo doesn't leave a meeting's or person's list

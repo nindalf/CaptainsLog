@@ -53,8 +53,7 @@ struct MergedPRCardView: View {
             .foregroundStyle(.secondary)
         }
         .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .recordCard()
         .contentShape(Rectangle())
         .onTapGesture { }
         .onDisappear { try? pr.modelContext?.save() }

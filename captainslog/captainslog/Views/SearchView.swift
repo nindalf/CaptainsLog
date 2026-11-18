@@ -163,7 +163,10 @@ struct SearchView: View {
                 .contextMenu { PRContextMenu(pr: pr) }
         default:
             SearchResultRow(row: row, terms: SearchMatch.terms(of: searchedQuery), isSelected: selectedID == row.id)
-                .onTapGesture { tap(row) }
+                .onRecordClick(select: {
+                    if selectedID != row.id { collapse() }
+                    selectedID = row.id
+                }, open: { open(row) })
                 .contextMenu { deleteMenu(row) }
         }
     }
@@ -173,17 +176,6 @@ struct SearchView: View {
     private func deleteMenu(_ row: SearchRow) -> some View {
         if case .log(let entry) = row.result {
             Button("Delete Entry…", systemImage: "trash", role: .destructive) { pendingDelete = .log(entry) }
-        }
-    }
-
-    /// Log entries and PRs expand in place, like their own tabs: a click selects, a click on the
-    /// selected row expands. Everything else opens on the first click, like links in the Log feed.
-    private func tap(_ row: SearchRow) {
-        if row.isExpandable && selectedID != row.id {
-            collapse()
-            selectedID = row.id
-        } else {
-            open(row)
         }
     }
 
@@ -287,13 +279,6 @@ extension SearchRow {
         load(.pr, { ids in FetchDescriptor<PullRequest>(predicate: #Predicate { ids.contains($0.id) }) }) { ($0.id, .pr($0)) }
         load(.feedback, { ids in FetchDescriptor<Feedback>(predicate: #Predicate { ids.contains($0.id) }) }) { ($0.id, .feedback($0)) }
         return hits.compactMap { hit in results[hit.id].map { SearchRow(hit: hit, result: $0) } }
-    }
-
-    var isExpandable: Bool {
-        switch result {
-        case .log, .pr: true
-        default: false
-        }
     }
 }
 

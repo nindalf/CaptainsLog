@@ -15,6 +15,7 @@ struct LogListContent: View {
     var includesCompletedTodos = true
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(Navigator.self) private var navigator
 
     @Query(sort: \LogEntry.timestamp, order: .reverse)
     private var logEntries: [LogEntry]
@@ -187,18 +188,10 @@ struct LogListContent: View {
         switch item {
         case .log(let entry):
             logEntryRow(entry)
-        case .meeting(let meeting):
-            NavigationLink(value: meeting) {
-                FeedRowView(item: item, isSelected: selectedID == item.id)
-            }
-            .buttonStyle(.plain)
-            .contextMenu { deleteMenu(item) }
-        case .interview(let interview):
-            NavigationLink(value: interview) {
-                FeedRowView(item: item, isSelected: selectedID == item.id)
-            }
-            .buttonStyle(.plain)
-            .contextMenu { deleteMenu(item) }
+        case .meeting, .interview:
+            FeedRowView(item: item, isSelected: selectedID == item.id)
+                .onRecordClick(select: { select(item.id) }, open: { openPage(item) })
+                .contextMenu { deleteMenu(item) }
         case .pullRequest(let pr):
             pullRequestRow(pr)
         case .todo(let todo):
@@ -231,14 +224,7 @@ struct LogListContent: View {
             .contextMenu { deleteMenu(.log(entry)) }
         } else {
             FeedRowView(item: .log(entry), isSelected: selectedID == entry.id)
-                .onTapGesture {
-                    if selectedID == entry.id {
-                        expand(entry.id)
-                    } else {
-                        collapseAndCommit()
-                        selectedID = entry.id
-                    }
-                }
+                .onRecordClick(select: { select(entry.id) }, open: { expand(entry.id) })
                 .contextMenu { deleteMenu(.log(entry)) }
         }
     }
@@ -256,14 +242,7 @@ struct LogListContent: View {
             .contextMenu { PRContextMenu(pr: pr) }
         } else {
             FeedRowView(item: .pullRequest(pr), isSelected: selectedID == pr.id)
-                .onTapGesture {
-                    if selectedID == pr.id {
-                        expand(pr.id)
-                    } else {
-                        collapseAndCommit()
-                        selectedID = pr.id
-                    }
-                }
+                .onRecordClick(select: { select(pr.id) }, open: { expand(pr.id) })
                 .contextMenu { PRContextMenu(pr: pr) }
         }
     }
@@ -283,14 +262,7 @@ struct LogListContent: View {
             FeedRowView(item: .todo(todo), isSelected: selectedID == todo.id, onReopen: {
                 ReopenConfirmation.request([todo], pending: &pendingReopen, in: modelContext)
             })
-            .onTapGesture {
-                if selectedID == todo.id {
-                    expand(todo.id)
-                } else {
-                    collapseAndCommit()
-                    selectedID = todo.id
-                }
-            }
+            .onRecordClick(select: { select(todo.id) }, open: { expand(todo.id) })
             .contextMenu { deleteMenu(.todo(todo)) }
         }
     }
@@ -403,9 +375,24 @@ struct LogListContent: View {
         switch item {
         case .log, .todo, .pullRequest:
             expand(selectedID)
-            return .handled
-        default:
-            return .ignored
+        case .meeting, .interview:
+            openPage(item)
+        }
+        return .handled
+    }
+
+    private func select(_ id: UUID) {
+        if selectedID != id { collapseAndCommit() }
+        selectedID = id
+    }
+
+    /// Meetings and interviews have notes, so they open as a page.
+    private func openPage(_ item: FeedItem) {
+        selectedID = item.id
+        switch item {
+        case .meeting(let meeting): navigator.openMeeting(meeting)
+        case .interview(let interview): navigator.openInterview(interview)
+        default: break
         }
     }
 
