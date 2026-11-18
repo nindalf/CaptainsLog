@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CaptainsLogKit
 
+/// A Log row: the shared row for each kind, with the time on the right.
 struct FeedRowView: View {
     let item: FeedItem
     let isSelected: Bool
@@ -9,140 +10,43 @@ struct FeedRowView: View {
     var onReopen: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 10) {
-            icon
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                subtitle
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 3) {
-                Text(item.timestamp, format: .dateTime.hour().minute())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                badge
+        let date = RowDate.time(item.timestamp)
+        switch item {
+        case .log(let entry):
+            LogRecordRow(entry: entry, date: date, isSelected: isSelected)
+        case .meeting(let meeting):
+            MeetingRecordRow(meeting: meeting, date: date, isSelected: isSelected)
+        case .interview(let interview):
+            InterviewRecordRow(interview: interview, date: date, isSelected: isSelected)
+        case .pullRequest(let pr):
+            PRRecordRow(pr: pr, date: date, isSelected: isSelected)
+        case .todo(let todo):
+            RecordRow(isSelected: isSelected) {
+                todoIcon
+            } title: {
+                Text(todo.title)
+            } secondary: {
+                if let project = todo.project { Text(project.name) }
+            } trailing: {
+                if let text = date.text { Text(text) }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
-        .background(isSelected ? Color.accentColor.opacity(0.08) : .clear)
-        .contentShape(Rectangle())
     }
 
     @ViewBuilder
-    private var icon: some View {
-        if case .todo = item, let onReopen {
+    private var todoIcon: some View {
+        if let onReopen {
             Button(action: onReopen) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 14))
-                    .foregroundStyle(item.itemType.color)
-                    .frame(width: 20, height: 28)
+                    .foregroundStyle(RecordKind.todo.color)
+                    .frame(width: RecordRowMetrics.iconWidth, height: 28)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("Reopen")
         } else {
-            Image(systemName: item.itemType.icon)
-                .font(.system(size: 12))
-                .foregroundStyle(item.itemType.color)
-                .frame(width: 20)
-        }
-    }
-
-    @ViewBuilder
-    private var subtitle: some View {
-        switch item {
-        case .log(let entry):
-            HStack(spacing: 6) {
-                if !entry.content.isEmpty {
-                    Text(markdownPreview(entry.content))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        case .meeting(let meeting):
-            HStack(spacing: 6) {
-                if !meeting.attendees.isEmpty {
-                    Text("^[\(meeting.attendees.count) attendee](inflect: true)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if meeting.notes != nil {
-                    Text("has notes")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        case .interview(let interview):
-            HStack(spacing: 6) {
-                if let role = interview.role {
-                    Text(role)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        case .pullRequest(let pr):
-            Text(verbatim: "#\(pr.number)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        case .todo(let todo):
-            HStack(spacing: 6) {
-                if let project = todo.project {
-                    Text(project.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var badge: some View {
-        switch item {
-        case .log(let entry):
-            // Manual is the default; only the other sources say anything.
-            if entry.source != .manual {
-                Text(entry.source.rawValue)
-                    .font(.caption2)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.quaternary)
-                    .clipShape(Capsule())
-            }
-        case .meeting:
-            EmptyView()
-        case .interview(let interview):
-            if let rec = interview.recommendation {
-                Text(rec.rawValue)
-                    .font(.caption2)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(recommendationColor(rec).opacity(0.2))
-                    .foregroundStyle(recommendationColor(rec))
-                    .clipShape(Capsule())
-            }
-        case .pullRequest(let pr):
-            // Always merged, so its size says more than its state.
-            PRSizeBar(additions: pr.additions, deletions: pr.deletions)
-        case .todo:
-            EmptyView()
-        }
-    }
-
-    private func recommendationColor(_ rec: Recommendation) -> Color {
-        switch rec {
-        case .strongYes: .green
-        case .yes: .green
-        case .no: .red
-        case .definitelyNot: .red
+            RecordIcon(kind: .todo)
         }
     }
 }

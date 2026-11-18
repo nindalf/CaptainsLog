@@ -24,8 +24,8 @@ struct InterviewListView: View {
                 ForEach(monthGroups) { group in
                     Section {
                         ForEach(group.interviews) { interview in
-                            NavigationRow(value: interview) {
-                                row(interview)
+                            NavigationRow(value: interview, isPadded: false) {
+                                InterviewRecordRow(interview: interview, date: .dayTime(interview.date))
                             }
                             .contextMenu {
                                 Button("Delete Interview…", systemImage: "trash", role: .destructive) {
@@ -65,51 +65,6 @@ struct InterviewListView: View {
         .padding(.bottom, 6)
         .padding(.horizontal, 4)
         .background(.background)
-    }
-
-    // Plain text for the co-interviewer, not PersonLinks -- the whole row is already a
-    // NavigationLink label, and a nested link makes hit-testing ambiguous.
-    private func row(_ interview: Interview) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(interview.candidateName).font(.headline)
-                Spacer()
-                if let rec = interview.recommendation {
-                    Text(rec.rawValue)
-                        .font(.caption)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(recommendationColor(rec).opacity(0.2))
-                        .foregroundStyle(recommendationColor(rec))
-                        .clipShape(Capsule())
-                }
-            }
-            HStack(spacing: 6) {
-                Text(DateLabel.dayTime(interview.date))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let role = interview.role {
-                    Text(role)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if let coInterviewer = interview.coInterviewer {
-                    Label(coInterviewer.name, systemImage: "person.2")
-                        .labelStyle(.titleAndIcon)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    private func recommendationColor(_ rec: Recommendation) -> Color {
-        switch rec {
-        case .strongYes: .green
-        case .yes: .blue
-        case .no: .orange
-        case .definitelyNot: .red
-        }
     }
 }
 

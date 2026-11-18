@@ -29,11 +29,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .dashboard: "house"
-        case .log: "book"
-        case .meetings: "calendar"
-        case .pullRequests: "arrow.triangle.pull"
+        case .log: RecordKind.log.icon
+        case .meetings: RecordKind.meeting.icon
+        case .pullRequests: RecordKind.pullRequest.icon
         case .todos: "checklist"
-        case .interviews: "person.badge.clock"
+        case .interviews: RecordKind.interview.icon
         case .people: "person.2"
         case .search: "magnifyingglass"
         }

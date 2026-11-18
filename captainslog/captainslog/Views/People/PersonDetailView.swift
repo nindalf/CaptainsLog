@@ -87,7 +87,7 @@ struct PersonDetailView: View {
                 DetailSection("Meetings") {
                     DetailRows(data: meetings, limit: Self.rowLimit) { meeting in
                         NavigationLink(value: meeting) {
-                            titleDateRow(meeting.title, meeting.date, opens: true)
+                            MeetingRecordRow(meeting: meeting, date: .day(meeting.date), isPadded: false)
                         }
                         .buttonStyle(.plain)
                     }
@@ -97,7 +97,7 @@ struct PersonDetailView: View {
                 DetailSection("Interviews") {
                     DetailRows(data: interviews) { interview in
                         NavigationLink(value: interview) {
-                            titleDateRow(interview.candidateName, interview.date, opens: true)
+                            InterviewRecordRow(interview: interview, date: .day(interview.date), isPadded: false)
                         }
                         .buttonStyle(.plain)
                     }
@@ -106,7 +106,7 @@ struct PersonDetailView: View {
             if !logEntries.isEmpty {
                 DetailSection("Log Entries") {
                     DetailRows(data: logEntries) { entry in
-                        titleDateRow(entry.title, entry.timestamp)
+                        LogRecordRow(entry: entry, date: .day(entry.timestamp), isPadded: false)
                     }
                 }
             }
@@ -215,22 +215,6 @@ struct PersonDetailView: View {
             get: { person[keyPath: keyPath] },
             set: { person[keyPath: keyPath] = $0 }
         )
-    }
-
-    private func titleDateRow(_ title: String, _ date: Date, opens: Bool = false) -> some View {
-        HStack {
-            Text(title).lineLimit(1)
-            Spacer()
-            Text(DateLabel.day(date))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if opens {
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .contentShape(.rect)
     }
 }
 
@@ -349,20 +333,17 @@ private struct PersonMergePicker: View {
 
 // MARK: - PR row
 
+/// A PR on a person's page, the shared row; it opens on GitHub.
 private struct PRLinkRow: View {
     let pr: PullRequest
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
-        Link(destination: pr.url) {
-            HStack(spacing: 8) {
-                PRGlyph(pr: pr, attention: pr.attention())
-                Text(pr.title).lineLimit(1)
-                Spacer()
-                Text(verbatim: "#\(pr.number)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        Button { openURL(pr.url) } label: {
+            PRRecordRow(pr: pr, date: .day(pr.createdAt), isPadded: false)
         }
+        .buttonStyle(.plain)
+        .help("Open on GitHub")
     }
 }
 

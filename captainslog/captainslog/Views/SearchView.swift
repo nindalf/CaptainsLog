@@ -298,44 +298,35 @@ struct SearchResultRow: View {
     private var kind: SearchKind { row.hit.kind }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: kind.icon)
-                .font(.system(size: 12))
-                .foregroundStyle(kind.color)
-                .frame(width: 20, height: 20)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(highlighted(title))
-                        .font(.headline)
-                        .lineLimit(1)
-                    if case .pr(let pr) = row.result {
-                        GitHubButton(pr: pr)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                detail
+        RecordRow(isSelected: isSelected) {
+            if case .person(let person) = row.result {
+                PersonAvatar(name: person.name, size: RecordRowMetrics.iconWidth)
+            } else {
+                RecordIcon(kind: kind.recordKind)
             }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 3) {
-                if let date = row.hit.date {
-                    Text(DateLabel.day(date))
+        } title: {
+            HStack(spacing: 6) {
+                Text(highlighted(title))
+                if case .pr(let pr) = row.result {
+                    GitHubButton(pr: pr)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                if case .pr(let pr) = row.result {
-                    PRGlyph(pr: pr, attention: pr.attention())
-                }
+            }
+        } secondary: {
+            detail
+        } trailing: {
+            if let date = row.hit.date {
+                Text(DateLabel.day(date))
+            }
+            if case .interview(let interview) = row.result, let recommendation = interview.recommendation {
+                VerdictBadge(recommendation: recommendation)
+            }
+            if case .pr(let pr) = row.result {
+                PRSizeBar(additions: pr.additions, deletions: pr.deletions)
+                    .frame(height: 12)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(isSelected ? Color.accentColor.opacity(0.08) : .clear)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .contentShape(Rectangle())
     }
 
     /// From the model, so edits made in an expanded card show without searching again.
@@ -358,14 +349,8 @@ struct SearchResultRow: View {
         let match = row.hit.match
         if !Self.titleFields.contains(match.field) {
             Text(snippetText(match))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
         } else if let context, !context.isEmpty {
             Text(highlighted(context))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
     }
 
@@ -428,31 +413,20 @@ extension SearchKind {
         }
     }
 
-    var icon: String {
+    var recordKind: RecordKind {
         switch self {
-        case .person: SidebarItem.people.icon
-        case .project: "folder"
-        case .todo: FeedItemType.todo.icon
-        case .log: FeedItemType.log.icon
-        case .meeting: FeedItemType.meeting.icon
-        case .interview: FeedItemType.interview.icon
-        case .pr: FeedItemType.pullRequest.icon
-        case .feedback: "text.bubble"
+        case .person: .person
+        case .project: .project
+        case .todo: .todo
+        case .log: .log
+        case .meeting: .meeting
+        case .interview: .interview
+        case .pr: .pullRequest
+        case .feedback: .feedback
         }
     }
 
-    var color: Color {
-        switch self {
-        case .person: .indigo
-        case .project: .cyan
-        case .todo: FeedItemType.todo.color
-        case .log: FeedItemType.log.color
-        case .meeting: FeedItemType.meeting.color
-        case .interview: FeedItemType.interview.color
-        case .pr: FeedItemType.pullRequest.color
-        case .feedback: .pink
-        }
-    }
+    var icon: String { recordKind.icon }
 }
 
 #Preview {

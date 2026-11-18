@@ -175,7 +175,7 @@ struct PRListView: View {
                     .foregroundStyle(.secondary)
             }
         } else {
-            ContentUnavailableView("Nothing in Flight", systemImage: "arrow.triangle.pull")
+            ContentUnavailableView("Nothing in Flight", systemImage: RecordKind.pullRequest.icon)
         }
     }
 
@@ -233,7 +233,7 @@ struct PRListView: View {
                 .padding(.vertical, 2)
                 .contextMenu { PRContextMenu(pr: row.pr) }
         } else {
-            PRRow(pr: row.pr, attention: row.attention, isSelected: selectedID == row.pr.id)
+            PRRecordRow(pr: row.pr, attention: row.attention, date: .age(row.attention.since(row.pr)), isSelected: selectedID == row.pr.id)
                 .onTapGesture {
                     if selectedID == row.pr.id {
                         expandPR(row.pr)
@@ -324,7 +324,6 @@ struct PRContextMenu: View {
 struct PRCardView: View {
     @Bindable var pr: PullRequest
     var focusedField: FocusState<PRFocusField?>.Binding
-    var compact = false
     var onCollapse: () -> Void
     @Query(sort: \Project.sortOrder) private var projects: [Project]
 
@@ -337,9 +336,10 @@ struct PRCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PRRow(pr: pr, attention: pr.attention(), isSelected: false, compact: compact)
+            let attention = pr.attention()
+            PRRecordRow(pr: pr, attention: attention, date: .age(attention.since(pr)))
             details
-                .padding(.leading, PRRow.titleInset)
+                .padding(.leading, RecordRowMetrics.titleInset)
                 .padding(.trailing, 12)
                 .padding(.bottom, 12)
         }

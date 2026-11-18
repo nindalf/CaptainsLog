@@ -10,25 +10,18 @@ enum FeedItemType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var icon: String {
+    var kind: RecordKind {
         switch self {
-        case .log: "book"
-        case .meeting: "calendar"
-        case .interview: "person.badge.clock"
-        case .pullRequest: "arrow.triangle.pull"
-        case .todo: "checkmark.circle"
+        case .log: .log
+        case .meeting: .meeting
+        case .interview: .interview
+        case .pullRequest: .pullRequest
+        case .todo: .todo
         }
     }
 
-    var color: Color {
-        switch self {
-        case .log: .blue
-        case .meeting: .green
-        case .interview: .orange
-        case .pullRequest: .purple
-        case .todo: .teal
-        }
-    }
+    var icon: String { kind.icon }
+    var color: Color { kind.color }
 }
 
 enum FeedItem: Identifiable {

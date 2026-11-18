@@ -214,11 +214,12 @@ struct DashboardView: View {
     @ViewBuilder
     private func dashboardPRRow(_ pr: PullRequest) -> some View {
         if prExpandedID == pr.id {
-            PRCardView(pr: pr, focusedField: $prFocusField, compact: true, onCollapse: { collapsePRCard() })
+            PRCardView(pr: pr, focusedField: $prFocusField, onCollapse: { collapsePRCard() })
                 .padding(.vertical, 2)
                 .contextMenu { PRContextMenu(pr: pr) }
         } else {
-            PRRow(pr: pr, attention: pr.attention(), isSelected: prSelectedID == pr.id, compact: true)
+            let attention = pr.attention()
+            PRRecordRow(pr: pr, attention: attention, date: .age(attention.since(pr)), isSelected: prSelectedID == pr.id)
                 .onTapGesture {
                     if prSelectedID == pr.id {
                         prSelectedID = pr.id

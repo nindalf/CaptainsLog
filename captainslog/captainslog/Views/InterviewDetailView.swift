@@ -175,8 +175,8 @@ struct InterviewDetailView: View {
                     DetailProperty(label: "Recommendation") {
                         Picker("Recommendation", selection: $interview.recommendation) {
                             Text("None").tag(Recommendation?.none)
-                            ForEach(Recommendation.allCases, id: \.self) { r in
-                                Text(r.rawValue).tag(Recommendation?.some(r))
+                            ForEach(Recommendation.ranked, id: \.self) { r in
+                                Text(r.label).tag(Recommendation?.some(r))
                             }
                         }
                         .labelsHidden()
