@@ -1,15 +1,15 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// One icon and one colour per kind of record, the same wherever the record appears: the Log,
-/// Search, the tabs, people's pages, the calendar and the sidebar.
+/// One icon and one colour per kind of record, the same wherever the record appears. The sidebar
+/// uses the icons.
 enum RecordKind {
     case todo, pullRequest, meeting, interview, log, person, project, feedback
 
     var icon: String {
         switch self {
         case .todo: "checkmark.circle"
-        case .pullRequest: "arrow.triangle.merge"
+        case .pullRequest: "arrow.triangle.pull"
         case .meeting: "calendar"
         case .interview: "person.badge.clock"
         case .log: "book"
@@ -33,6 +33,12 @@ enum RecordKind {
     }
 }
 
+/// The parts present, joined as a row's secondary line, or nil when none are.
+func joinedLine(_ parts: String?...) -> String? {
+    let present = parts.compactMap { $0 }.filter { !$0.isEmpty }
+    return present.isEmpty ? nil : present.joined(separator: " · ")
+}
+
 extension CalendarEvent {
     /// An interview's or meeting's colour; grey for an event with neither.
     var recordColor: Color {
@@ -42,8 +48,8 @@ extension CalendarEvent {
     }
 }
 
-/// The heading over a group of rows in a tab's list: its title and a plain count, pinned as the
-/// list scrolls. With a chevron, the heading collapses its group.
+/// The heading over a group of rows in a tab's list: its title, a plain count, and an optional
+/// chevron for a group that collapses.
 struct ListSectionHeader: View {
     let title: String
     let count: Int
@@ -98,6 +104,8 @@ struct RecordRow<Leading: View, Title: View, Secondary: View, Trailing: View>: V
     var isSelected = false
     /// Off inside a `DetailSection` box, which pads its rows itself.
     var isPadded = true
+    /// Two for a search result's match, which one line can cut off.
+    var secondaryLineLimit = 1
     @ViewBuilder var leading: Leading
     @ViewBuilder var title: Title
     @ViewBuilder var secondary: Secondary
@@ -113,7 +121,7 @@ struct RecordRow<Leading: View, Title: View, Secondary: View, Trailing: View>: V
                 secondary
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(secondaryLineLimit)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 3) {
@@ -140,15 +148,13 @@ enum RowDate {
     case dayTime(Date)
     /// "40m", "2h", "3d" ago.
     case age(Date)
-    case none
 
-    var text: String? {
+    var text: String {
         switch self {
         case .time(let date): date.formatted(.dateTime.hour().minute())
         case .day(let date): DateLabel.day(date)
         case .dayTime(let date): DateLabel.dayTime(date)
         case .age(let date): Self.age(since: date)
-        case .none: nil
         }
     }
 
@@ -250,53 +256,6 @@ struct TagBadge: View {
 
 // MARK: - Rows per kind
 
-struct PRRecordRow: View {
-    let pr: PullRequest
-    var attention: PRAttention?
-    var date: RowDate
-    var isSelected = false
-    var isPadded = true
-
-    var body: some View {
-        let attention = attention ?? pr.attention()
-        RecordRow(isSelected: isSelected, isPadded: isPadded) {
-            RecordIcon(kind: .pullRequest)
-        } title: {
-            Text(pr.title)
-        } secondary: {
-            PRSecondaryLine(pr: pr, attention: attention)
-        } trailing: {
-            if let text = date.text { Text(text) }
-            PRSizeBar(additions: pr.additions, deletions: pr.deletions)
-                .frame(height: 12)
-        }
-    }
-}
-
-/// Who wrote it, its number, and why it's where it is, coloured only when it needs me.
-struct PRSecondaryLine: View {
-    let pr: PullRequest
-    let attention: PRAttention
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Text(verbatim: [pr.isAuthoredByMe ? "you" : pr.author?.name, "#\(pr.number)"]
-                .compactMap { $0 }.joined(separator: " · "))
-            if let reason = attention.reason(pr) {
-                Text(verbatim: " · ")
-                HStack(spacing: 3) {
-                    Text(reason)
-                    if attention.isStale {
-                        Image(systemName: "exclamationmark.triangle.fill").imageScale(.small)
-                    }
-                }
-                .foregroundStyle(attention.tint ?? AnyShapeStyle(.secondary))
-                .help(attention.isStale ? "No review for \(PRAttention.staleAfterWorkingDays) working days" : "")
-            }
-        }
-    }
-}
-
 struct InterviewRecordRow: View {
     let interview: Interview
     var date: RowDate
@@ -309,10 +268,11 @@ struct InterviewRecordRow: View {
         } title: {
             Text(interview.candidateName)
         } secondary: {
-            Text([interview.role, interview.coInterviewer.map { "with \($0.name)" }]
-                .compactMap { $0 }.joined(separator: " · "))
+            if let line = joinedLine(interview.role, interview.coInterviewer.map { "with \($0.name)" }) {
+                Text(line)
+            }
         } trailing: {
-            if let text = date.text { Text(text) }
+            Text(date.text)
             if let recommendation = interview.recommendation {
                 VerdictBadge(recommendation: recommendation)
             }
@@ -333,12 +293,14 @@ struct MeetingRecordRow: View {
             Text(meeting.title)
         } secondary: {
             let attendees = meeting.attendees.count
-            Text([
-                attendees > 0 ? "\(attendees) attendee\(attendees == 1 ? "" : "s")" : nil,
-                meeting.notes != nil || meeting.summary != nil ? "has notes" : nil,
-            ].compactMap { $0 }.joined(separator: " · "))
+            let hasNotes = meeting.notes != nil || meeting.summary != nil
+            HStack(spacing: 0) {
+                if attendees > 0 { Text("^[\(attendees) attendee](inflect: true)") }
+                if attendees > 0 && hasNotes { Text(verbatim: " · ") }
+                if hasNotes { Text("has notes") }
+            }
         } trailing: {
-            if let text = date.text { Text(text) }
+            Text(date.text)
         }
     }
 }
@@ -359,24 +321,11 @@ struct LogRecordRow: View {
                 Text(markdownPreview(entry.content))
             }
         } trailing: {
-            if let text = date.text { Text(text) }
+            Text(date.text)
             // Manual is the default; only the other sources say anything.
             if entry.source != .manual {
                 TagBadge(text: entry.source.rawValue)
             }
-        }
-    }
-}
-
-extension PRAttention {
-    /// The colour of what a PR needs from me, nil where it needs nothing.
-    var tint: AnyShapeStyle? {
-        switch self {
-        case .conflict, .changesRequested, .approvalDismissed: AnyShapeStyle(.orange)
-        case .ciFailing: AnyShapeStyle(.red)
-        case .readyToMerge: AnyShapeStyle(.green)
-        case .reviewRequested, .reReview: AnyShapeStyle(.blue)
-        default: isStale ? AnyShapeStyle(.orange) : nil
         }
     }
 }

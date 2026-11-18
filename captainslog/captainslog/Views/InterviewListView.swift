@@ -42,7 +42,7 @@ struct InterviewListView: View {
         }
         .overlay {
             if interviews.isEmpty {
-                ContentUnavailableView("No Interviews", systemImage: "person.badge.clock")
+                ContentUnavailableView("No Interviews", systemImage: RecordKind.interview.icon)
             }
         }
         .navigationTitle("Interviews")

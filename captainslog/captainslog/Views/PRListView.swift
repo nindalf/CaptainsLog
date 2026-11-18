@@ -215,7 +215,7 @@ struct PRListView: View {
                 .padding(.vertical, 2)
                 .contextMenu { PRContextMenu(pr: row.pr) }
         } else {
-            PRRecordRow(pr: row.pr, attention: row.attention, date: .age(row.attention.since(row.pr)), isSelected: selectedID == row.pr.id)
+            PRRecordRow(pr: row.pr, attention: row.attention, isSelected: selectedID == row.pr.id)
                 .onTapGesture {
                     if selectedID == row.pr.id {
                         expandPR(row.pr)
@@ -318,8 +318,7 @@ struct PRCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            let attention = pr.attention()
-            PRRecordRow(pr: pr, attention: attention, date: .age(attention.since(pr)))
+            PRRecordRow(pr: pr)
             details
                 .padding(.leading, RecordRowMetrics.titleInset)
                 .padding(.trailing, 12)

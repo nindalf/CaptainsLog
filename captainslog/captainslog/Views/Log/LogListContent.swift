@@ -151,7 +151,7 @@ struct LogListContent: View {
             if feedItems.isEmpty && draft == nil {
                 ContentUnavailableView(
                     "No Entries",
-                    systemImage: "book",
+                    systemImage: RecordKind.log.icon,
                     description: Text(AppCommand.newLogEntry.help("Add a log entry"))
                 )
                 .padding(.top, 40)

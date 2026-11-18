@@ -26,8 +26,7 @@ struct DashboardAgenda: View {
                                 .lineLimit(1)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Self.color(event).opacity(0.15), in: .rect(cornerRadius: 4))
-                                .foregroundStyle(Self.color(event))
+                                .background(event.recordColor.opacity(0.25), in: .rect(cornerRadius: 4))
                         }
                         .buttonStyle(.plain)
                         .calendarEventContextMenu(event)
@@ -63,7 +62,7 @@ struct DashboardAgenda: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 44, alignment: .leading)
                 RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Self.color(event))
+                    .fill(event.recordColor)
                     .frame(width: 3, height: 14)
                     .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
                 VStack(alignment: .leading, spacing: 1) {
@@ -81,7 +80,7 @@ struct DashboardAgenda: View {
                 if isNow {
                     Text("Now")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Self.color(event))
+                        .foregroundStyle(event.recordColor)
                 }
             }
             .padding(.vertical, 4)
@@ -107,9 +106,5 @@ struct DashboardAgenda: View {
         let start = calendar.startOfDay(for: now)
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
         return events.filter { $0.isAllDay && !$0.isHidden && $0.startTime < end && $0.endTime > start }
-    }
-
-    static func color(_ event: CalendarEvent) -> Color {
-        event.recordColor
     }
 }

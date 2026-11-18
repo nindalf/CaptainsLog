@@ -74,8 +74,9 @@ struct TodoUpcomingGroup: Identifiable {
 
     /// Whether a todo due on `date` falls in a month group, whose heading doesn't say the day.
     static func isInMonthGroup(_ date: Date, now: Date = .now) -> Bool {
-        let bucket = bucket(for: date, now: now, cal: .current)
-        return bucket.firstDay != bucket.lastDay
+        let cal = Calendar.current
+        let offset = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: date)).day ?? 0
+        return offset > dayGroupCount
     }
 
     private static func bucket(for date: Date, now: Date, cal: Calendar) -> Bucket {

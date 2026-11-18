@@ -28,7 +28,7 @@ struct FeedRowView: View {
             } secondary: {
                 if let project = todo.project { Text(project.name) }
             } trailing: {
-                if let text = date.text { Text(text) }
+                Text(date.text)
             }
         }
     }

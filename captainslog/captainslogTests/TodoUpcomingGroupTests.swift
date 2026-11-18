@@ -53,6 +53,15 @@ struct TodoUpcomingGroupTests {
         #expect(groups.map(\.label) == ["Tuesday 20 Oct", "October"])
     }
 
+    /// A month group can hold a single day: on 24 Oct, 31 Oct is both the first day after the
+    /// day groups and the month's last. Its rows still need their date.
+    @Test func monthGroupsIncludeASingleDayMonthEnd() {
+        let now = date(2026, 10, 24)
+        #expect(TodoUpcomingGroup.isInMonthGroup(date(2026, 10, 31), now: now))
+        #expect(!TodoUpcomingGroup.isInMonthGroup(date(2026, 10, 30), now: now))
+        #expect(TodoUpcomingGroup.group([todo("halloween", due: date(2026, 10, 31))], now: now).map(\.label) == ["October"])
+    }
+
     @Test func otherYearsAreDisambiguatedByYear() {
         let groups = TodoUpcomingGroup.group([todo("jan", due: date(2027, 1, 5))], now: now)
         #expect(groups.map(\.label) == ["January 2027"])

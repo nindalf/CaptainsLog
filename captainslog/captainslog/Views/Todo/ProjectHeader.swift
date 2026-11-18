@@ -3,7 +3,7 @@ import SwiftData
 import CaptainsLogKit
 
 /// Top of a project's todo list, laid out as a detail page's header: icon, editable title, a
-/// metadata line with Complete/Reopen, and the notes in full.
+/// metadata line with Complete/Reopen, then the notes.
 struct ProjectHeader: View {
     @Bindable var project: Project
 
@@ -57,6 +57,8 @@ struct ProjectHeader: View {
                 ),
                 placeholder: "Notes",
                 minHeight: 20,
+                // The header sits above the list's scroll view, so long notes scroll in place.
+                maxHeight: 200,
                 showSlackControls: false
             )
             // Size to the notes rather than taking all the height on offer, which pushed the todos down.

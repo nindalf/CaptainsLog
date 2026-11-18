@@ -2,7 +2,7 @@ import SwiftUI
 import CaptainsLogKit
 
 /// The one place sync shows: when GitHub and the calendar last synced, or that one failed, and
-/// Sync Now. A click on the status shows each source's, with a failure's error.
+/// Sync Now. Clicking the status shows each source's last sync and any error.
 struct SidebarSyncFooter: View {
     @Environment(SyncCoordinator.self) private var sync
     @Environment(AppSettings.self) private var settings
@@ -56,8 +56,6 @@ struct SidebarSyncFooter: View {
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 Text("Synced \(Self.relative.localizedString(for: min(oldest, context.date), relativeTo: context.date))")
             }
-            .help(sources.map { "\($0.displayName): \(sync.history.sources[$0]?.lastSuccess?.formatted(date: .omitted, time: .shortened) ?? "never")" }
-                .joined(separator: "\n"))
         } else {
             Text("Not synced yet")
         }

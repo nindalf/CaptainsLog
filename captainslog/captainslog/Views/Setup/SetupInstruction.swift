@@ -185,13 +185,12 @@ struct CommandBox: View {
 /// When a source last synced, or why its last sync failed.
 struct SyncStatusLabel: View {
     let source: SyncSource
-    var alignment = HorizontalAlignment.leading
     @Environment(SyncCoordinator.self) private var sync
 
     var body: some View {
         if let entry = sync.history.sources[source] {
             if entry.isFailing, let failure = entry.lastFailure {
-                VStack(alignment: alignment, spacing: 2) {
+                VStack(alignment: .leading, spacing: 2) {
                     Label {
                         Text("\(source.displayName) sync failed \(failure, format: .relative(presentation: .named))")
                     } icon: {
@@ -201,7 +200,6 @@ struct SyncStatusLabel: View {
                     if let error = entry.lastError {
                         Text(Self.explain(error, source: source))
                             .foregroundStyle(.secondary)
-                            .multilineTextAlignment(alignment == .trailing ? .trailing : .leading)
                             .lineLimit(3)
                             .textSelection(.enabled)
                             .help(error)

@@ -41,9 +41,9 @@ struct DashboardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             stardateHeader
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
 
             SetupChecklist(background: Self.paneColor)
 
@@ -218,8 +218,7 @@ struct DashboardView: View {
                 .padding(.vertical, 2)
                 .contextMenu { PRContextMenu(pr: pr) }
         } else {
-            let attention = pr.attention()
-            PRRecordRow(pr: pr, attention: attention, date: .age(attention.since(pr)), isSelected: prSelectedID == pr.id)
+            PRRecordRow(pr: pr, isSelected: prSelectedID == pr.id)
                 .onTapGesture {
                     if prSelectedID == pr.id {
                         prSelectedID = pr.id

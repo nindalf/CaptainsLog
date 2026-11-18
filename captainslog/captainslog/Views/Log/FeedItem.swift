@@ -10,7 +10,7 @@ enum FeedItemType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var kind: RecordKind {
+    var recordKind: RecordKind {
         switch self {
         case .log: .log
         case .meeting: .meeting
@@ -20,8 +20,7 @@ enum FeedItemType: String, CaseIterable, Identifiable {
         }
     }
 
-    var icon: String { kind.icon }
-    var color: Color { kind.color }
+    var icon: String { recordKind.icon }
 }
 
 enum FeedItem: Identifiable {

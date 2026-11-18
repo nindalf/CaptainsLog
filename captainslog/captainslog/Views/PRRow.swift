@@ -1,6 +1,53 @@
 import SwiftUI
 import CaptainsLogKit
 
+/// A PR's row everywhere it's listed. Its date defaults to how long ago its reason began.
+struct PRRecordRow: View {
+    let pr: PullRequest
+    var attention: PRAttention?
+    var date: RowDate?
+    var isSelected = false
+    var isPadded = true
+
+    var body: some View {
+        let attention = attention ?? pr.attention()
+        let date = date ?? .age(attention.since(pr))
+        RecordRow(isSelected: isSelected, isPadded: isPadded) {
+            RecordIcon(kind: .pullRequest)
+        } title: {
+            Text(pr.title)
+        } secondary: {
+            PRSecondaryLine(pr: pr, attention: attention)
+        } trailing: {
+            Text(date.text)
+            PRSizeBar(additions: pr.additions, deletions: pr.deletions)
+        }
+    }
+}
+
+/// Who wrote it, its number, and what it needs or where it stands, coloured only when it needs me.
+struct PRSecondaryLine: View {
+    let pr: PullRequest
+    let attention: PRAttention
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(verbatim: joinedLine(pr.isAuthoredByMe ? "you" : pr.author?.name, "#\(pr.number)") ?? "")
+            if let status = attention.status(pr) {
+                Text(verbatim: " · ")
+                HStack(spacing: 3) {
+                    Text(status)
+                    if attention.isStale {
+                        Image(systemName: "exclamationmark.triangle.fill").imageScale(.small)
+                    }
+                }
+                .foregroundStyle(attention.tint ?? AnyShapeStyle(.secondary))
+                .help(attention.isStale ? "No review for \(PRAttention.staleAfterWorkingDays) working days" : "")
+            }
+        }
+    }
+}
+
 /// Lines added and removed as a bar: its length grows with the log of the total, its green share
 /// is the additions. The counts are in the hover.
 struct PRSizeBar: View {
@@ -19,7 +66,7 @@ struct PRSizeBar: View {
             }
             .frame(width: width, height: 4)
             .clipShape(Capsule())
-            .frame(height: 22)
+            .frame(height: 12)
             .contentShape(Rectangle())
             .help("+\(additions) -\(deletions)")
         }
@@ -34,8 +81,19 @@ extension PRAttention {
         }
     }
 
-    /// Why it's in its section. Nil where the section says it all.
-    func reason(_ pr: PullRequest) -> String? {
+    /// The colour of what a PR needs from me, nil where it needs nothing.
+    var tint: AnyShapeStyle? {
+        switch self {
+        case .conflict, .changesRequested, .approvalDismissed: AnyShapeStyle(.orange)
+        case .ciFailing: AnyShapeStyle(.red)
+        case .readyToMerge: AnyShapeStyle(.green)
+        case .reviewRequested, .reReview: AnyShapeStyle(.blue)
+        default: isStale ? AnyShapeStyle(.orange) : nil
+        }
+    }
+
+    /// What it needs from me or why it's waiting. Nil when it's neither.
+    private func reason(_ pr: PullRequest) -> String? {
         switch self {
         case .conflict: "merge conflict"
         case .ciFailing: "CI failing"
@@ -54,8 +112,8 @@ extension PRAttention {
         }
     }
 
-    /// What the glyph means, for its hover and VoiceOver.
-    func label(_ pr: PullRequest) -> String {
+    /// Why it's in its section, else where it stands. Nil for an open PR with nothing to say.
+    func status(_ pr: PullRequest) -> String? {
         if let reason = reason(pr) { return reason }
         switch self {
         case .merged: return "merged"
@@ -64,7 +122,7 @@ extension PRAttention {
             switch pr.reviewStatus {
             case .approved: return "approved"
             case .changesRequested: return "changes requested"
-            default: return "open"
+            default: return nil
             }
         }
     }

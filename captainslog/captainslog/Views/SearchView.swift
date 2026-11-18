@@ -39,21 +39,14 @@ struct SearchView: View {
 
     private var query: String { navigator.searchQuery }
 
-    /// The results grouped by kind, each group where its best result ranked.
-    private var groups: [(kind: SearchKind, rows: [SearchRow])] {
+    private var groups: [(kind: SearchKind, items: [SearchRow])] {
         let filtered = kindFilter.map { kind in rows.filter { $0.hit.kind == kind } } ?? rows
-        var order: [SearchKind] = []
-        var byKind: [SearchKind: [SearchRow]] = [:]
-        for row in filtered {
-            if byKind[row.hit.kind] == nil { order.append(row.hit.kind) }
-            byKind[row.hit.kind, default: []].append(row)
-        }
-        return order.map { ($0, byKind[$0] ?? []) }
+        return SearchKind.group(filtered) { $0.hit.kind }
     }
 
     /// The rows on screen, in order.
     private var visibleRows: [SearchRow] {
-        groups.flatMap(\.rows)
+        groups.flatMap(\.items)
     }
 
     var body: some View {
@@ -62,11 +55,11 @@ struct SearchView: View {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
                 ForEach(groups, id: \.kind) { group in
                     Section {
-                        ForEach(group.rows) { row in
+                        ForEach(group.items) { row in
                             resultRow(row)
                         }
                     } header: {
-                        ListSectionHeader(title: group.kind.label, count: group.rows.count)
+                        ListSectionHeader(title: group.kind.label, count: group.items.count)
                     }
                 }
             }
@@ -316,7 +309,7 @@ struct SearchResultRow: View {
     private var kind: SearchKind { row.hit.kind }
 
     var body: some View {
-        RecordRow(isSelected: isSelected) {
+        RecordRow(isSelected: isSelected, secondaryLineLimit: 2) {
             if case .person(let person) = row.result {
                 PersonAvatar(name: person.name, size: RecordRowMetrics.iconWidth)
             } else {
@@ -342,7 +335,6 @@ struct SearchResultRow: View {
             }
             if case .pr(let pr) = row.result {
                 PRSizeBar(additions: pr.additions, deletions: pr.deletions)
-                    .frame(height: 12)
             }
         }
     }
@@ -429,6 +421,18 @@ extension SearchKind {
         case .pr: "Pull Requests"
         case .feedback: "Feedback"
         }
+    }
+
+    /// Results grouped by kind, each group where its first result falls, keeping their order within it.
+    static func group<Item>(_ items: [Item], by kind: (Item) -> SearchKind) -> [(kind: SearchKind, items: [Item])] {
+        var order: [SearchKind] = []
+        var byKind: [SearchKind: [Item]] = [:]
+        for item in items {
+            let itemKind = kind(item)
+            if byKind[itemKind] == nil { order.append(itemKind) }
+            byKind[itemKind, default: []].append(item)
+        }
+        return order.map { ($0, byKind[$0] ?? []) }
     }
 
     var recordKind: RecordKind {

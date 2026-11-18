@@ -33,8 +33,7 @@ struct AllDayBandView: View {
                                     .padding(.horizontal, 3)
                                     .padding(.vertical, 1)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(eventColor(event).opacity(0.15))
-                                    .foregroundStyle(eventColor(event))
+                                    .background(event.recordColor.opacity(0.25))
                                     .clipShape(RoundedRectangle(cornerRadius: 2))
                             }
                             .buttonStyle(.plain)
@@ -49,9 +48,5 @@ struct AllDayBandView: View {
             .background(.bar)
             .fixedSize(horizontal: false, vertical: true)
         )
-    }
-
-    private func eventColor(_ event: CalendarEvent) -> Color {
-        event.meeting == nil && event.interview == nil ? .secondary : event.recordColor
     }
 }
