@@ -25,17 +25,20 @@ struct DetailHeader<Metadata: View>: View {
     var placeholder: String = "Title"
     /// Runs on Return and when the title loses focus: the binding writes every keystroke.
     var onCommit: () -> Void = {}
+    /// The title's focus, for a page that focuses it itself; else the header keeps its own.
+    var focus: FocusState<Bool>.Binding?
     @ViewBuilder var metadata: Metadata
-    @FocusState private var isFocused: Bool
+    @FocusState private var ownFocus: Bool
 
     var body: some View {
+        let isFocused = focus ?? $ownFocus
         VStack(alignment: .leading, spacing: 8) {
             TextField(placeholder, text: $title.skippingNoOps, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.title.bold())
-                .focused($isFocused)
+                .focused(isFocused)
                 .onSubmit(onCommit)
-                .onChange(of: isFocused) { _, focused in if !focused { onCommit() } }
+                .onChange(of: isFocused.wrappedValue) { _, focused in if !focused { onCommit() } }
             FlowLayout(spacing: 14) {
                 metadata
             }

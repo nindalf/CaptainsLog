@@ -20,11 +20,6 @@ struct TodoListView: View {
         return projects.first { $0.id == id }
     }
 
-    private var title: String {
-        if let list = selection.smartList { return list.title }
-        return selectedProject?.name ?? "Project"
-    }
-
     var body: some View {
         @Bindable var navigator = navigator
         HStack(spacing: 0) {
@@ -38,7 +33,7 @@ struct TodoListView: View {
                 TodoListContent(scope: selection, addTick: addTick)
             }
         }
-        .navigationTitle(title)
+        .navigationTitle("Todos")
         .toolbar { toolbarContent }
         .focusedSceneValue(\.tabCommands, tabCommands)
     }

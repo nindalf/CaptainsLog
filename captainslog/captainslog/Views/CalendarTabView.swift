@@ -20,28 +20,16 @@ struct CalendarTabView: View {
                 .overlay { emptyOverlay }
         }
         .navigationTitle("Calendar")
-        .toolbar {
-            ToolbarItem {
-                Button { syncCoordinator.syncCalendarNow() } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                .help("Refresh calendar")
-                .disabled(syncCoordinator.isSyncing)
-            }
-        }
     }
 
     private var setup: SetupInstruction? { SetupInstruction.calendar(syncCoordinator.calendarSetup, canLogIn: syncCoordinator.canLogInToCalendar) }
 
-    /// A setup step or a failing sync, over a calendar that still shows what synced before.
+    /// A setup step, over a calendar that still shows what synced before. A failing sync shows in
+    /// the sidebar's footer, as every source's does.
     @ViewBuilder
     private var banner: some View {
         if let setup, !anyEvent.isEmpty {
             SetupInstructionView(instruction: setup, style: .banner)
-                .padding(12)
-        } else if syncCoordinator.history.sources[.calendar]?.isFailing == true {
-            SyncStatusLabel(source: .calendar)
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
         }
     }

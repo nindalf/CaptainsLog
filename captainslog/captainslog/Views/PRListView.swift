@@ -59,7 +59,7 @@ struct PRListView: View {
     }
 
     var body: some View {
-        // Setup and the repo bar stay outside the list, so its key handlers don't take a field's Return and arrows.
+        // Setup stays outside the list, so its key handlers don't take a field's Return and arrows.
         VStack(spacing: 0) {
             if let setup, openPRs.isEmpty && mergedPRs.isEmpty {
                 SetupInstructionView(instruction: setup)
@@ -71,11 +71,6 @@ struct PRListView: View {
                     SetupInstructionView(instruction: setup, style: .banner)
                         .contentColumn()
                         .padding(.top, 12)
-                } else if !settings.repos.isEmpty {
-                    PRRepoBar()
-                        .contentColumn()
-                        .padding(.top, 10)
-                        .padding(.bottom, 2)
                 }
                 prList
             }
@@ -89,12 +84,6 @@ struct PRListView: View {
         let shipped = shipped
         return ScrollView {
             LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                if setup == nil {
-                    SyncStatusLabel(source: .github, alignment: .trailing)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.top, 8)
-                        .padding(.horizontal, 8)
-                }
                 section("Needs You", sections.needsMe)
                 section("Waiting on Others", sections.waiting)
                 if !sections.inFlight.isEmpty {
@@ -230,13 +219,8 @@ struct PRListView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem {
-            Button {
-                syncCoordinator.syncNow()
-            } label: {
-                Label("Sync", systemImage: "arrow.triangle.2.circlepath")
-            }
-            .disabled(syncCoordinator.isSyncing)
+        if !settings.repos.isEmpty {
+            ToolbarItem { PRRepoMenu() }
         }
     }
 

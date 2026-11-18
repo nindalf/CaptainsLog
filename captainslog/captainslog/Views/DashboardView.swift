@@ -5,7 +5,6 @@ import CaptainsLogKit
 
 struct DashboardView: View {
     @Binding var selectedSidebarItem: SidebarItem?
-    @Environment(SyncCoordinator.self) private var syncCoordinator
     @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Environment(Navigator.self) private var navigator
@@ -41,11 +40,7 @@ struct DashboardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                stardateHeader
-                Spacer()
-                syncStatus
-            }
+            stardateHeader
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, 10)
@@ -86,7 +81,6 @@ struct DashboardView: View {
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .navigationTitle("Dashboard")
-        .toolbar { toolbarContent }
         .popover(item: $unlinkedEvent) { event in
             CalendarEventPopover(event: event) { action in
                 handleEventAction(event, action: action)
@@ -200,19 +194,6 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem {
-            Button { syncCoordinator.syncNow() } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
-            }
-            .help("Refresh GitHub and calendar")
-            .disabled(syncCoordinator.isSyncing)
-        }
-    }
-
     // MARK: - PR rows
 
     private func sectionHeader(_ title: String, destination: SidebarItem) -> some View {
@@ -255,15 +236,6 @@ struct DashboardView: View {
     private func collapsePRCard() {
         prExpandedID = nil
         prFocusField = nil
-    }
-
-    /// When GitHub and the calendar last synced, or why they failed.
-    private var syncStatus: some View {
-        VStack(alignment: .trailing, spacing: 4) {
-            if settings.isShown(.pullRequests) { SyncStatusLabel(source: .github, alignment: .trailing) }
-            if settings.isShown(.meetings) { SyncStatusLabel(source: .calendar, alignment: .trailing) }
-        }
-        .frame(maxWidth: 360, alignment: .trailing)
     }
 
     private var stardateHeader: some View {

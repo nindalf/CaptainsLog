@@ -121,12 +121,12 @@ struct SearchView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem {
-            Picker("Type", selection: $kindFilter) {
-                Text("All (\(rows.count))").tag(SearchKind?.none)
-                ForEach(SearchKind.allCases.filter { kind in rows.contains { $0.hit.kind == kind } }, id: \.self) { kind in
-                    Text("\(kind.label) (\(rows.count { $0.hit.kind == kind }))").tag(SearchKind?.some(kind))
-                }
-            }
+            ToolbarFilter(
+                selection: $kindFilter,
+                kinds: SearchKind.allCases.filter { kind in rows.contains { $0.hit.kind == kind } },
+                title: \.label,
+                icon: \.icon
+            )
         }
     }
 

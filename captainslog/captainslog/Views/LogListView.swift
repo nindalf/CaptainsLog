@@ -21,13 +21,7 @@ struct LogListView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem {
-            Picker("Type", selection: $typeFilter) {
-                Text("All").tag(FeedItemType?.none)
-                ForEach(FeedItemType.allCases) { type in
-                    Label(type.rawValue, systemImage: type.icon)
-                        .tag(FeedItemType?.some(type))
-                }
-            }
+            ToolbarFilter(selection: $typeFilter, kinds: FeedItemType.allCases, title: \.rawValue, icon: \.icon)
         }
         ToolbarItem {
             Button { addTick += 1 } label: {

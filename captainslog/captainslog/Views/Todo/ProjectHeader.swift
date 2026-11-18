@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 import CaptainsLogKit
 
-/// Top of a project's todo list: icon, editable title, notes, and Complete/Reopen.
+/// Top of a project's todo list, laid out as a detail page's header: icon, editable title, a
+/// metadata line with Complete/Reopen, and the notes in full.
 struct ProjectHeader: View {
     @Bindable var project: Project
 
@@ -22,11 +23,11 @@ struct ProjectHeader: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Button { showIconPicker = true } label: {
                     Image(systemName: project.icon)
-                        .font(.title2)
+                        .font(.title)
                         .foregroundStyle(project.isCompleted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.blue))
                 }
                 .buttonStyle(.plain)
@@ -34,15 +35,15 @@ struct ProjectHeader: View {
                 .popover(isPresented: $showIconPicker) {
                     ProjectIconPicker(project: project) { try? modelContext.save() }
                 }
-                TextField("Project Name", text: $nameDraft)
-                    .textFieldStyle(.plain)
-                    .font(.title2.bold())
-                    .focused($titleFocused)
-                    .onSubmit(commitName)
-                    .onChange(of: titleFocused) { _, focused in
-                        if focused { nameError = nil } else { commitName() }
+                DetailHeader(title: $nameDraft, placeholder: "Project Name", onCommit: commitName, focus: $titleFocused) {
+                    if let completed = project.completedDate {
+                        Text("Completed \(DateLabel.day(completed, inSentence: true))")
+                    } else {
+                        Text(remainingTodos.count == 1 ? "1 open todo" : "\(remainingTodos.count) open todos")
                     }
-                completionButton
+                    completionButton
+                }
+                .onChange(of: titleFocused) { _, focused in if focused { nameError = nil } }
             }
             if let nameError {
                 Text(nameError)
@@ -56,7 +57,6 @@ struct ProjectHeader: View {
                 ),
                 placeholder: "Notes",
                 minHeight: 20,
-                maxHeight: 200,
                 showSlackControls: false
             )
             // Size to the notes rather than taking all the height on offer, which pushed the todos down.
@@ -85,16 +85,19 @@ struct ProjectHeader: View {
 
     @ViewBuilder
     private var completionButton: some View {
-        if project.isCompleted {
-            Button("Reopen") {
-                ProjectCompletion.reopen(project)
-                try? modelContext.save()
-            }
-        } else {
-            Button("Complete") {
-                if remainingTodos.isEmpty { complete() } else { confirmCompletion = true }
+        Group {
+            if project.isCompleted {
+                Button("Reopen", systemImage: "arrow.uturn.backward.circle") {
+                    ProjectCompletion.reopen(project)
+                    try? modelContext.save()
+                }
+            } else {
+                Button("Complete", systemImage: "checkmark.circle") {
+                    if remainingTodos.isEmpty { complete() } else { confirmCompletion = true }
+                }
             }
         }
+        .buttonStyle(.plain)
     }
 
     private func complete() {

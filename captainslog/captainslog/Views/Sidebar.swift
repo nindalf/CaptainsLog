@@ -72,6 +72,7 @@ struct Sidebar: View {
         List(settings.visibleSidebarItems, selection: $selection) { item in
             Label(item.label, systemImage: item.icon)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) { SidebarSyncFooter() }
         .navigationSplitViewColumnWidth(min: 180, ideal: 200)
     }
 }

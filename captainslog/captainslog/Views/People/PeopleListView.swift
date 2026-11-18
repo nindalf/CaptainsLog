@@ -63,10 +63,6 @@ struct PeopleListView: View {
         .searchable(text: $searchText, placement: .toolbar, prompt: "Search people")
         .toolbar {
             ToolbarItem {
-                Button("Add Person", systemImage: "plus") { showAddPerson = true }
-                    .help("Add a person")
-            }
-            ToolbarItem {
                 Menu {
                     Button("Import Roster…", action: chooseRoster)
                     Button("Export Roster…") { showRosterExport = true }
@@ -74,6 +70,10 @@ struct PeopleListView: View {
                     Label("Roster", systemImage: "person.2.badge.plus")
                 }
                 .help("Import or export a roster of emails and GitHub and Slack handles")
+            }
+            ToolbarItem {
+                Button("Add Person", systemImage: "plus") { showAddPerson = true }
+                    .help(AppCommand.addPerson.help("Add Person"))
             }
         }
         .sheet(item: $rosterImport) { RosterImportSheet(preview: $0) }
