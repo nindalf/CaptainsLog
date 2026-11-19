@@ -20,9 +20,6 @@ public enum CalendarWriteError: Error, LocalizedError {
 /// The app's only writes to Google Calendar, on timed events, which all come from the primary calendar.
 /// Each reads the event first: `isOrganizedByMe` is false for events last synced before schema V3. Guests are told.
 public enum CalendarWrite {
-    /// Never from a sandbox: it doesn't sync, so its events aren't real ones.
-    public static var isAvailable: Bool { !Store.isScratch }
-
     public static func decline(eventID: String) async throws {
         let body = try declineBody(for: try await api.event(id: eventID))
         try await api.patchEvent(id: eventID, body: body)

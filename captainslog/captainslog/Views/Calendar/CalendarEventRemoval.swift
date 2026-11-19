@@ -11,7 +11,7 @@ enum CalendarEventRemoval {
     /// ones can come from calendars other than the primary. `CalendarWrite` checks with Google too,
     /// for events last synced before sync recorded who organised them.
     static func offered(for event: CalendarEvent) -> Action? {
-        guard CalendarWrite.isAvailable, !event.isAllDay else { return nil }
+        guard !event.isAllDay else { return nil }
         return event.isOrganizedByMe ? .delete : .decline
     }
 

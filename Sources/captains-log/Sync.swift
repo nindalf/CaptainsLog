@@ -30,7 +30,10 @@ struct Sync: AsyncParsableCommand {
         let container = try Store.makeContainer()
         var results: [String: String] = [:]
 
-        if github || syncAll {
+        if (github || syncAll) && Store.isScratch {
+            FileHandle.standardError.write(Data("Skipping GitHub: a sandbox store doesn't sync it, since gh and the repos are the real ones.\n".utf8))
+            results["github"] = "skipped in a sandbox"
+        } else if github || syncAll {
             let settings = AppSettings()
             let repoList = repos.isEmpty ? settings.repos : repos
 

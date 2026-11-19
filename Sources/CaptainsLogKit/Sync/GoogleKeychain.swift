@@ -19,10 +19,8 @@ public struct GoogleCredentials: Codable, Sendable, Equatable {
 /// signature, so a Developer ID build of either reads it without a prompt, across upgrades; any other
 /// binary, a rebuilt ad hoc one included, gets the Keychain's prompt.
 enum GoogleKeychain {
-    private static let realService = "com.nindalf.captainslog.google"
     /// A sandbox logs in to an item of its own, so trying the login there never replaces the real one.
-    /// Its setup check falls back to the real login, which it only reads the scopes of.
-    private static var services: [String] { Store.isScratch ? [realService + ".scratch", realService] : [realService] }
+    private static var service: String { "com.nindalf.captainslog.google" + (Store.isScratch ? ".scratch" : "") }
     private static let account = "calendar"
 
     private static func query(_ service: String) -> [String: Any] {
@@ -37,24 +35,21 @@ enum GoogleKeychain {
     /// The scopes the login was granted, nil when logged out. Reads only the item's attributes, which
     /// its access list doesn't cover, so it never prompts and needs no network.
     static func grantedScopes() throws -> [String]? {
-        for service in services {
-            var query = query(service)
-            query[kSecReturnAttributes as String] = true
-            query[kSecMatchLimit as String] = kSecMatchLimitOne
-            var result: CFTypeRef?
-            let status = SecItemCopyMatching(query as CFDictionary, &result)
-            if status == errSecItemNotFound { continue }
-            guard status == errSecSuccess, let attributes = result as? [String: Any] else {
-                throw GoogleAuthError.keychain(status)
-            }
-            let scopes = (attributes[kSecAttrGeneric as String] as? Data).map { String(decoding: $0, as: UTF8.self) }
-            return scopes?.split(separator: " ").map(String.init) ?? []
+        var query = query(service)
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let attributes = result as? [String: Any] else {
+            throw GoogleAuthError.keychain(status)
         }
-        return nil
+        let scopes = (attributes[kSecAttrGeneric as String] as? Data).map { String(decoding: $0, as: UTF8.self) }
+        return scopes?.split(separator: " ").map(String.init) ?? []
     }
 
     static func load() throws -> GoogleCredentials? {
-        var query = query(services[0])
+        var query = query(service)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
@@ -67,7 +62,7 @@ enum GoogleKeychain {
     /// Replaces any earlier login, with a fresh access list naming the binaries that run now.
     static func save(_ credentials: GoogleCredentials, scopes: [String]) throws {
         try delete()
-        var item = query(services[0])
+        var item = query(service)
         item[kSecValueData as String] = try JSONEncoder().encode(credentials)
         item[kSecAttrGeneric as String] = Data(scopes.joined(separator: " ").utf8)
         item[kSecAttrLabel as String] = "Captain's Log: Google Calendar"
@@ -77,7 +72,7 @@ enum GoogleKeychain {
     }
 
     static func delete() throws {
-        let status = SecItemDelete(query(services[0]) as CFDictionary)
+        let status = SecItemDelete(query(service) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw GoogleAuthError.keychain(status) }
     }
 

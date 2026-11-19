@@ -163,9 +163,10 @@ public final class SyncCoordinator {
     // MARK: - Sync methods
 
     /// A source that isn't set up skips its sync rather than failing it: its tab says what to do instead.
+    /// A sandbox never syncs GitHub: `gh` and the repos are the real ones, so it would pull in real PRs.
     private func syncGitHub() async {
         githubSetup = await SetupCheck.github(repos: settings.repos)
-        guard githubSetup == .ready else { return }
+        guard githubSetup == .ready, !Store.isScratch else { return }
         isSyncing = true
         defer {
             isSyncing = false
