@@ -41,7 +41,7 @@ struct SetupInstruction {
         case .notLoggedIn where canLogIn:
             SetupInstruction(
                 title: "Log in to Google Calendar",
-                message: "Log in with your work account in the browser. \"Access blocked\" means you picked a personal one.",
+                message: "Log in with your work account in the browser.",
                 logsInToCalendar: true)
         case .missingScope where canLogIn:
             SetupInstruction(
@@ -51,7 +51,7 @@ struct SetupInstruction {
         case .notLoggedIn, .missingScope:
             SetupInstruction(
                 title: "Log in to Google Calendar",
-                message: "This build doesn't carry your company's Google OAuth client, so it can't log in. Put it in GoogleClient.json and rebuild, as docs/building-from-source.md says.")
+                message: "This build doesn't carry a Google OAuth client, so it can't log in. Put one in GoogleClient.json and rebuild, as docs/building-from-source.md says.")
         case .notInstalled, .notConfigured, .ready, nil:
             nil
         }
@@ -217,7 +217,7 @@ struct SyncStatusLabel: View {
     /// The errors a new user hits, said in words, with the raw error after.
     static func explain(_ error: String, source: SyncSource) -> String {
         if source == .calendar, error.contains("accessNotConfigured") {
-            return "The Google Calendar API isn't enabled in your company's Google Cloud project. Tell whoever runs it. (\(error))"
+            return "The Google Calendar API isn't enabled in the Google Cloud project of this build's OAuth client. (\(error))"
         }
         return error
     }
