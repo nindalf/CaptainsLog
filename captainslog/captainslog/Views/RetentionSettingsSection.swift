@@ -7,30 +7,36 @@ struct RetentionSettingsSection: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var context
 
-    @State private var expired: (interviews: Int, calendarEvents: Int, pullRequests: Int)?
+    @State private var expired: ExpiredCounts?
+
+    private struct ExpiredCounts {
+        var interviews: Int
+        var meetings: Int
+        var calendarEvents: Int
+        var pullRequests: Int
+    }
 
     var body: some View {
         @Bindable var settings = settings
         Group {
             rule(
-                "Clear old interview notes",
+                "Delete old interviews",
                 $settings.retention.interviews,
-                count: expired?.interviews,
-                noun: ("interview", "interviews"),
-                detail: "Clears the notes, upsides, risk factors, conclusion, debrief notes and whiteboard link, counting from the interview or its debrief. The candidate, role, level and decision stay."
+                toRemove: expired.map { [count($0.interviews, "interview", "interviews")] },
+                detail: "Counting from the interview or its debrief. Its calendar event and todos go too. An interview with an open todo, such as an unsubmitted scorecard, stays until the todo is done."
             )
             rule(
-                "Delete old calendar events",
+                "Delete old meetings and calendar events",
                 $settings.retention.calendarEvents,
-                count: expired?.calendarEvents,
-                noun: ("event", "events"),
-                detail: "Only events without meeting notes or an interview."
+                toRemove: expired.map {
+                    [count($0.meetings, "meeting", "meetings"), count($0.calendarEvents, "event", "events")]
+                },
+                detail: "Meeting notes, prep, transcripts and summaries go too; their todos stay. Interview events go with their interview."
             )
             rule(
                 "Delete old pull requests",
                 $settings.retention.pullRequests,
-                count: expired?.pullRequests,
-                noun: ("pull request", "pull requests"),
+                toRemove: expired.map { [count($0.pullRequests, "pull request", "pull requests")] },
                 detail: "Counted from the PR's last update on GitHub, and older ones stop syncing. Linked PRs go too; their todos stay."
             )
             Section {
@@ -45,8 +51,7 @@ struct RetentionSettingsSection: View {
     private func rule(
         _ title: String,
         _ rule: Binding<RetentionRule>,
-        count: Int?,
-        noun: (one: String, many: String),
+        toRemove: [String?]?,
         detail: String
     ) -> some View {
         Section {
@@ -58,13 +63,19 @@ struct RetentionSettingsSection: View {
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(detail)
-                if rule.wrappedValue.isEnabled, let count {
-                    Text(count == 0 ? "Nothing to remove now." : "\(count) \(count == 1 ? noun.one : noun.many) to remove at the next run.")
+                if rule.wrappedValue.isEnabled, let toRemove {
+                    let parts = toRemove.compactMap { $0 }
+                    Text(parts.isEmpty ? "Nothing to remove now." : "\(parts.joined(separator: " and ")) to remove at the next run.")
                 }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+    }
+
+    /// Nil for none, so a rule with nothing to remove says so once.
+    private func count(_ n: Int, _ one: String, _ many: String) -> String? {
+        n == 0 ? nil : "\(n) \(n == 1 ? one : many)"
     }
 
     /// What the next run would remove, with every rule counted as if on so the number is ready when one is switched on.
@@ -74,6 +85,11 @@ struct RetentionSettingsSection: View {
         all.calendarEvents.isEnabled = true
         all.pullRequests.isEnabled = true
         guard let found = try? ExpiredRecords.find(all, in: context) else { return }
-        expired = (found.interviews.count, found.calendarEvents.count, found.pullRequests.count)
+        expired = ExpiredCounts(
+            interviews: found.interviews.count,
+            meetings: found.meetings.count,
+            calendarEvents: found.calendarEvents.count,
+            pullRequests: found.pullRequests.count
+        )
     }
 }

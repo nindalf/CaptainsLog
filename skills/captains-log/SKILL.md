@@ -103,7 +103,7 @@ The store has only what sync brings in and what I write.
 - **Calendar:** allowlisted calendars, since syncing started.
 - **Meetings and interviews:** only what I wrote. Without notes, one is just a title, a time and attendees.
 - **Slack, Notion, Linear, documents, incidents:** not ingested.
-- **Retention:** if it's on (Settings › Retention), old interviews lose their text but keep name, level and decision, and old calendar events without notes and old PRs are deleted. `captains-log prune` shows what the next run removes and `retentionDays` (null when off). A missing old record may have been pruned.
+- **Retention:** if it's on (Settings › Retention), old interviews with no open todo (an unsubmitted scorecard keeps one) are deleted, and so are old meetings with their notes, old calendar events and old PRs. `captains-log prune` shows what the next run removes and `retentionDays` (null when off). A missing old record may have been pruned.
 
 When an answer runs into one of these, say what the store couldn't see; don't guess or look elsewhere. Then offer to record it as a **potential gap in Captain's Log**: something I might build, as the app's author. Always call them that, never "todos", and offer them apart from my real todos. Each one is stored as a todo: check `search "Captain's Log:"` for an existing one, then `todos add "Captain's Log: <what's missing>" --notes -`, saying which question needed it.
 

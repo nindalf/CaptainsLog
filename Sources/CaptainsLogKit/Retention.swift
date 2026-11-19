@@ -21,9 +21,9 @@ public struct RetentionRule: Equatable, Sendable {
 }
 
 public struct RetentionSettings: Equatable, Sendable {
-    /// Clears what was written about the candidate (`Interview.clearExpiringText`).
+    /// Deletes interviews with no open todo, with their calendar event and todos (`Interview.expired`).
     public var interviews: RetentionRule
-    /// Deletes events with no written meeting and no interview.
+    /// Deletes meetings, notes included, and events without an interview.
     public var calendarEvents: RetentionRule
     /// Deletes PRs by their last update on GitHub, and stops syncing them.
     public var pullRequests: RetentionRule
@@ -49,10 +49,11 @@ public struct RetentionSettings: Equatable, Sendable {
 /// `captains-log prune` lists or removes them.
 public struct ExpiredRecords {
     public var interviews: [Interview] = []
+    public var meetings: [Meeting] = []
     public var calendarEvents: [CalendarEvent] = []
     public var pullRequests: [PullRequest] = []
 
-    public var isEmpty: Bool { interviews.isEmpty && calendarEvents.isEmpty && pullRequests.isEmpty }
+    public var isEmpty: Bool { interviews.isEmpty && meetings.isEmpty && calendarEvents.isEmpty && pullRequests.isEmpty }
 
     /// Finds everything first, then `remove` acts, so a dry run lists exactly what a real run removes.
     public static func find(_ settings: RetentionSettings, now: Date = .now, in context: ModelContext) throws -> ExpiredRecords {
@@ -61,6 +62,7 @@ public struct ExpiredRecords {
             expired.interviews = try Interview.expired(before: cutoff, in: context)
         }
         if let cutoff = settings.calendarEvents.cutoff(now: now) {
+            expired.meetings = try Meeting.expired(before: cutoff, in: context)
             expired.calendarEvents = try CalendarEvent.expired(before: cutoff, in: context)
         }
         if let cutoff = settings.pullRequests.cutoff(now: now) {
@@ -69,45 +71,52 @@ public struct ExpiredRecords {
         return expired
     }
 
-    /// Permanent: nothing goes to the Trash. Saves.
+    /// Permanent: nothing goes to the Trash. Saves. PRs go first: `PullRequest.delete` fetches the
+    /// todos it unlinks, and must not touch ones an interview has deleted.
     public func remove(in context: ModelContext) throws {
-        for interview in interviews { interview.clearExpiringText() }
-        for event in calendarEvents { event.deleteWithEmptyStubs(in: context) }
         for pr in pullRequests { try pr.delete(in: context) }
+        for meeting in meetings { context.delete(meeting) }
+        for event in calendarEvents { context.delete(event) }
+        for interview in interviews { interview.deleteExpired(in: context) }
         try context.save()
     }
 }
 
 extension Interview {
-    /// Past `cutoff` counting from the later of the interview and its debrief, with text left to clear.
+    /// Past `cutoff` counting from the later of the interview and its debrief, with no open todo: an
+    /// unsubmitted scorecard keeps it. A completed or trashed todo counts as closed.
     static func expired(before cutoff: Date, in context: ModelContext) throws -> [Interview] {
         try context.fetch(FetchDescriptor<Interview>(predicate: #Predicate { $0.date < cutoff }))
-            .filter { max($0.date, $0.debriefDate ?? $0.date) < cutoff && $0.hasExpiringText }
+            .filter { max($0.date, $0.debriefDate ?? $0.date) < cutoff && !$0.hasOpenTodo }
     }
 
-    var hasExpiringText: Bool {
-        ![rawNotes, upsides, riskFactors, conclusion, debriefNotes, whiteboardLink].allSatisfy { $0?.isEmpty ?? true }
+    var hasOpenTodo: Bool {
+        (todos ?? []).contains { !$0.isCompleted && !$0.isTrashed }
     }
 
-    /// Clears what was written about the candidate. The record stays, with the candidate's name, role,
-    /// problem, level and decision, so links and the scorecard todo still resolve.
-    public func clearExpiringText() {
-        rawNotes = nil
-        upsides = nil
-        riskFactors = nil
-        conclusion = nil
-        debriefNotes = nil
-        whiteboardLink = nil
+    /// Deletes the interview with its todos, all closed, and its calendar event, whose title often
+    /// names the candidate. Calendar sync looks only a week back, so the event doesn't return.
+    func deleteExpired(in context: ModelContext) {
+        for todo in todos ?? [] { context.delete(todo) }
+        if let calendarEvent { context.delete(calendarEvent) }
+        context.delete(self)
+    }
+}
+
+extension Meeting {
+    /// Dated before `cutoff`, written in or not, with or without a calendar event. Its todos stay, unlinked.
+    static func expired(before cutoff: Date, in context: ModelContext) throws -> [Meeting] {
+        try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.date < cutoff }))
     }
 }
 
 extension CalendarEvent {
-    /// Ended before `cutoff`, with no written meeting. Events with an interview stay whatever it holds:
-    /// clearing an interview's text can leave it looking like an empty stub, and the interview's own
-    /// rule decides what happens to it. Calendar sync looks only a week back, so these don't return.
+    /// Ended before `cutoff`, without an interview, which the interview rule decides. Its meeting
+    /// started before the event ended, so it is expired too. Calendar sync looks only a week back,
+    /// so these don't return.
     static func expired(before cutoff: Date, in context: ModelContext) throws -> [CalendarEvent] {
         try context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.endTime < cutoff }))
-            .filter { $0.interview == nil && ($0.meeting?.isEmpty ?? true) }
+            .filter { $0.interview == nil }
     }
 }
 
@@ -133,6 +142,7 @@ extension PullRequest {
 
 public struct RetentionCounts: Sendable {
     public var interviews = 0
+    public var meetings = 0
     public var calendarEvents = 0
     public var pullRequests = 0
 
@@ -147,6 +157,7 @@ public actor RetentionPruner {
         var counts = RetentionCounts()
         guard !expired.isEmpty else { return counts }
         counts.interviews = expired.interviews.count
+        counts.meetings = expired.meetings.count
         counts.calendarEvents = expired.calendarEvents.count
         counts.pullRequests = expired.pullRequests.count
         try expired.remove(in: modelContext)

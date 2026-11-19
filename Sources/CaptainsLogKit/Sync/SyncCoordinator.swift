@@ -242,7 +242,7 @@ public final class SyncCoordinator {
         guard retention.isAnyEnabled else { return }
         do {
             let counts = try await RetentionPruner(modelContainer: container).prune(retention)
-            logger.info("Retention: cleared \(counts.interviews) interviews, deleted \(counts.calendarEvents) events and \(counts.pullRequests) PRs")
+            logger.info("Retention: deleted \(counts.interviews) interviews, \(counts.meetings) meetings, \(counts.calendarEvents) events and \(counts.pullRequests) PRs")
         } catch {
             logger.error("Retention pruning failed: \(error)")
         }

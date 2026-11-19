@@ -8,9 +8,9 @@ struct Prune: AsyncParsableCommand {
         abstract: "List or remove records past the retention set in the app's Settings",
         discussion: """
             Lists what would go; --permanently removes it. Each kind is on until turned off in Settings › Retention: \
-            interviews lose their written text (the record, name, level and decision stay), calendar events with no \
-            written meeting or interview are deleted, and PRs are deleted by their last update on GitHub. The app \
-            does the same every hour.
+            interviews with no open todo are deleted with their calendar event and todos, meetings (notes included) \
+            and calendar events without an interview are deleted, and PRs are deleted by their last update on \
+            GitHub. The app does the same every hour.
             """
     )
 
@@ -28,6 +28,7 @@ struct Prune: AsyncParsableCommand {
             removed: permanently,
             retentionDays: RetentionDaysDTO(settings),
             interviews: expired.interviews.map(InterviewDTO.from),
+            meetings: expired.meetings.map(MeetingDTO.from),
             calendarEvents: expired.calendarEvents.map(CalendarEventDTO.from),
             pullRequests: expired.pullRequests.map(PullRequestDTO.from)
         )
@@ -39,6 +40,7 @@ struct Prune: AsyncParsableCommand {
         let removed: Bool
         let retentionDays: RetentionDaysDTO
         let interviews: [InterviewDTO]
+        let meetings: [MeetingDTO]
         let calendarEvents: [CalendarEventDTO]
         let pullRequests: [PullRequestDTO]
     }

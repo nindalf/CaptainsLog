@@ -38,82 +38,121 @@ struct RetentionTests {
         #expect(expired.isEmpty)
     }
 
-    @Test func interviewKeepsRecordNameLevelAndDecision() throws {
+    private func event(_ name: String, daysAgo: Int, before now: Date) -> CalendarEvent {
+        let start = days(daysAgo, before: now)
+        let e = CalendarEvent(title: name, startTime: start, endTime: start.addingTimeInterval(1800), externalID: "retention-\(name)-\(now.timeIntervalSince1970)")
+        context.insert(e)
+        return e
+    }
+
+    private func todo(_ title: String, completed: Bool = false, trashed: Bool = false) -> Todo {
+        let t = Todo(title: title)
+        if completed { t.completedDate = .now }
+        if trashed { t.trashedDate = .now }
+        context.insert(t)
+        return t
+    }
+
+    private func ids<T: PersistentModel>(_ type: T.Type, _ id: KeyPath<T, UUID>) throws -> Set<UUID> {
+        Set(try context.fetch(FetchDescriptor<T>()).map { $0[keyPath: id] })
+    }
+
+    @Test func interviewsGoWithEventAndTodosOnceNoTodoIsOpen() throws {
         let now = Date(timeIntervalSince1970: 1_100_000_000)
-        let interview = Interview(date: days(40, before: now), candidateName: "Dana", role: "Backend")
-        interview.rawNotes = "notes"
-        interview.upsides = "up"
-        interview.riskFactors = "risk"
-        interview.conclusion = "done"
-        interview.debriefNotes = "debrief"
-        interview.whiteboardLink = "https://board"
-        interview.levelAssessment = "L4"
-        interview.recommendation = .strongYes
-        interview.problemName = "LRU cache"
-        let recent = Interview(date: days(10, before: now), candidateName: "Eli")
-        recent.rawNotes = "fresh"
-        let lateDebrief = Interview(date: days(40, before: now), candidateName: "Fay")
-        lateDebrief.rawNotes = "kept"
+        func interview(_ name: String, daysAgo: Int) -> Interview {
+            let i = Interview(date: days(daysAgo, before: now), candidateName: name)
+            i.rawNotes = "notes"
+            context.insert(i)
+            return i
+        }
+        let submitted = interview("Dana", daysAgo: 40)
+        let submittedEvent = event("Interview Dana", daysAgo: 40, before: now)
+        submitted.calendarEvent = submittedEvent
+        let scorecard = todo("Submit scorecard for Dana", completed: true)
+        scorecard.interview = submitted
+        let unsubmitted = interview("Eli", daysAgo: 40)
+        todo("Submit scorecard for Eli").interview = unsubmitted
+        let dismissed = interview("Fay", daysAgo: 40)
+        todo("Submit scorecard for Fay", trashed: true).interview = dismissed
+        let untouched = interview("Gus", daysAgo: 40)
+        let recent = interview("Hal", daysAgo: 10)
+        let lateDebrief = interview("Ida", daysAgo: 40)
         lateDebrief.debriefDate = days(5, before: now)
-        context.insert(interview)
-        context.insert(recent)
-        context.insert(lateDebrief)
         try context.save()
 
         let expired = try ExpiredRecords.find(settings(interviews: true), now: now, in: context)
-        let ids = Set(expired.interviews.map(\.id))
-        #expect(ids.contains(interview.id))
-        #expect(!ids.contains(recent.id))
-        #expect(!ids.contains(lateDebrief.id))
+        let found = Set(expired.interviews.map(\.id))
+        #expect(found.isSuperset(of: [submitted.id, dismissed.id, untouched.id]))
+        #expect(found.isDisjoint(with: [unsubmitted.id, recent.id, lateDebrief.id]))
+
+        let scorecardID = scorecard.id
+        let eventID = submittedEvent.id
         try expired.remove(in: context)
-
-        #expect(interview.rawNotes == nil && interview.upsides == nil && interview.riskFactors == nil)
-        #expect(interview.conclusion == nil && interview.debriefNotes == nil && interview.whiteboardLink == nil)
-        #expect(interview.candidateName == "Dana" && interview.role == "Backend")
-        #expect(interview.levelAssessment == "L4" && interview.recommendation == .strongYes && interview.problemName == "LRU cache")
-        #expect(recent.rawNotes == "fresh" && lateDebrief.rawNotes == "kept")
-
-        // Cleared once, it isn't found again.
-        let again = try ExpiredRecords.find(settings(interviews: true), now: now, in: context)
-        #expect(!again.interviews.contains { $0.id == interview.id })
+        let interviews = try ids(Interview.self, \.id)
+        #expect(interviews.isDisjoint(with: found))
+        #expect(interviews.isSuperset(of: [unsubmitted.id, recent.id, lateDebrief.id]))
+        #expect(!(try ids(Todo.self, \.id)).contains(scorecardID))
+        #expect(!(try ids(CalendarEvent.self, \.id)).contains(eventID))
     }
 
-    @Test func calendarEventsKeepWrittenMeetingsAndInterviews() throws {
+    @Test func meetingsAndEventsGoWrittenOrNot() throws {
         let now = Date(timeIntervalSince1970: 1_200_000_000)
-        func event(_ name: String, daysAgo: Int) -> CalendarEvent {
-            let start = days(daysAgo, before: now)
-            let e = CalendarEvent(title: name, startTime: start, endTime: start.addingTimeInterval(1800), externalID: "retention-\(name)-\(now.timeIntervalSince1970)")
-            context.insert(e)
-            return e
-        }
-        let bare = event("bare", daysAgo: 200)
-        let stub = event("stub", daysAgo: 200)
-        let stubMeeting = Meeting(date: stub.startTime, title: "stub")
-        stubMeeting.calendarEvent = stub
-        context.insert(stubMeeting)
-        let written = event("written", daysAgo: 200)
-        let writtenMeeting = Meeting(date: written.startTime, title: "written")
+        let bare = event("bare", daysAgo: 200, before: now)
+        let written = event("written", daysAgo: 200, before: now)
+        let writtenMeeting = written.createMeeting(in: context)
         writtenMeeting.notes = "we decided"
-        writtenMeeting.calendarEvent = written
-        context.insert(writtenMeeting)
-        let interviewed = event("interviewed", daysAgo: 200)
-        let interview = Interview(date: interviewed.startTime, candidateName: "Gus")
+        let followUp = todo("Follow up")
+        followUp.meeting = writtenMeeting
+        let adHoc = Meeting(date: days(200, before: now), title: "ad hoc")
+        context.insert(adHoc)
+        let recentMeeting = Meeting(date: days(100, before: now), title: "recent")
+        context.insert(recentMeeting)
+        let recent = event("recent", daysAgo: 100, before: now)
+        let interviewed = event("interviewed", daysAgo: 200, before: now)
+        let interview = Interview(date: interviewed.startTime, candidateName: "Jo")
         interview.calendarEvent = interviewed
         context.insert(interview)
-        let recent = event("recent", daysAgo: 100)
         try context.save()
 
         let expired = try ExpiredRecords.find(settings(calendarEvents: true), now: now, in: context)
-        let ids = Set(expired.calendarEvents.map(\.id))
-        #expect(ids.isSuperset(of: [bare.id, stub.id]))
-        #expect(!ids.contains(written.id) && !ids.contains(interviewed.id) && !ids.contains(recent.id))
+        let events = Set(expired.calendarEvents.map(\.id))
+        let meetings = Set(expired.meetings.map(\.id))
+        #expect(events.isSuperset(of: [bare.id, written.id]))
+        #expect(events.isDisjoint(with: [recent.id, interviewed.id]))
+        #expect(meetings.isSuperset(of: [writtenMeeting.id, adHoc.id]))
+        #expect(!meetings.contains(recentMeeting.id))
 
-        let stubMeetingID = stubMeeting.id
-        let writtenMeetingID = writtenMeeting.id
         try expired.remove(in: context)
-        let meetings = try context.fetch(FetchDescriptor<Meeting>()).map(\.id)
-        #expect(!meetings.contains(stubMeetingID))
-        #expect(meetings.contains(writtenMeetingID))
+        #expect(try ids(Meeting.self, \.id).isDisjoint(with: meetings))
+        #expect(try ids(CalendarEvent.self, \.id).isDisjoint(with: events))
+        #expect(try ids(CalendarEvent.self, \.id).contains(interviewed.id))
+        #expect(try ids(Interview.self, \.id).contains(interview.id))
+        #expect(followUp.meeting == nil && !followUp.isDeleted)
+    }
+
+    /// PRs are removed before interviews, so unlinking a PR's todos doesn't touch one an interview deleted.
+    /// Dated before every other test's records, so this run removes only its own.
+    @Test func everyRuleAtOnce() throws {
+        let now = Date(timeIntervalSince1970: 900_000_000)
+        let interview = Interview(date: days(400, before: now), candidateName: "Kim")
+        interview.calendarEvent = event("Interview Kim", daysAgo: 400, before: now)
+        context.insert(interview)
+        let pr = PullRequest(number: 1, title: "PR", url: URL(string: "https://x/1")!, repo: "retention/\(now.timeIntervalSince1970)", state: .merged, createdAt: days(400, before: now), isAuthoredByMe: true)
+        context.insert(pr)
+        let scorecard = todo("Submit scorecard for Kim", completed: true)
+        scorecard.interview = interview
+        scorecard.pullRequest = pr
+        let meeting = event("sync", daysAgo: 400, before: now).createMeeting(in: context)
+        meeting.notes = "notes"
+        try context.save()
+
+        let removed: Set<UUID> = [interview.id, pr.id, meeting.id, scorecard.id]
+        let all = RetentionSettings()
+        try ExpiredRecords.find(all, now: now, in: context).remove(in: context)
+        let remaining = try ids(Interview.self, \.id).union(ids(PullRequest.self, \.id))
+            .union(ids(Meeting.self, \.id)).union(ids(Todo.self, \.id))
+        #expect(remaining.isDisjoint(with: removed))
+        #expect(try ExpiredRecords.find(all, now: now, in: context).isEmpty)
     }
 
     @Test func pullRequestsGoByLastUpdateAndUnlinkTodos() throws {
