@@ -112,6 +112,7 @@ extension MeetingDetail {
     static func previous(of m: Meeting, in context: ModelContext) throws -> [(meeting: Meeting, match: Meeting.PreviousMatch)] {
         let date = m.date
         let earlier = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.date < date }))
+            .filter { outsideInvitations.shows($0) }
         return m.previous(among: earlier, me: try Person.me(in: context)?.id)
     }
 }
@@ -334,7 +335,8 @@ struct TodoDetail: Encodable {
             trashedDate: t.trashedDate, isCompleted: t.isCompleted, isOverdue: t.isOverdue(),
             isPrivate: t.isPrivate, schedule: t.schedule.rawValue, list: SmartList.of(t).rawValue,
             project: t.project.map(RecordRef.from), people: t.people.map(PersonRef.from),
-            meeting: t.meeting.map(RecordRef.from), interview: t.interview.map(RecordRef.from),
+            meeting: t.meeting.flatMap { outsideInvitations.shows($0) ? RecordRef.from($0) : nil },
+            interview: t.interview.flatMap { outsideInvitations.shows($0) ? RecordRef.from($0) : nil },
             pullRequest: t.pullRequest.map(RecordRef.from)
         )
     }
@@ -361,7 +363,7 @@ struct ProjectDetail: Encodable {
             completedDate: p.completedDate,
             todos: todos.filter { !$0.isCompleted }.map(RecordRef.from),
             completedTodos: todos.filter(\.isCompleted).map(RecordRef.from),
-            meetings: (p.meetings ?? []).sorted { $0.date > $1.date }.map(RecordRef.from),
+            meetings: (p.meetings ?? []).filter { outsideInvitations.shows($0) }.sorted { $0.date > $1.date }.map(RecordRef.from),
             pullRequests: (p.pullRequests ?? []).sorted { $0.createdAt > $1.createdAt }.map(RecordRef.from),
             logEntries: (p.logEntries ?? []).sorted { $0.timestamp > $1.timestamp }.map(RecordRef.from)
         )
@@ -405,8 +407,8 @@ struct PersonDetail: Encodable {
             id: p.id, name: p.name, email: p.email, slackHandle: p.slackHandle, githubHandle: p.githubHandle,
             syncsPullRequests: p.syncsPullRequests, isSelf: p.isSelf,
             feedback: (p.feedback ?? []).sorted { $0.date > $1.date }.map(FeedbackDetail.from),
-            meetings: (p.meetings ?? []).sorted { $0.date > $1.date }.map(RecordRef.from),
-            interviews: (p.interviews ?? []).sorted { $0.date > $1.date }.map(RecordRef.from),
+            meetings: (p.meetings ?? []).filter { outsideInvitations.shows($0) }.sorted { $0.date > $1.date }.map(RecordRef.from),
+            interviews: (p.interviews ?? []).filter { outsideInvitations.shows($0) }.sorted { $0.date > $1.date }.map(RecordRef.from),
             authoredPRs: (p.authoredPRs ?? []).sorted { $0.createdAt > $1.createdAt }.map(RecordRef.from),
             reviewedPRs: (p.reviewedPRs ?? []).sorted { $0.createdAt > $1.createdAt }.map(RecordRef.from),
             logEntries: (p.logEntries ?? []).sorted { $0.timestamp > $1.timestamp }.map(RecordRef.from)

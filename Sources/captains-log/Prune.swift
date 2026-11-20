@@ -24,13 +24,19 @@ struct Prune: AsyncParsableCommand {
         let settings = AppSettings().retention
         let context = ModelContext(try Store.makeContainer())
         let expired = try ExpiredRecords.find(settings, in: context)
+        let interviews = expired.interviews.filter { outsideInvitations.shows($0) }
+        let meetings = expired.meetings.filter { outsideInvitations.shows($0) }
+        let events = expired.calendarEvents.filter { outsideInvitations.shows($0) }
+        let listed = interviews.count + meetings.count + events.count
+        let withheld = expired.interviews.count + expired.meetings.count + expired.calendarEvents.count - listed
         let output = PruneDTO(
             removed: permanently,
             retentionDays: RetentionDaysDTO(settings),
-            interviews: expired.interviews.map(InterviewDTO.from),
-            meetings: expired.meetings.map(MeetingDTO.from),
-            calendarEvents: expired.calendarEvents.map(CalendarEventDTO.from),
-            pullRequests: expired.pullRequests.map(PullRequestDTO.from)
+            interviews: interviews.map(InterviewDTO.from),
+            meetings: meetings.map(MeetingDTO.from),
+            calendarEvents: events.map(CalendarEventDTO.from),
+            pullRequests: expired.pullRequests.map(PullRequestDTO.from),
+            withheld: withheld == 0 ? nil : withheld
         )
         if permanently { try expired.remove(in: context) }
         try printJSON(output, pretty: pretty)
@@ -43,6 +49,8 @@ struct Prune: AsyncParsableCommand {
         let meetings: [MeetingDTO]
         let calendarEvents: [CalendarEventDTO]
         let pullRequests: [PullRequestDTO]
+        /// Records from outside invitations, left out of the lists above but removed with them all the same.
+        let withheld: Int?
     }
 
     /// Null for a kind that is off.

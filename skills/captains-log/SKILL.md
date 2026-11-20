@@ -94,6 +94,7 @@ Log entries, meetings, interviews and todos have `isPrivate` (`--private` / `--n
 - The CLI never prints a private record's text (content, notes, summaries, interview write-ups), `show` included, and `search` matches only its title. You still get title, date, attendees, tags and an interview's recommendation, so you can count interviews and their hire/no-hire split, and write to a private record by id.
 - If I ask what a private record says, tell me it's private and to open it in the app. Never make one public (`--no-private`) unless I ask for that.
 - Leave private records out of anything others will read (Slack, docs, PRs).
+- Calendar invitations from outside my organisation that I haven't accepted are left out of every list, with their meetings and interviews, until I accept one or write in its meeting or interview; looking one up by id is an error. A stranger wrote their titles. If something seems missing, say it may be one of these and to check the app; don't try to get around it.
 
 ## What the store can't see
 

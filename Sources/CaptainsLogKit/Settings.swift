@@ -178,6 +178,21 @@ public final class AppSettings: @unchecked Sendable {
         }
     }
 
+    /// Keeps invitations from outside my email domain out of the CLI until accepted
+    /// (`OutsideInvitations`). On by default.
+    public var hidesOutsideInvitations: Bool {
+        get {
+            access(keyPath: \.hidesOutsideInvitations)
+            return defaults.object(forKey: "hidesOutsideInvitations") as? Bool ?? true
+        }
+        set {
+            withMutation(keyPath: \.hidesOutsideInvitations) {
+                defaults.set(newValue, forKey: "hidesOutsideInvitations")
+            }
+            logger.debug("Updated hidesOutsideInvitations: \(newValue)")
+        }
+    }
+
     public var showWeekends: Bool {
         get { defaults.object(forKey: "showWeekends") as? Bool ?? false }
         set {

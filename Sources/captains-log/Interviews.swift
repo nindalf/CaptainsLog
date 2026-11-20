@@ -46,7 +46,7 @@ struct Interviews: AsyncParsableCommand {
                 predicate: #Predicate { $0.date >= start && $0.date < end },
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
-            var interviews = try context.fetch(descriptor)
+            var interviews = try context.fetch(descriptor).filter { outsideInvitations.shows($0) }
 
             if let candidate {
                 interviews = interviews.filter {
@@ -207,6 +207,7 @@ struct Interviews: AsyncParsableCommand {
         guard let interview = try context.fetch(FetchDescriptor<Interview>(predicate: #Predicate { $0.id == uuid })).first else {
             throw ValidationError("Interview not found: \(id)")
         }
+        try outsideInvitations.require(interview)
         return interview
     }
 }

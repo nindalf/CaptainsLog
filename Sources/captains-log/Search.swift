@@ -23,7 +23,7 @@ struct Search: AsyncParsableCommand {
             throw ValidationError("Search query can't be empty")
         }
         let context = ModelContext(try Store.makeContainer())
-        let results = try Searcher.search(query, in: context, privateTitlesOnly: true).map {
+        let results = try Searcher.search(query, in: context, privateTitlesOnly: true, outsideInvitations: outsideInvitations).map {
             SearchResultDTO($0)
         }
         try printJSON(results, pretty: pretty)

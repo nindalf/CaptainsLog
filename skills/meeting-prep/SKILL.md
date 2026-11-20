@@ -18,7 +18,7 @@ Get me ready to give an update: what's still open with these people, and what I'
 Run these, in order, and nothing else. Read the output as printed, without `jq`: lists print one record per line with keys in the same order, and times are local.
 
 1. `captains-log status` and `captains-log whoami`, as the captains-log skill says.
-2. `captains-log events list --upcoming --meetings`: meetings today and over the next week that haven't started, without interviews, all-day events or events with no one else. If I named a meeting or person, pick the match. Otherwise offer the next few as a choice.
+2. `captains-log events list --upcoming --meetings`: meetings today and over the next week that haven't started, without interviews, all-day events or events with no one else. If I named a meeting or person, pick the match; if there's none, it may be an invitation from outside my organisation I haven't accepted, which the CLI leaves out, so say so. Otherwise offer the next few as a choice.
 3. `captains-log meetings prep <event id>`: makes the event's meeting if it has none, and prints everything the notes need:
    - `id` (the meeting's), `attendees`, `isPrivate`, and `prepNotes` if some are saved.
    - `todos`, as the meeting's page lists them. `link` is `filed` (filed here), `tagged` (open, tagging an attendee) or `completedHere`.

@@ -47,7 +47,7 @@ struct FeedCommand: AsyncParsableCommand {
             let meetings = try context.fetch(FetchDescriptor<Meeting>(
                 predicate: #Predicate { $0.date >= start && $0.date < end }
             ))
-            items += meetings.filter(Feed.includes).map {
+            items += meetings.filter { Feed.includes($0) && outsideInvitations.shows($0) }.map {
                 FeedItemDTO(type: .meeting, id: $0.id, date: $0.date, title: $0.title, isPrivate: $0.isPrivate,
                             project: $0.project, tags: [], snippet: $0.summary ?? $0.notes)
             }
@@ -56,7 +56,7 @@ struct FeedCommand: AsyncParsableCommand {
             let interviews = try context.fetch(FetchDescriptor<Interview>(
                 predicate: #Predicate { $0.date >= start && $0.date < end }
             ))
-            items += interviews.filter(Feed.includes).map {
+            items += interviews.filter { Feed.includes($0) && outsideInvitations.shows($0) }.map {
                 FeedItemDTO(type: .interview, id: $0.id, date: $0.date, title: $0.candidateName, isPrivate: $0.isPrivate,
                             project: nil, tags: [], snippet: $0.conclusion ?? $0.rawNotes)
             }

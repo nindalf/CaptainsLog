@@ -201,7 +201,8 @@ public final class SyncCoordinator {
             let actor = CalendarSync(modelContainer: container)
             try await actor.sync(
                 calendarAllowlist: settings.calendarAllowlist,
-                weeksAhead: settings.calendarFetchWeeks
+                weeksAhead: settings.calendarFetchWeeks,
+                hidesOutsideInvitations: settings.hidesOutsideInvitations
             )
             SyncHistory.update { $0.recordSuccess(.calendar) }
             logger.info("Calendar sync succeeded")

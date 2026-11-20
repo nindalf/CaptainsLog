@@ -18,6 +18,11 @@ public final class CalendarEvent {
     public var isHidden: Bool = false
     /// Mine to delete rather than decline. Set by sync, so false until an event's first sync after V3.
     public var isOrganizedByMe: Bool = false
+    /// An invitation organised outside my email domain, so anyone could have written its title.
+    /// From schema V6, set by sync: false until an event's first sync after it.
+    public var isFromOutside: Bool = false
+    /// I accepted it. Set by sync from schema V6.
+    public var isAcceptedByMe: Bool = false
 
     #Unique<CalendarEvent>([\.externalID])
 

@@ -38,8 +38,11 @@ public actor Searcher {
     }
 
     /// With `privateTitlesOnly`, a private record matches on its title alone, so a hit gives away
-    /// nothing of its text. The CLI searches this way.
-    public static func search(_ query: String, in context: ModelContext, privateTitlesOnly: Bool = false) throws -> [SearchHit] {
+    /// nothing of its text. The CLI searches this way, leaving out what `outsideInvitations` withholds.
+    public static func search(
+        _ query: String, in context: ModelContext, privateTitlesOnly: Bool = false,
+        outsideInvitations: OutsideInvitations = .shown
+    ) throws -> [SearchHit] {
         let terms = SearchMatch.terms(of: query)
         // SQLite narrows each type by the longest word; SearchMatch then checks every word in Swift.
         guard let q = terms.max(by: { $0.count < $1.count }) else { return [] }
@@ -87,14 +90,14 @@ public actor Searcher {
                 || ($0.notes?.localizedStandardContains(q) ?? false)
                 || ($0.summary?.localizedStandardContains(q) ?? false)
                 || ($0.transcript?.localizedStandardContains(q) ?? false)
-        })) {
+        })) where outsideInvitations.shows(m) {
             add(.meeting, m.id, m.title, m.date, isPrivate: m.isPrivate, [
                 ("title", m.title), ("summary", m.summary), ("notes", m.notes), ("prepNotes", m.prepNotes), ("transcript", m.transcript),
             ])
         }
 
         // Interviews are few, so match their text fields in Swift rather than in a predicate.
-        for i in try context.fetch(FetchDescriptor<Interview>()) {
+        for i in try context.fetch(FetchDescriptor<Interview>()) where outsideInvitations.shows(i) {
             add(.interview, i.id, i.candidateName, i.date, isPrivate: i.isPrivate, [
                 ("candidateName", i.candidateName), ("role", i.role), ("problemName", i.problemName),
                 ("conclusion", i.conclusion), ("rawNotes", i.rawNotes), ("upsides", i.upsides),

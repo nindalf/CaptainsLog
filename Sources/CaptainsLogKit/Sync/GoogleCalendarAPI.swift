@@ -158,6 +158,8 @@ public struct GoogleCalendarEvent: Decodable, Sendable {
     public let location: String?
     public let attendees: [GoogleCalendarAttendee]?
     public let organizer: GoogleCalendarOrganizer?
+    /// Who made it. Differs from the organiser on a shared calendar's events.
+    public let creator: GoogleCalendarOrganizer?
     public let eventType: String?
     public let status: String?
     public let hangoutLink: String?
@@ -211,7 +213,5 @@ public struct GoogleCalendarAttendee: Decodable, Sendable {
         resource = try container.decodeIfPresent(Bool.self, forKey: .resource)
     }
 
-    var emailDomain: String? {
-        email.split(separator: "@").last.map { $0.lowercased() }
-    }
+    var emailDomain: String? { CaptainsLogKit.emailDomain(email) }
 }

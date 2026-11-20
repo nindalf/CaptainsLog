@@ -44,7 +44,7 @@ struct Meetings: AsyncParsableCommand {
                 predicate: #Predicate { $0.date >= start && $0.date < end },
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
-            var meetings = try context.fetch(descriptor)
+            var meetings = try context.fetch(descriptor).filter { outsideInvitations.shows($0) }
 
             if let person {
                 meetings = meetings.filter { m in
@@ -78,6 +78,7 @@ struct Meetings: AsyncParsableCommand {
             guard let calEvent = try context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.id == uuid })).first else {
                 throw ValidationError("Calendar event not found: \(event)")
             }
+            try outsideInvitations.require(calEvent)
             if let meeting = calEvent.meeting {
                 throw ValidationError("Event already has a meeting: \(meeting.id)")
             }
@@ -116,6 +117,7 @@ struct Meetings: AsyncParsableCommand {
             let context = ModelContext(try Store.makeContainer())
             let meeting: Meeting
             if let event = try context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.id == uuid })).first {
+                try outsideInvitations.require(event)
                 if let interview = event.interview {
                     throw ValidationError("Event is an interview: \(interview.id)")
                 }
@@ -126,6 +128,7 @@ struct Meetings: AsyncParsableCommand {
                     try context.save()
                 }
             } else if let existing = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.id == uuid })).first {
+                try outsideInvitations.require(existing)
                 meeting = existing
             } else {
                 throw ValidationError("No meeting or calendar event with id \(id)")
@@ -236,6 +239,7 @@ struct Meetings: AsyncParsableCommand {
         guard let meeting = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.id == uuid })).first else {
             throw ValidationError("Meeting not found: \(id)")
         }
+        try outsideInvitations.require(meeting)
         return meeting
     }
 }

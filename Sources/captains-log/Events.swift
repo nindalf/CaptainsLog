@@ -49,7 +49,7 @@ struct Events: AsyncParsableCommand {
                 predicate: #Predicate { $0.startTime < end && $0.endTime > start && (includeHidden || !$0.isHidden) },
                 sortBy: [SortDescriptor(\.startTime)]
             )
-            var events = try context.fetch(descriptor)
+            var events = try context.fetch(descriptor).filter { outsideInvitations.shows($0) }
             if upcoming {
                 let now = Date.now
                 events = events.filter { $0.startTime > now }
@@ -139,6 +139,7 @@ struct Events: AsyncParsableCommand {
         guard let event = try context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.id == uuid })).first else {
             throw ValidationError("Calendar event not found: \(id)")
         }
+        try outsideInvitations.require(event)
         return event
     }
 }

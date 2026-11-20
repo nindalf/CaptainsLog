@@ -6,6 +6,7 @@ struct MeetingDetailView: View {
     @Bindable var meeting: Meeting
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \Project.sortOrder) private var projects: [Project]
     @State private var todoAddTick = 0
     @State private var pendingDelete: DeletableRecord?
@@ -174,8 +175,10 @@ struct MeetingDetailView: View {
     }
 
     /// The meeting-prep skill's command for this meeting, until a notes field is opened and while the
-    /// skill can find it: an event `events list --upcoming --meetings` lists (a meeting, within its week).
+    /// skill can find it: an event `events list --upcoming --meetings` lists (a meeting, within its week,
+    /// not withheld as an outside invitation, whose title the command would hand the agent).
     private var prepCommand: String? {
+        guard !(settings.hidesOutsideInvitations && meeting.isWithheldFromAgents) else { return nil }
         let calendar = Calendar.current
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: calendar.startOfDay(for: .now))!
         guard !NotesField.allCases.contains(where: isShown), let event = meeting.calendarEvent, event.isMeeting,

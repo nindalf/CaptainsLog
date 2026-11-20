@@ -49,6 +49,30 @@ struct SearcherTests {
         #expect(try search("#4242").map(\.id) == [pr.id])
     }
 
+    /// Leaves out an outside invitation's meeting and interview, but not one I've written notes in.
+    @Test func leavesOutWithheldInvitationsWhenAsked() throws {
+        let word = uniqueWord()
+        func outsideEvent() -> CalendarEvent {
+            let event = CalendarEvent(title: "Call \(word)", startTime: .now, endTime: .now, externalID: UUID().uuidString)
+            event.isFromOutside = true
+            return event
+        }
+        let (event, notedEvent) = (outsideEvent(), outsideEvent())
+        let meeting = Meeting(date: .now, title: "Call \(word)")
+        let interview = Interview(date: .now, candidateName: "Sam \(word)")
+        let noted = Meeting(date: .now, title: "Call \(word)")
+        noted.notes = "Agreed terms"
+        insert(event, notedEvent, meeting, interview, noted)
+        meeting.calendarEvent = event
+        interview.calendarEvent = event
+        noted.calendarEvent = notedEvent
+        try context.save()
+
+        #expect(try search(word).count == 3)
+        let withheld = try Searcher.search(word, in: context, outsideInvitations: OutsideInvitations(withholds: true))
+        #expect(withheld.map(\.id) == [noted.id])
+    }
+
     @Test func feedbackAndPRsMatchTheirPersonsName() throws {
         let name = uniqueWord().capitalized
         let person = Person(name: "\(name) Okafor")

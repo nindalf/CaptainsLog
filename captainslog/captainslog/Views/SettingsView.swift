@@ -12,6 +12,7 @@ struct SettingsView: View {
             Tab("Sync", systemImage: "arrow.triangle.2.circlepath", value: .sync) { SyncSettingsPane() }
             Tab("Backups", systemImage: "externaldrive", value: SettingsTab.backups) { settingsPane { BackupSettingsSection() } }
             Tab("Retention", systemImage: "clock.badge.xmark", value: SettingsTab.retention) { settingsPane { RetentionSettingsSection() } }
+            Tab("Privacy", systemImage: "hand.raised", value: SettingsTab.privacy) { PrivacySettingsPane() }
         }
         .frame(width: 520)
     }
@@ -19,7 +20,7 @@ struct SettingsView: View {
 
 /// Kept in UserDefaults so a link elsewhere in the app can pick the tab before calling `openSettings`.
 enum SettingsTab: String {
-    case general, sidebar, sync, backups, retention
+    case general, sidebar, sync, backups, retention, privacy
 
     static let storageKey = "settingsTab"
 
@@ -51,6 +52,25 @@ private struct GeneralSettingsPane: View {
 
             Section("Calendar") {
                 Toggle("Show weekends", isOn: $settings.showWeekends)
+            }
+        }
+    }
+}
+
+private struct PrivacySettingsPane: View {
+    @Environment(AppSettings.self) private var settings
+
+    var body: some View {
+        @Bindable var settings = settings
+        settingsPane {
+            Section {
+                Toggle("Keep outside invitations from agents", isOn: $settings.hidesOutsideInvitations)
+            } header: {
+                Text("Agents (through the CLI)")
+            } footer: {
+                Text("Anyone can send you an invitation, and its title could carry instructions aimed at an agent such as Claude. With this on, the CLI leaves out events organised outside your email domain, with their meetings and interviews, until you accept the invitation or write in its meeting or interview. People first seen on one are named from their email. The app still shows everything.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

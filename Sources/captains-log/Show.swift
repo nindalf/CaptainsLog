@@ -34,9 +34,11 @@ struct Show: AsyncParsableCommand {
             return AnyEncodable(value: LogEntryDetail.from(e))
         }
         if let m = try context.fetch(FetchDescriptor<Meeting>(predicate: #Predicate { $0.id == uuid })).first {
+            try outsideInvitations.require(m)
             return AnyEncodable(value: try MeetingDetail.load(m, in: context))
         }
         if let i = try context.fetch(FetchDescriptor<Interview>(predicate: #Predicate { $0.id == uuid })).first {
+            try outsideInvitations.require(i)
             let todos = try context.fetch(FetchDescriptor<Todo>(
                 predicate: #Predicate { $0.trashedDate == nil && $0.interview?.id == uuid },
                 sortBy: [SortDescriptor(\.sortOrder)]
@@ -63,6 +65,7 @@ struct Show: AsyncParsableCommand {
             return AnyEncodable(value: FeedbackDetail.from(f))
         }
         if let e = try context.fetch(FetchDescriptor<CalendarEvent>(predicate: #Predicate { $0.id == uuid })).first {
+            try outsideInvitations.require(e)
             return AnyEncodable(value: CalendarEventDetail.from(e))
         }
         throw ValidationError("No record with id \(uuid.uuidString)")

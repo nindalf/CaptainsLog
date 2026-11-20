@@ -61,7 +61,10 @@ struct Sync: AsyncParsableCommand {
 
             let actor = CalendarSync(modelContainer: container)
             do {
-                try await actor.sync(calendarAllowlist: calList, weeksAhead: settings.calendarFetchWeeks)
+                try await actor.sync(
+                    calendarAllowlist: calList, weeksAhead: settings.calendarFetchWeeks,
+                    hidesOutsideInvitations: settings.hidesOutsideInvitations
+                )
                 SyncHistory.update { $0.recordSuccess(.calendar) }
             } catch {
                 SyncHistory.update { $0.recordFailure(.calendar, error: error.localizedDescription) }

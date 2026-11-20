@@ -88,6 +88,7 @@ The skills in `skills/` let Claude Code or Codex read and write the store throug
 
 - Read commands are pre-approved in the skills' `allowed-tools` (`list`, `show`, `search`, `feed`, `status`, plus `jq`). `allowed-tools` is experimental in the Agent Skills spec, so Codex may prompt for reads too.
 - The skills tell Claude not to look outside the store (no git, GitHub, Slack or web), and not to run destructive commands (`delete --permanently`, `empty-trash`, `people merge --yes`) unless the user asks for that one action.
+- Calendar invitations are text strangers write, so a title could carry a prompt injection. By default (Settings › Privacy) the CLI leaves out events organised outside the user's email domain that they haven't accepted, with their meetings and interviews, until the user accepts the invitation or writes in its meeting or interview (`OutsideInvitations.swift`). It goes by the organiser's domain, so it doesn't catch an invitation from a compromised colleague's account or a spoofed organiser, and on a consumer domain such as gmail.com every other user of it counts as inside. Its guests still reach the CLI as people (`people list --all`, attendee lists), named from emails the sender chose. The setting is a UserDefaults key, which an agent with a shell could change; the skills tell it not to, but that isn't a boundary.
 - Records can be marked private (`isPrivate`), meaning the user wants them kept out of anything shared. It isn't access control: the store is single-user, and the CLI returns every record.
 
 ## Distribution and supply chain
