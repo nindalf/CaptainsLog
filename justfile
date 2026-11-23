@@ -119,7 +119,7 @@ release-build:
     ditto -c -k --keepParent "$app" "$dist/CaptainsLog-$version.zip"
     ls -1 "$dist/CaptainsLog-$version.zip"
 
-# Rebuild release v<version> from its tag, with the tag's own build step, and compare it with the published zip. Signatures are normalised, and BuildMachineOSBuild ignored. Needs the tag locally and the Xcode the release was built with
+# Rebuild release v<version> from its tag, with the tag's own build step, and compare it with the published zip. Signatures are normalised, BuildMachineOSBuild ignored, and the asset catalog compared by contents, minus the app icon images actool renders differently each build. Needs the tag locally and the Xcode the release was built with
 verify-release version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -147,6 +147,15 @@ verify-release version:
         find "$app" -name _CodeSignature -type d -prune -exec rm -rf {} +
         rm -f "$app/Contents/CodeResources"
         find "$app" -name Info.plist -exec plutil -remove BuildMachineOSBuild {} \; 2>/dev/null || true
+        # actool stamps the catalog, orders it differently each build and gives the images it renders from AppIcon.icon random names, so compare its contents without those names, their digests or the timestamp
+        car="$app/Contents/Resources/Assets.car"
+        xcrun assetutil --info "$car" | awk '
+            /"Timestamp"/ { next }
+            /"RenditionName"/ && sub(/_[0-9A-F-]+-[0-9]+-[0-9A-F]+\.png"/, ".png\"") { generated = 1 }
+            /"SHA1Digest"/ && generated { next }
+            /}/ { generated = 0 }
+            { print }' > "$car.txt"
+        rm "$car"
     done
     diff -r "$work/published" "$work/rebuilt"
     echo "$tag matches its tag's source"
