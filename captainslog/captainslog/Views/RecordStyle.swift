@@ -309,3 +309,36 @@ struct LogRecordRow: View {
         }
     }
 }
+
+/// Feedback has no title, so its first line stands in for one, the rest below it.
+struct FeedbackRecordRow: View {
+    let feedback: Feedback
+    var date: RowDate
+    var isSelected = false
+    var isPadded = true
+
+    private var lines: (first: String, rest: String) {
+        let trimmed = feedback.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let newline = trimmed.firstIndex(where: \.isNewline) else { return (trimmed, "") }
+        return (String(trimmed[..<newline]), String(trimmed[newline...]))
+    }
+
+    var body: some View {
+        let lines = lines
+        RecordRow(isSelected: isSelected, isPadded: isPadded) {
+            RecordIcon(kind: .feedback)
+        } title: {
+            if lines.first.isEmpty {
+                Text("No content").foregroundStyle(.tertiary)
+            } else {
+                Text(markdownPreview(lines.first))
+            }
+        } secondary: {
+            if !lines.rest.isEmpty {
+                Text(markdownPreview(lines.rest))
+            }
+        } trailing: {
+            Text(date.text)
+        }
+    }
+}

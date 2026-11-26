@@ -1,7 +1,7 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// A date-only field for things that already happened (a debrief, feedback): its `DateLabel`, or
+/// A date-only field for things that already happened (a debrief): its `DateLabel`, or
 /// "Not set", opening a popover of Today, Yesterday and a month grid. A picked day keeps the old
 /// time of day, or now's, so same-day records still sort.
 struct DayField: View {
@@ -19,15 +19,16 @@ struct DayField: View {
         .buttonStyle(.borderless)
         .popover(isPresented: $isPicking) {
             DayPopover(selected: date, clearable: clearable) { picked in
-                date = picked.map(keepingTime)
+                date = picked.map { Self.day($0, keepingTimeOf: date ?? .now) }
                 isPicking = false
             }
         }
     }
 
-    private func keepingTime(_ day: Date) -> Date {
+    /// `day` at `old`'s time of day.
+    static func day(_ day: Date, keepingTimeOf old: Date) -> Date {
         let cal = Calendar.current
-        let time = cal.dateComponents([.hour, .minute, .second], from: date ?? .now)
+        let time = cal.dateComponents([.hour, .minute, .second], from: old)
         return cal.date(bySettingHour: time.hour ?? 0, minute: time.minute ?? 0, second: time.second ?? 0, of: day) ?? day
     }
 }
@@ -39,7 +40,8 @@ extension DayField {
     }
 }
 
-private struct DayPopover: View {
+/// Today, Yesterday and a month grid, for a day that already happened.
+struct DayPopover: View {
     let selected: Date?
     let clearable: Bool
     /// The start of the picked day, or nil for Clear.

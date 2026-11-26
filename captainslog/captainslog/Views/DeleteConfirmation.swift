@@ -8,12 +8,14 @@ enum DeletableRecord {
     case log(LogEntry)
     case meeting(Meeting)
     case interview(Interview)
+    case feedback(Feedback)
 
     var id: UUID {
         switch self {
         case .log(let entry): entry.id
         case .meeting(let meeting): meeting.id
         case .interview(let interview): interview.id
+        case .feedback(let feedback): feedback.id
         }
     }
 
@@ -22,12 +24,13 @@ enum DeletableRecord {
         case .log(let entry): "Delete \"\(entry.title)\"?"
         case .meeting(let meeting): "Delete \"\(meeting.title)\"?"
         case .interview(let interview): "Delete the interview with \(interview.candidateName)?"
+        case .feedback(let feedback): "Delete this feedback for \(feedback.person.name)?"
         }
     }
 
     fileprivate var message: String {
         switch self {
-        case .log: "This can't be undone."
+        case .log, .feedback: "This can't be undone."
         case .meeting: "This can't be undone. Its todos and calendar event are kept."
         case .interview(let interview) where interview.calendarEvent != nil:
             "This can't be undone. Its todos are kept, and its calendar event is hidden so sync doesn't bring it back."
@@ -40,6 +43,7 @@ enum DeletableRecord {
         case .log(let entry): context.delete(entry)
         case .meeting(let meeting): context.delete(meeting)
         case .interview(let interview): interview.delete(in: context)
+        case .feedback(let feedback): context.delete(feedback)
         }
     }
 }

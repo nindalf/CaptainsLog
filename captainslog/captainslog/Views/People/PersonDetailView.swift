@@ -9,6 +9,8 @@ struct PersonDetailView: View {
     @Environment(Navigator.self) private var navigator
     @State private var showMergeSheet = false
     @State private var expandedFeedbackID: UUID?
+    @FocusState private var feedbackFocus: UUID?
+    @State private var pendingDelete: DeletableRecord?
     /// The row last clicked in any of the page's lists.
     @State private var selectedRowID: UUID?
     @State private var expandedPRID: UUID?
@@ -129,6 +131,9 @@ struct PersonDetailView: View {
             if !person.isDeleted { person.trimWhitespace() }
         }
         .pageCommands(pageCommands)
+        .deleteConfirmation($pendingDelete) { record in
+            if expandedFeedbackID == record.id { expandedFeedbackID = nil }
+        }
         .sheet(isPresented: $showMergeSheet) {
             PersonMergePicker(keep: person) { other in
                 person.absorb(other, in: modelContext)
@@ -155,15 +160,16 @@ struct PersonDetailView: View {
             }
             DetailRows(data: sortedFeedback, limit: Self.rowLimit) { item in
                 if expandedFeedbackID == item.id {
-                    FeedbackEditor(
-                        feedback: item,
-                        onCollapse: { expandedFeedbackID = nil },
-                        onDelete: { delete(item) }
-                    )
+                    FeedbackCardView(feedback: item, focusedField: $feedbackFocus)
+                        .contextMenu { deleteFeedbackButton(item) }
+                        .onKeyPress(.escape) {
+                            expandedFeedbackID = nil
+                            return .handled
+                        }
                 } else {
-                    FeedbackSummaryRow(feedback: item)
-                        .selectionHighlight(selectedRowID == item.id)
-                        .onRecordClick(isSelected: selectedRowID == item.id, select: { select(item.id) }, open: { expandedFeedbackID = item.id })
+                    FeedbackRecordRow(feedback: item, date: .day(item.date), isSelected: selectedRowID == item.id, isPadded: false)
+                        .onRecordClick(isSelected: selectedRowID == item.id, select: { select(item.id) }, open: { openFeedback(item) })
+                        .contextMenu { deleteFeedbackButton(item) }
                 }
             }
         }
@@ -173,10 +179,11 @@ struct PersonDetailView: View {
         .onDisappear { deleteIfBlank(expandedFeedbackID) }
     }
 
-    /// Selecting any row on the page closes an open PR card.
+    /// Selecting any row on the page closes an open card.
     private func select(_ id: UUID) {
         selectedRowID = id
         if expandedPRID != id { expandedPRID = nil }
+        if expandedFeedbackID != id { expandedFeedbackID = nil }
     }
 
     /// Expands in place, as on the PR tab.
@@ -188,7 +195,7 @@ struct PersonDetailView: View {
         } else {
             PRRecordRow(pr: pr, date: .day(pr.createdAt), isSelected: selectedRowID == pr.id, isPadded: false)
                 .onRecordClick(isSelected: selectedRowID == pr.id, select: { select(pr.id) }, open: {
-                    selectedRowID = pr.id
+                    select(pr.id)
                     expandedPRID = pr.id
                     prFocus = .notes(pr.id)
                 })
@@ -200,12 +207,18 @@ struct PersonDetailView: View {
         let item = Feedback(date: .now, person: person, content: "")
         modelContext.insert(item)
         // Open straight away so the new item can be typed into.
-        expandedFeedbackID = item.id
+        openFeedback(item)
     }
 
-    private func delete(_ feedback: Feedback) {
-        if expandedFeedbackID == feedback.id { expandedFeedbackID = nil }
-        modelContext.delete(feedback)
+    private func openFeedback(_ item: Feedback) {
+        select(item.id)
+        expandedFeedbackID = item.id
+        // The card only exists after this update, so focus it on the next one.
+        Task { feedbackFocus = item.id }
+    }
+
+    private func deleteFeedbackButton(_ item: Feedback) -> some View {
+        Button("Delete Feedback…", systemImage: "trash", role: .destructive) { pendingDelete = .feedback(item) }
     }
 
     private func deleteIfBlank(_ id: UUID?) {
@@ -234,73 +247,6 @@ struct PersonDetailView: View {
             get: { person[keyPath: keyPath] },
             set: { person[keyPath: keyPath] = $0 }
         )
-    }
-}
-
-// MARK: - Feedback rows
-
-/// One-line collapsed form of a feedback item: first line of content, date.
-private struct FeedbackSummaryRow: View {
-    let feedback: Feedback
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "chevron.right")
-                .font(.body.weight(.semibold))
-                .frame(width: 16)
-                .foregroundStyle(.secondary)
-            Text(preview)
-                .lineLimit(1)
-                .foregroundStyle(feedback.content.isEmpty ? .tertiary : .primary)
-            Spacer()
-            Text(DateLabel.day(feedback.date))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .contentShape(.rect)
-    }
-
-    private var preview: String {
-        let firstLine = feedback.content.split(whereSeparator: \.isNewline).first.map(String.init)
-        return firstLine ?? "No content"
-    }
-}
-
-private struct FeedbackEditor: View {
-    @Bindable var feedback: Feedback
-    var onCollapse: () -> Void
-    var onDelete: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Button(action: onCollapse) {
-                    Image(systemName: "chevron.down")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 16)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help("Collapse")
-                Spacer()
-                DayField(date: $feedback.date)
-                Button(role: .destructive) {
-                    onDelete()
-                } label: {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help("Delete Feedback")
-            }
-            MarkdownEditor(
-                text: $feedback.content,
-                placeholder: "Feedback for \(feedback.person.name)…",
-                minHeight: 60
-            )
-        }
-        .padding(.vertical, 4)
     }
 }
 
