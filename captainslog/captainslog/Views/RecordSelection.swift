@@ -9,6 +9,13 @@ func movedSelection<ID: Equatable>(_ current: ID?, by delta: Int, in ids: [ID]) 
     return ids[max(0, min(ids.count - 1, index + delta))]
 }
 
+/// Whether a text field or text view has the keyboard, so arrows and Return belong to it rather
+/// than to the list around it. A text field edits through a text view too.
+@MainActor
+var isEditingText: Bool {
+    NSApp.keyWindow?.firstResponder is NSTextView
+}
+
 /// Whether the click being handled is the second of a double-click. False for a tap that isn't a
 /// mouse click, such as VoiceOver's press, whose event has no click count.
 @MainActor

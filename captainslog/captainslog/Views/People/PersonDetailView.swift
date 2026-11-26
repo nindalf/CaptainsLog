@@ -11,10 +11,15 @@ struct PersonDetailView: View {
     @State private var expandedFeedbackID: UUID?
     @FocusState private var feedbackFocus: UUID?
     @State private var pendingDelete: DeletableRecord?
-    /// The row last clicked in any of the page's lists.
+    /// The selected row in any of the page's lists, moved by a click or the arrow keys.
     @State private var selectedRowID: UUID?
     @State private var expandedPRID: UUID?
     @FocusState private var prFocus: PRFocusField?
+    /// The open todos' rows, as their list reports them, for the arrow keys.
+    @State private var todoIDs: [UUID] = []
+    /// Bumped by Return on a selected todo, which its list opens.
+    @State private var todoOpenTick = 0
+    @State private var focusRequest = 0
 
     // Queried rather than read from `person.feedback`: an insert only sets the inverse side,
     // which does not notify observers of `person`, so the section would not redraw.
@@ -57,7 +62,7 @@ struct PersonDetailView: View {
     }
 
     var body: some View {
-        DetailPage {
+        DetailPage(focusRequest: focusRequest, scrollTarget: selectedRowID) {
             DetailHeader(title: $person.name, placeholder: "Name", onCommit: person.trimWhitespace) {
                 if !(person.githubHandle ?? "").isEmpty {
                     Toggle(isOn: syncsPullRequests) {
@@ -76,23 +81,28 @@ struct PersonDetailView: View {
             .frame(maxWidth: 520, alignment: .leading)
             .padding(.top, -12)
 
-            LinkedTodoList(person: person)
+            LinkedTodoList(person: person, keyboard: PageKeyboard(
+                selection: $selectedRowID,
+                openTick: todoOpenTick,
+                onRowsChange: { todoIDs = $0 },
+                onCardClose: refocusUnlessCardOpen
+            ))
 
             feedbackSection
 
             if !authoredPRs.isEmpty {
                 DetailSection("Authored PRs", count: authoredPRs.count) {
-                    DetailRows(data: authoredPRs, limit: Self.rowLimit) { pr in prRow(pr) }
+                    DetailRows(data: authoredPRs, limit: Self.rowLimit, reveal: selectedRowID) { pr in prRow(pr) }
                 }
             }
             if !reviewedPRs.isEmpty {
                 DetailSection("Reviewed PRs", count: reviewedPRs.count) {
-                    DetailRows(data: reviewedPRs, limit: Self.rowLimit) { pr in prRow(pr) }
+                    DetailRows(data: reviewedPRs, limit: Self.rowLimit, reveal: selectedRowID) { pr in prRow(pr) }
                 }
             }
             if !meetings.isEmpty {
                 DetailSection("Meetings", count: meetings.count) {
-                    DetailRows(data: meetings, limit: Self.rowLimit) { meeting in
+                    DetailRows(data: meetings, limit: Self.rowLimit, reveal: selectedRowID) { meeting in
                         MeetingRecordRow(meeting: meeting, date: .day(meeting.date), isSelected: selectedRowID == meeting.id, isPadded: false)
                             .onRecordClick(isSelected: selectedRowID == meeting.id, select: { select(meeting.id) }, open: { navigator.openMeeting(meeting) })
                     }
@@ -126,6 +136,22 @@ struct PersonDetailView: View {
                 .help("Merge a duplicate person into this one")
             }
         }
+        .onKeyPress(.upArrow, phases: [.down, .repeat]) { _ in moveSelection(by: -1) }
+        .onKeyPress(.downArrow, phases: [.down, .repeat]) { _ in moveSelection(by: 1) }
+        .onKeyPress(.return, phases: .down) { handleReturn($0) }
+        .onKeyPress(.escape) { closeCards() }
+        // Selecting another row closes an open card.
+        .onChange(of: selectedRowID) { _, id in
+            if expandedPRID != id { expandedPRID = nil }
+            if expandedFeedbackID != id { expandedFeedbackID = nil }
+        }
+        .onChange(of: expandedPRID) { _, id in
+            guard id == nil else { return }
+            // Cleared with the card: left set, reopening it would set the same value, which SwiftUI
+            // ignores, and the notes wouldn't take focus.
+            prFocus = nil
+            refocusUnlessCardOpen()
+        }
         // A field still focused when the page goes doesn't lose focus first.
         .onDisappear {
             if !person.isDeleted { person.trimWhitespace() }
@@ -158,7 +184,7 @@ struct PersonDetailView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
             }
-            DetailRows(data: sortedFeedback, limit: Self.rowLimit) { item in
+            DetailRows(data: sortedFeedback, limit: Self.rowLimit, reveal: selectedRowID) { item in
                 if expandedFeedbackID == item.id {
                     FeedbackCardView(feedback: item, focusedField: $feedbackFocus)
                         .contextMenu { deleteFeedbackButton(item) }
@@ -175,15 +201,70 @@ struct PersonDetailView: View {
         }
         .animation(.snappy(duration: 0.18), value: expandedFeedbackID)
         // An item left blank when it closes was never written, so it goes.
-        .onChange(of: expandedFeedbackID) { closed, _ in deleteIfBlank(closed) }
+        .onChange(of: expandedFeedbackID) { closed, open in
+            deleteIfBlank(closed)
+            guard open == nil else { return }
+            // As `prFocus`: reopening the card must change it.
+            feedbackFocus = nil
+            refocusUnlessCardOpen()
+        }
         .onDisappear { deleteIfBlank(expandedFeedbackID) }
     }
 
-    /// Selecting any row on the page closes an open card.
     private func select(_ id: UUID) {
         selectedRowID = id
-        if expandedPRID != id { expandedPRID = nil }
-        if expandedFeedbackID != id { expandedFeedbackID = nil }
+    }
+
+    // MARK: - Keyboard
+
+    /// Every row on the page, top to bottom, as the arrow keys move through them.
+    private var rowIDs: [UUID] {
+        todoIDs + sortedFeedback.map(\.id) + authoredPRs.map(\.id) + reviewedPRs.map(\.id)
+            + meetings.map(\.id) + interviews.map(\.id) + logEntries.map(\.id)
+    }
+
+    private func moveSelection(by delta: Int) -> KeyPress.Result {
+        if isEditingText { return .ignored }
+        guard let id = movedSelection(selectedRowID, by: delta, in: rowIDs) else { return .ignored }
+        selectedRowID = id
+        return .handled
+    }
+
+    /// Opens the selected row as a double-click would; with a card open, closes it.
+    private func handleReturn(_ press: KeyPress) -> KeyPress.Result {
+        if press.modifiers.contains(.shift) || isEditingText { return .ignored }
+        if closeCards() == .handled { return .handled }
+        guard let id = selectedRowID else { return .ignored }
+        if todoIDs.contains(id) {
+            todoOpenTick += 1
+        } else if let item = sortedFeedback.first(where: { $0.id == id }) {
+            openFeedback(item)
+        } else if let pr = (authoredPRs + reviewedPRs).first(where: { $0.id == id }) {
+            openPR(pr)
+        } else if let meeting = meetings.first(where: { $0.id == id }) {
+            navigator.openMeeting(meeting)
+        } else if let interview = interviews.first(where: { $0.id == id }) {
+            navigator.openInterview(interview)
+        } else if let entry = logEntries.first(where: { $0.id == id }) {
+            navigator.openLogEntry(entry)
+        } else {
+            return .ignored
+        }
+        return .handled
+    }
+
+    @discardableResult
+    private func closeCards() -> KeyPress.Result {
+        guard expandedFeedbackID != nil || expandedPRID != nil else { return .ignored }
+        expandedFeedbackID = nil
+        expandedPRID = nil
+        return .handled
+    }
+
+    /// The page takes focus back when a card closes, so the arrow keys work again. Not while
+    /// another card is open, which has its own focus.
+    private func refocusUnlessCardOpen() {
+        if expandedFeedbackID == nil && expandedPRID == nil { focusRequest += 1 }
     }
 
     /// Expands in place, as on the PR tab.
@@ -194,11 +275,7 @@ struct PersonDetailView: View {
                 .contextMenu { PRContextMenu(pr: pr) }
         } else {
             PRRecordRow(pr: pr, date: .day(pr.createdAt), isSelected: selectedRowID == pr.id, isPadded: false)
-                .onRecordClick(isSelected: selectedRowID == pr.id, select: { select(pr.id) }, open: {
-                    select(pr.id)
-                    expandedPRID = pr.id
-                    prFocus = .notes(pr.id)
-                })
+                .onRecordClick(isSelected: selectedRowID == pr.id, select: { select(pr.id) }, open: { openPR(pr) })
                 .contextMenu { PRContextMenu(pr: pr) }
         }
     }
@@ -210,11 +287,16 @@ struct PersonDetailView: View {
         openFeedback(item)
     }
 
+    private func openPR(_ pr: PullRequest) {
+        selectedRowID = pr.id
+        expandedPRID = pr.id
+        prFocus = .notes(pr.id)
+    }
+
     private func openFeedback(_ item: Feedback) {
         select(item.id)
+        // The card's editor takes the keyboard itself once it's on screen (`focusOnAppear`).
         expandedFeedbackID = item.id
-        // The card only exists after this update, so focus it on the next one.
-        Task { feedbackFocus = item.id }
     }
 
     private func deleteFeedbackButton(_ item: Feedback) -> some View {

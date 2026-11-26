@@ -18,7 +18,8 @@ struct FeedbackCardView: View {
                 maxHeight: 300,
                 showSlackControls: false,
                 focus: focusedField,
-                focusValue: feedback.id
+                focusValue: feedback.id,
+                focusOnAppear: true
             )
             HStack(spacing: 14) {
                 Spacer(minLength: 0)

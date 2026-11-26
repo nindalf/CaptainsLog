@@ -4,16 +4,26 @@ import CaptainsLogKit
 /// A detail page laid out as a document: the content column, scrolling, holding a `DetailHeader`
 /// and `DetailSection`s. Replaces the grouped `Form`, whose rows push values far from their labels.
 struct DetailPage<Content: View>: View {
+    /// Bumped to take focus back, as when a card closes, so the page's keys work again.
+    var focusRequest = 0
+    /// A row kept scrolled into view: the page's keyboard selection.
+    var scrollTarget: UUID?
     @ViewBuilder var content: Content
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                content
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    content
+                }
+                .contentColumn()
+                .padding(.vertical, 20)
             }
-            .contentColumn()
-            .padding(.vertical, 20)
+            .onChange(of: scrollTarget) { _, id in
+                guard let id else { return }
+                DispatchQueue.main.async { proxy.scrollTo(id) }
+            }
         }
         // The page takes focus on arrival, as tabs do. Left alone, SwiftUI hands it to the title
         // with its text selected, so a keystroke would replace it.
@@ -21,6 +31,12 @@ struct DetailPage<Content: View>: View {
         .focusEffectDisabled()
         .focused($isFocused)
         .onAppear { DispatchQueue.main.async { isFocused = true } }
+        // Cleared first: focus moving into an AppKit text view, such as a card's notes, doesn't
+        // clear it, so setting it alone would change nothing.
+        .onChange(of: focusRequest) {
+            isFocused = false
+            DispatchQueue.main.async { isFocused = true }
+        }
         // The page's own title replaces the toolbar's.
         .navigationTitle("")
     }
@@ -157,16 +173,18 @@ extension DetailSection {
 }
 
 /// Rows in a `DetailSection`, divided as a grouped form divides them. Past `limit`, the rest
-/// come a page of `limit` at a time.
+/// come a page of `limit` at a time, or as many pages as it takes to show `reveal`.
 struct DetailRows<Data: RandomAccessCollection, Row: View>: View where Data.Element: Identifiable {
     let data: Data
     let limit: Int?
+    let reveal: Data.Element.ID?
     @ViewBuilder var row: (Data.Element) -> Row
     @State private var shown: Int?
 
-    init(data: Data, limit: Int? = nil, @ViewBuilder row: @escaping (Data.Element) -> Row) {
+    init(data: Data, limit: Int? = nil, reveal: Data.Element.ID? = nil, @ViewBuilder row: @escaping (Data.Element) -> Row) {
         self.data = data
         self.limit = limit
+        self.reveal = reveal
         self.row = row
     }
 
@@ -179,6 +197,7 @@ struct DetailRows<Data: RandomAccessCollection, Row: View>: View where Data.Elem
         ForEach(Array(visible.enumerated()), id: \.element.id) { index, element in
             if index > 0 { Divider().padding(.vertical, 6) }
             row(element)
+                .id(element.id)
         }
         if let limit, data.count > visible.count {
             Divider().padding(.vertical, 6)
@@ -186,6 +205,13 @@ struct DetailRows<Data: RandomAccessCollection, Row: View>: View where Data.Elem
                 shown = visible.count + limit
             }
         }
+        // On the section rather than a row, as a hidden row has no view to watch.
+        Color.clear.frame(height: 0)
+            .onChange(of: reveal) { _, id in
+                guard let limit, let id, let index = data.firstIndex(where: { $0.id == id }) else { return }
+                let offset = data.distance(from: data.startIndex, to: index)
+                if offset >= visible.count { shown = (offset / limit + 1) * limit }
+            }
     }
 }
 

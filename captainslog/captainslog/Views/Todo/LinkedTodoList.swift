@@ -16,6 +16,9 @@ struct LinkedTodoList: View {
     private let peopleIDs: Set<UUID>
     /// Names the tagged people under each title, so a meeting shows who each todo is for.
     private let namesTaggedPeople: Bool
+    /// A page with keyboard selection (`PersonDetailView`) owns the selected row, so a click
+    /// selects and a double-click or the page's Return opens. Without one, a click opens.
+    private var keyboard: PageKeyboard?
 
     // Filtered queries rather than `meeting.todos`, which does not notice inserts from the todo side.
     @Query private var linkedTodos: [Todo]
@@ -56,7 +59,8 @@ struct LinkedTodoList: View {
         namesTaggedPeople = false
     }
 
-    init(person: Person) {
+    init(person: Person, keyboard: PageKeyboard) {
+        self.keyboard = keyboard
         _linkedTodos = Query(filter: #Predicate<Todo> { _ in false })
         _completedHere = Query(filter: #Predicate<Todo> { _ in false })
         addTick = 0
@@ -130,11 +134,14 @@ struct LinkedTodoList: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(visibleTodos) { todo in
-                    if expandedID == todo.id {
-                        card(for: todo)
-                    } else {
-                        row(for: todo)
+                    Group {
+                        if expandedID == todo.id {
+                            card(for: todo)
+                        } else {
+                            row(for: todo)
+                        }
                     }
+                    .id(todo.id)
                 }
                 ShowMoreButton(remaining: orderedTodos.count - visibleTodos.count, pageSize: Self.collapsedCount) {
                     shownCount += Self.collapsedCount
@@ -144,17 +151,33 @@ struct LinkedTodoList: View {
         }
         .onChange(of: addTick) { createDraft() }
         .onDisappear { collapseAndCommit() }
+        .onChange(of: orderedTodos.map(\.id), initial: true) { _, ids in keyboard?.onRowsChange(ids) }
+        .onChange(of: keyboard?.selection.wrappedValue) { _, id in
+            if expandedID != nil, expandedID != id { collapseAndCommit() }
+            reveal(id)
+        }
+        .onChange(of: keyboard?.openTick) {
+            if let todo = orderedTodos.first(where: { $0.id == keyboard?.selection.wrappedValue }) { expand(todo) }
+        }
+    }
+
+    /// Shows enough rows to reach a todo selected from the keyboard.
+    private func reveal(_ id: UUID?) {
+        guard let index = orderedTodos.firstIndex(where: { $0.id == id }), index >= shownCount else { return }
+        shownCount = (index / Self.collapsedCount + 1) * Self.collapsedCount
     }
 
     private func row(for todo: Todo) -> some View {
         TodoRowView(
             todo: todo,
-            isSelected: false,
+            isSelected: keyboard?.selection.wrappedValue == todo.id,
             isCompleting: false,
             showsSource: false,
             trailing: taggedNames(todo),
             compact: true,
-            onSelect: { expand(todo) },
+            onSelect: {
+                if let keyboard { keyboard.selection.wrappedValue = todo.id } else { expand(todo) }
+            },
             onExpand: { expand(todo) },
             onComplete: { toggleComplete(todo) }
         )
@@ -208,14 +231,17 @@ struct LinkedTodoList: View {
     }
 
     private func collapseAndCommit() {
+        let hadCard = draft != nil || expandedID != nil
         commitDraft()
         expandedID = nil
         focusedField = nil
         try? modelContext.save()
+        if hadCard { keyboard?.onCardClose() }
     }
 
     private func expand(_ todo: Todo) {
         commitDraft()
+        keyboard?.selection.wrappedValue = todo.id
         expandedID = todo.id
         focusedField = .title(todo.id)
     }
@@ -229,4 +255,13 @@ struct LinkedTodoList: View {
         }
         try? modelContext.save()
     }
+}
+
+/// What a page with keyboard selection hands its todo list: the selected row, a tick bumped by
+/// Return to open it, and callbacks for the rows shown and for a card closing.
+struct PageKeyboard {
+    var selection: Binding<UUID?>
+    var openTick: Int
+    var onRowsChange: ([UUID]) -> Void
+    var onCardClose: () -> Void
 }

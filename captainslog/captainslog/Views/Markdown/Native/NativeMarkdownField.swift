@@ -19,6 +19,10 @@ struct NativeMarkdownField: NSViewRepresentable {
     var isFocused: Bool?
     var onFocusChange: ((Bool) -> Void)?
     var onReturn: (() -> Void)?
+    /// Takes the keyboard as soon as it's in its window, through AppKit, as Quick Entry's panel
+    /// does. A card opening in a SwiftUI page can't count on its `FocusState` request landing; the
+    /// binding follows through `onFocusChange` instead.
+    var focusOnAppear = false
     var handle: MarkdownEditorHandle?
 
     func makeCoordinator() -> MarkdownEditorController {
@@ -30,6 +34,7 @@ struct NativeMarkdownField: NSViewRepresentable {
         handle?.controller = controller
         controller.configure(self, modelContext: context.environment.modelContext)
         controller.load(text)
+        if focusOnAppear { controller.focusWhenShown() }
         return controller.scrollView
     }
 
@@ -277,6 +282,10 @@ final class MarkdownEditorController: NSObject, NSTextViewDelegate {
     }
 
     // MARK: Focus
+
+    func focusWhenShown() {
+        requestFocus(true)
+    }
 
     private func requestFocus(_ focused: Bool) {
         pendingFocus = focused

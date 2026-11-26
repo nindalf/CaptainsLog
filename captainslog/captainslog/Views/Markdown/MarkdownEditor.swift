@@ -18,6 +18,7 @@ struct MarkdownEditor<Focus: Hashable>: View {
     private let focus: FocusState<Focus?>.Binding?
     private let focusValue: Focus?
     private let onReturn: (() -> Void)?
+    private let focusOnAppear: Bool
 
     @State private var handle = MarkdownEditorHandle()
 
@@ -31,7 +32,8 @@ struct MarkdownEditor<Focus: Hashable>: View {
         copyHelp: String = "Copy for Slack",
         focus: FocusState<Focus?>.Binding,
         focusValue: Focus,
-        onReturn: (() -> Void)? = nil
+        onReturn: (() -> Void)? = nil,
+        focusOnAppear: Bool = false
     ) {
         self._text = text
         self.placeholder = placeholder
@@ -42,6 +44,7 @@ struct MarkdownEditor<Focus: Hashable>: View {
         self.focus = focus
         self.focusValue = focusValue
         self.onReturn = onReturn
+        self.focusOnAppear = focusOnAppear
     }
 
     var body: some View {
@@ -78,6 +81,7 @@ struct MarkdownEditor<Focus: Hashable>: View {
             isFocused: focus.map { $0.wrappedValue == focusValue },
             onFocusChange: focusChangeHandler,
             onReturn: onReturn,
+            focusOnAppear: focusOnAppear,
             handle: handle
         )
         .onKeyPress(.return, phases: .down) { press in
@@ -119,6 +123,7 @@ extension MarkdownEditor where Focus == MarkdownEditorNoFocus {
         self.focus = nil
         self.focusValue = nil
         self.onReturn = nil
+        self.focusOnAppear = false
     }
 }
 
