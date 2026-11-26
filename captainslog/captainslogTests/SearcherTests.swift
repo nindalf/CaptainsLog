@@ -108,15 +108,19 @@ struct SearcherTests {
         let interview = Interview(date: .now, candidateName: "Sam \(a)")
         interview.riskFactors = "Unsure about \(b)"
         let open = LogEntry(timestamp: .now, source: .manual, title: "Open", content: b)
-        insert(entry, interview, open)
+        // Feedback's person stands in for its title.
+        let feedback = Feedback(date: .now, person: Person(name: "Ana \(a)"), content: "Great \(b)")
+        feedback.isPrivate = true
+        insert(entry, interview, open, feedback)
         try context.save()
 
         let titlesOnly = { (q: String) in try Searcher.search(q, in: context, privateTitlesOnly: true) }
-        #expect(Set(try titlesOnly(a).map(\.id)) == [entry.id, interview.id])
+        // The person matches too, on their name.
+        #expect(Set(try titlesOnly(a).map(\.id)) == [entry.id, interview.id, feedback.id, feedback.person.id])
         #expect(try titlesOnly(b).map(\.id) == [open.id])
         // A title match isn't completed by words from the private text.
         #expect(try titlesOnly("\(a) \(b)").isEmpty)
-        #expect(Set(try search(b).map(\.id)) == [entry.id, interview.id, open.id])
+        #expect(Set(try search(b).map(\.id)) == [entry.id, interview.id, open.id, feedback.id])
     }
 
     @Test func leavesOutTrashedTodosAndCalendarOnlyPeople() throws {

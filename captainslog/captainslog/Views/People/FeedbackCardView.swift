@@ -1,7 +1,7 @@
 import SwiftUI
 import CaptainsLogKit
 
-/// The card a feedback row expands into: its text, and the day at the bottom right. Return is a
+/// The card a feedback row expands into: its text, then its day and privacy at the bottom right. Return is a
 /// new line, since feedback is all body; Escape closes it.
 struct FeedbackCardView: View {
     @Bindable var feedback: Feedback
@@ -23,6 +23,7 @@ struct FeedbackCardView: View {
             HStack(spacing: 14) {
                 Spacer(minLength: 0)
                 dateControl
+                PrivacyEye(isOn: $feedback.isPrivate)
             }
             .font(.system(size: 14))
             .foregroundStyle(.secondary)

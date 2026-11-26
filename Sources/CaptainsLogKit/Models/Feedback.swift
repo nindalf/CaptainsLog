@@ -7,6 +7,8 @@ public final class Feedback {
     public var date: Date
     public var person: Person
     public var content: String
+    /// Hidden from the CLI apart from its date, as other private records are. From schema V7.
+    public var isPrivate: Bool = false
 
     public init(
         date: Date,

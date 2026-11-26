@@ -375,12 +375,13 @@ struct FeedbackDetail: Encodable {
     let id: UUID
     let date: Date
     let person: PersonRef
-    let content: String
+    let isPrivate: Bool
+    let content: String?
 
     static func from(_ f: Feedback) -> FeedbackDetail {
         FeedbackDetail(
-            id: f.id, date: f.date, person: PersonRef.from(f.person),
-            content: f.content
+            id: f.id, date: f.date, person: PersonRef.from(f.person), isPrivate: f.isPrivate,
+            content: f.isPrivate ? nil : f.content
         )
     }
 }

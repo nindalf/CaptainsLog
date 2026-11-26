@@ -1,12 +1,12 @@
 import SwiftData
 
 /// The current schema. Build containers from this, not from a numbered version.
-public typealias CaptainsLogSchema = CaptainsLogSchemaV6
+public typealias CaptainsLogSchema = CaptainsLogSchemaV7
 
 // The top-level model classes. Each older version keeps a frozen copy of its models
-// (`CaptainsLogSchemaV1` to `CaptainsLogSchemaV5`) so the migration plan can recognise stores written by it.
-public enum CaptainsLogSchemaV6: VersionedSchema {
-    public static let versionIdentifier = Schema.Version(6, 0, 0)
+// (`CaptainsLogSchemaV1` to `CaptainsLogSchemaV6`) so the migration plan can recognise stores written by it.
+public enum CaptainsLogSchemaV7: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(7, 0, 0)
 
     public static var models: [any PersistentModel.Type] {
         [
@@ -25,11 +25,11 @@ public enum CaptainsLogSchemaV6: VersionedSchema {
 
 public enum CaptainsLogMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [CaptainsLogSchemaV1.self, CaptainsLogSchemaV2.self, CaptainsLogSchemaV3.self, CaptainsLogSchemaV4.self, CaptainsLogSchemaV5.self, CaptainsLogSchemaV6.self]
+        [CaptainsLogSchemaV1.self, CaptainsLogSchemaV2.self, CaptainsLogSchemaV3.self, CaptainsLogSchemaV4.self, CaptainsLogSchemaV5.self, CaptainsLogSchemaV6.self, CaptainsLogSchemaV7.self]
     }
 
     public static var stages: [MigrationStage] {
-        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6]
+        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6, v6ToV7]
     }
 
     // Drops CalendarEvent.participantCount and confirmedCount, and Meeting.tags and
@@ -64,5 +64,11 @@ public enum CaptainsLogMigrationPlan: SchemaMigrationPlan {
     static let v5ToV6 = MigrationStage.lightweight(
         fromVersion: CaptainsLogSchemaV5.self,
         toVersion: CaptainsLogSchemaV6.self
+    )
+
+    // Adds Feedback.isPrivate, false for existing feedback.
+    static let v6ToV7 = MigrationStage.lightweight(
+        fromVersion: CaptainsLogSchemaV6.self,
+        toVersion: CaptainsLogSchemaV7.self
     )
 }

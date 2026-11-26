@@ -122,7 +122,8 @@ public actor Searcher {
         for f in try context.fetch(FetchDescriptor<Feedback>(predicate: #Predicate {
             $0.content.localizedStandardContains(q) || $0.person.name.localizedStandardContains(q)
         })) {
-            add(.feedback, f.id, "Feedback for \(f.person.name)", f.date, [("content", f.content), ("person", f.person.name)])
+            // The person stands in for a title.
+            add(.feedback, f.id, "Feedback for \(f.person.name)", f.date, isPrivate: f.isPrivate, [("person", f.person.name), ("content", f.content)])
         }
 
         return hits.sorted(by: SearchHit.precedes)

@@ -241,6 +241,9 @@ struct People: AsyncParsableCommand {
             @Option(name: .long, help: "Date (ISO 8601, e.g. 2026-05-05). Defaults to now")
             var date: String?
 
+            @Flag(name: .customLong("private"), help: "Mark private: its content is left out of CLI output")
+            var isPrivate: Bool = false
+
             @Flag(name: .long, help: "Pretty-print JSON output")
             var pretty: Bool = false
 
@@ -250,6 +253,7 @@ struct People: AsyncParsableCommand {
                 let context = ModelContext(try Store.makeContainer())
                 let person = try People.person(id: self.person, in: context)
                 let item = Feedback(date: date, person: person, content: content)
+                item.isPrivate = isPrivate
                 context.insert(item)
                 try context.save()
 
@@ -259,7 +263,7 @@ struct People: AsyncParsableCommand {
 
         struct Edit: AsyncParsableCommand {
             static let configuration = CommandConfiguration(
-                abstract: "Change a feedback item's content or date"
+                abstract: "Change a feedback item's content, date or privacy"
             )
 
             @Argument(help: "Feedback UUID")
@@ -271,11 +275,14 @@ struct People: AsyncParsableCommand {
             @Option(name: .long, help: "Date (ISO 8601, e.g. 2026-05-05)")
             var date: String?
 
+            @Flag(name: .customLong("private"), inversion: .prefixedNo, help: "Mark private, or not")
+            var isPrivate: Bool?
+
             @Flag(name: .long, help: "Pretty-print JSON output")
             var pretty: Bool = false
 
             func validate() throws {
-                if content == nil && date == nil {
+                if content == nil && date == nil && isPrivate == nil {
                     throw ValidationError("Nothing to change")
                 }
             }
@@ -287,6 +294,7 @@ struct People: AsyncParsableCommand {
                 let item = try FeedbackCommands.feedback(id: id, in: context)
                 if let content { item.content = content }
                 if let date { item.date = date }
+                if let isPrivate { item.isPrivate = isPrivate }
                 try context.save()
 
                 try printJSON(FeedbackDetail.from(item), pretty: pretty)
